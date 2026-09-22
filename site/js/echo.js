@@ -17,7 +17,7 @@ const st = { angle: 0, dMeas: LVOT_D, trace: [], trCal: null, weak: false, rapEs
 function screen(id, aspect = 0.42) {
   const c = document.getElementById(id);
   const w = Math.min(760, c.parentElement.clientWidth - 4);
-  const h = Math.round(w * aspect), dpr = window.devicePixelRatio || 1;
+  const h = Math.round(w * (w < 520 ? Math.max(aspect, 0.72) : aspect)), dpr = window.devicePixelRatio || 1;
   c.width = w * dpr; c.height = h * dpr; c.style.width = w + 'px'; c.style.height = h + 'px';
   const g = c.getContext('2d');
   g.setTransform(dpr, 0, 0, dpr, 0, 0);

@@ -257,7 +257,7 @@ function drawPV(extraSeries = [], opts = {}) {
     series.push(...relSeries(R, C.cur, true), { points: loopPts(result), color: C.cur, width: 3 }, { points: [R.es], color: C.cur, marker: 5 });
   }
   map = drawPlot($('#pv'), {
-    width: w, height: Math.round(w * 0.66),
+    width: w, height: Math.round(w * (innerWidth < 700 ? 0.74 : 0.66)),
     title: `${side === 'lv' ? 'Left' : 'Right'} ventricular pressure–volume loop`,
     x: { min: 0, max: xmax, label: `${side.toUpperCase()} volume (mL)` },
     y: { min: 0, max: ymax, label: `${side.toUpperCase()} pressure (mmHg)` },
@@ -408,7 +408,7 @@ function renderTiles() {
 
 function renderChips() {
   const box = $('#chips');
-  if (!prev) { box.innerHTML = '<span class="status">Drag a handle on the loop or press a button.</span>'; $('#why').disabled = true; return; }
+  if (!prev) { box.innerHTML = '<span class="status">Drag a handle on the loop or press a button.</span>'; $('#chips-m').innerHTML = ''; $('#why').disabled = true; return; }
   const s = side, a = prev, b = result;
   const items = [
     [ratioName(), ratioOf(a), ratioOf(b), 2, ''],
@@ -419,6 +419,7 @@ function renderChips() {
     [s === 'lv' ? 'LAP' : 'RAP', s === 'lv' ? a.hemo.LAP : a.hemo.RAP, s === 'lv' ? b.hemo.LAP : b.hemo.RAP, 0, ' mmHg'],
     ['CO', a.hemo.CO, b.hemo.CO, 1, ' L/min'],
   ].filter(([, x, y]) => Math.abs(y - x) / Math.max(Math.abs(x), 1e-6) > 0.02).slice(0, 5);
+  $('#chips-m').innerHTML = items.slice(0, 3).map(([k, x, y, d, u]) => `<span class="chip ${y > x ? 'up' : 'down'}">${k} <b>${y.toFixed(d)}</b>${u}</span>`).join('');
   box.innerHTML = items.length
     ? items.map(([k, x, y, d, u]) => `<span class="chip ${y > x ? 'up' : 'down'}">${k} ${x.toFixed(d)} → <b>${y.toFixed(d)}</b>${u}</span>`).join('')
     : '<span class="status">No measurable change.</span>';
@@ -602,6 +603,12 @@ export function initSimulator() {
     `<optgroup label="Right heart / pulmonary">${PRESETS.filter((p) => p.side === 'rv').map((p) => `<option value="${p.id}">${p.label}</option>`).join('')}</optgroup>`;
   sel.addEventListener('change', () => { if (sel.value) loadPreset(sel.value); });
   $('#give').innerHTML = INTERVENTIONS.map((x) => `<button type="button" class="give" data-x="${x.id}" title="${x.note}">${x.label}<small>${x.note}</small></button>`).join('');
+  $('#give-m').innerHTML = INTERVENTIONS.map((x) => `<button type="button" class="give" data-x="${x.id}" title="${x.note}">${x.label}</button>`).join('');
+  $('#give-m').addEventListener('click', (e) => {
+    const b = e.target.closest('.give');
+    if (!b || busy) return;
+    animateTo(INTERVENTIONS.find((i) => i.id === b.dataset.x).apply(params));
+  });
   $('#give').addEventListener('click', (e) => {
     const b = e.target.closest('.give');
     if (!b || busy) return;

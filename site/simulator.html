@@ -28,8 +28,8 @@
   <div id="preset-text" class="prose preset-text"><p>Drag the three handles on the loop, or give a treatment. Grey is the normal ventricle.</p></div>
 
   <div class="tabs" role="tablist" aria-label="Ventricle">
-    <button type="button" role="tab" data-side="lv">Left ventricle · systemic</button>
-    <button type="button" role="tab" data-side="rv">Right ventricle · pulmonary</button>
+    <button type="button" role="tab" data-side="lv">Left ventricle<span class="d-only"> · systemic</span></button>
+    <button type="button" role="tab" data-side="rv">Right ventricle<span class="d-only"> · pulmonary</span></button>
   </div>
   <div class="tiles" id="tiles" aria-live="polite"></div>
 
@@ -38,6 +38,7 @@
       <div class="mon-head"><h2 id="pv-title">Pressure–volume loop</h2><div class="phase" id="phase" aria-hidden="true"></div></div>
       <svg id="pv"></svg>
       <div class="legend" id="pv-legend"></div>
+      <div class="m-only m-bar"><div class="give-scroll" id="give-m" aria-label="Treatments"></div><div class="chips" id="chips-m" aria-live="off"></div></div>
       <p class="hint-line">Handles: <b>upper line</b> contractility (Ees) · <b>dashed line</b> afterload (Ea) · <b>volume axis</b> preload</p>
     </div>
     <div class="side-col">
