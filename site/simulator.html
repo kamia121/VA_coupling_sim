@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script>try{var t=localStorage.getItem('vac-theme');if(t==='light'||t==='dark')document.documentElement.setAttribute('data-theme',t)}catch(e){}</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Code+Pro:wght@400;500&family=Source+Sans+3:ital,wght@0,400;0,600;1,400&family=Source+Serif+4:wght@600&display=swap">
+<link rel="stylesheet" href="css/tokens.css">
+<link rel="stylesheet" href="css/site.css">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='5' fill='%232F6E66'/%3E%3Cpath d='M8 24 V10 L24 8 V22 Z' fill='none' stroke='white' stroke-width='2.5' stroke-linejoin='round'/%3E%3C/svg%3E">
+<title>Coupling Simulator</title>
+<meta name="description" content="Interactive pressure–volume loop simulator for left ventricular–arterial and right ventricular–pulmonary arterial coupling, with a normal reference overlay.">
+</head>
+<body>
+<main>
+  <h1>Simulator</h1>
+  <p class="lede prose">The grey loop is always the normal ventricle. The green loop is the ventricle you are changing. Pin a snapshot to compare before and after an intervention.</p>
+
+  <div class="toolbar">
+    <label for="preset">Scenario</label>
+    <select id="preset"></select>
+    <button class="btn" id="reset" type="button">Reset to normal</button>
+    <button class="btn primary" id="pin" type="button">Pin snapshot</button>
+    <button class="btn" id="clear" type="button">Clear snapshot</button>
+    <label><input type="checkbox" id="adv"> Show advanced parameters</label>
+  </div>
+  <div id="preset-text" class="prose"></div>
+
+  <div class="tabs" role="tablist" aria-label="Ventricle">
+    <button type="button" role="tab" data-side="lv">Left ventricle – systemic</button>
+    <button type="button" role="tab" data-side="rv">Right ventricle – pulmonary</button>
+  </div>
+
+  <div class="sim">
+    <div class="controls" id="controls" aria-label="Model parameters"></div>
+    <div class="plots">
+      <div class="plot-card">
+        <h3 id="pv-title">Pressure–volume loop</h3>
+        <svg id="pv"></svg>
+        <div class="legend" id="pv-legend"></div>
+      </div>
+      <div class="plot-card">
+        <h3 id="gauge-title">Coupling ratio</h3>
+        <svg id="gauge" aria-label="Coupling ratio scale"></svg>
+      </div>
+      <div class="interp" id="interp" aria-live="polite"></div>
+      <div class="plot-card table-wrap" id="metrics"></div>
+      <div class="plot-card">
+        <h3>Pressure over one beat</h3>
+        <svg id="pt"></svg>
+        <div class="legend" id="pt-legend"></div>
+      </div>
+      <p class="status" id="status"></p>
+      <div class="note caution prose">
+        <p>This is a lumped model. Ventricular interdependence (septal shift, pericardial constraint), valve disease, atrial contraction, reflexes and the force–frequency relation are not modelled. Parameter sets are synthetic teaching examples, not patient data or treatment targets. See <a href="learn.html#model">how the model works</a>.</p>
+      </div>
+    </div>
+  </div>
+</main>
+<script type="module">
+  import { initLayout } from './js/layout.js';
+  import { initSimulator } from './js/sim.js';
+  initLayout();
+  initSimulator();
+  document.addEventListener('themechange', () => {});
+</script>
+</body>
+</html>

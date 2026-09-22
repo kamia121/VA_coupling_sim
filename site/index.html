@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script>try{var t=localStorage.getItem('vac-theme');if(t==='light'||t==='dark')document.documentElement.setAttribute('data-theme',t)}catch(e){}</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Code+Pro:wght@400;500&family=Source+Sans+3:ital,wght@0,400;0,600;1,400&family=Source+Serif+4:wght@600&display=swap">
+<link rel="stylesheet" href="css/tokens.css">
+<link rel="stylesheet" href="css/site.css">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='5' fill='%232F6E66'/%3E%3Cpath d='M8 24 V10 L24 8 V22 Z' fill='none' stroke='white' stroke-width='2.5' stroke-linejoin='round'/%3E%3C/svg%3E">
+<title>Ventricular–Arterial Coupling</title>
+<meta name="description" content="Teaching simulator for left ventricular–arterial and right ventricular–pulmonary arterial coupling, with echocardiographic and pulmonary artery catheter correlates.">
+</head>
+<body>
+<main>
+  <div class="prose">
+    <h1>Ventricular–arterial coupling</h1>
+    <p class="lede">An interactive pressure–volume model of the left and right heart. It is built for medical students, residents, and fellows and attendings in pulmonary and critical care medicine.</p>
+    <p>A ventricle never works alone. The stroke volume it produces, the pressure it generates and the energy it spends all depend on the match between its contractility and the load it ejects into. Ventricular–arterial coupling expresses that match as the ratio of two elastances: end-systolic elastance (Ees) for the ventricle and effective arterial elastance (Ea) for the load. The same framework explains why a hypertensive patient with HFpEF is so sensitive to small changes in volume, why vasoplegic shock can look "well coupled", and why the right ventricle in pulmonary arterial hypertension compensates for years and then fails over weeks.</p>
+    <p>Every simulated loop on this site is drawn against the normal ventricle, because the comparison is the lesson.</p>
+  </div>
+
+  <div class="grid cols-3" style="margin-top:20px">
+    <div class="card"><h3>1. Concepts</h3><p>The PV loop, Ees, Ea, the ratio, stroke work and efficiency, and how the right ventricle differs from the left.</p><a class="more" href="learn.html">Read the concepts →</a></div>
+    <div class="card"><h3>2. Simulator</h3><p>Change contractility, diastolic stiffness, SVR, arterial compliance, PVR, heart rate and volume, and watch the loop move against the normal reference.</p><a class="more" href="simulator.html">Open the simulator →</a></div>
+    <div class="card"><h3>3. Scenarios</h3><p>HFpEF, HFrEF, septic vasoplegia and septic cardiomyopathy, compensated and decompensated PAH, acute PE and combined pre- and post-capillary PH.</p><a class="more" href="scenarios.html">See the scenarios →</a></div>
+    <div class="card"><h3>4. Echocardiography</h3><p>Bedside surrogates: SV from LVOT VTI, Ea from cuff pressure, TAPSE/PASP, SV/ESV, and what each can and cannot tell you.</p><a class="more" href="echo.html">Echo assessment →</a></div>
+    <div class="card"><h3>5. PA catheter</h3><p>PVR, compliance, RC time, PAPi and single-beat estimates of RV coupling from invasive haemodynamics, with a calculator.</p><a class="more" href="pac.html">Invasive assessment →</a></div>
+    <div class="card"><h3>References</h3><p>Every source is linked to its PubMed record. The model's equations and assumptions are stated in full.</p><a class="more" href="references.html">Sources →</a></div>
+  </div>
+
+  <div class="prose">
+    <h2>A suggested path</h2>
+    <p>If the topic is new, read the first half of the concepts page, then open the simulator and lower LV Ees from 2.3 to 1.0 mmHg/mL. The end-systolic point slides down and to the right along a flatter ESPVR, stroke volume falls and Ea/Ees rises. Then raise SVR and see how much more the weak ventricle loses than the normal one. On the right-heart tab, raise PVR to 8 WU with a normal RV, which is the acute PE situation. Then load the compensated PAH scenario, where the same load is met by a hypertrophied RV. The difference between those two loops is homeometric adaptation.</p>
+    <div class="note caution">
+      <p>This is an educational model. Parameter sets are synthetic, reflexes are absent, and the output is not a substitute for clinical measurement. No drug dosing, fluid decision or other treatment recommendation is made or implied.</p>
+    </div>
+  </div>
+</main>
+<script type="module">
+  import { initLayout } from './js/layout.js';
+  initLayout();
+</script>
+</body>
+</html>
