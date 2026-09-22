@@ -1,0 +1,5 @@
+tests/presets_js.csv
+R/presets_R.csv
+.Rhistory
+.DS_Store
+node_modules/
