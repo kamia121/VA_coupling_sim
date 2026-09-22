@@ -10,73 +10,122 @@
 <link rel="stylesheet" href="css/tokens.css">
 <link rel="stylesheet" href="css/site.css">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='5' fill='%232F6E66'/%3E%3Cpath d='M8 24 V10 L24 8 V22 Z' fill='none' stroke='white' stroke-width='2.5' stroke-linejoin='round'/%3E%3C/svg%3E">
-<title>Echo and Coupling</title>
+<title>Echo Lab</title>
 <meta name="description" content="How echocardiography estimates left ventricular–arterial and right ventricular–pulmonary arterial coupling, with worked calculators and limitations.">
 </head>
 <body>
 <main>
-<article class="prose">
-  <h1>Echocardiographic assessment</h1>
-  <p class="lede">Echo cannot measure a pressure–volume loop, but it can estimate the pieces: stroke volume, ventricular volumes, longitudinal function and, from Doppler, pressure. Each surrogate carries assumptions, and those assumptions matter most in the patients where coupling is most abnormal.</p>
-
-  <h2 id="lv">Left heart</h2>
-  <h3>Stroke volume</h3>
-  <p>Doppler stroke volume is the product of the left ventricular outflow tract cross-sectional area and the velocity–time integral recorded by pulsed-wave Doppler at the same level <cite data-ref="quinones2002,blanco2020"></cite>. The area is calculated from the LVOT diameter assuming a circle, π(D/2)², so an error of 1 mm in a 20 mm diameter produces an error of about 10% in stroke volume. The VTI alone is a stroke distance in centimetres, not a stroke volume. It is useful for tracking change in the same patient, but it cannot be put into Ea = Pes/SV.</p>
-
-  <h3>Arterial elastance</h3>
-  <p>End-systolic pressure is not measured at the bedside. The common approximation is Pes ≈ 0.9 × brachial systolic pressure, which Chen and colleagues used in their non-invasive method and Guarracino and colleagues used in septic shock <cite data-ref="chen2001,guarracino2014"></cite>. Ea is then 0.9·SBP/SV <cite data-ref="kelly1992"></cite>. The 0.9 factor is itself an approximation. It is least reliable when the pressure waveform is abnormal (severe aortic stiffening, low-output states or vasopressor-dependent shock), and brachial pressure differs from central pressure.</p>
-
-  <h3>End-systolic elastance</h3>
-  <p>Chen and colleagues developed a single-beat method for Ees that uses cuff systolic and diastolic pressure, echo-Doppler stroke volume and ejection fraction, and an estimated normalized ventricular elastance <cite data-ref="chen2001"></cite>. It was validated against invasive measurements over a wide range of Ees (0.4–8.4 mmHg/mL). The method is not reproduced here as a calculator. Readers who want to apply it should use the published equations directly.</p>
-
-  <h3>Ejection fraction as a coupling index</h3>
-  <p>If the ESPVR passes near the origin (V₀ ≈ 0), the algebra of the PV loop gives Ea/Ees ≈ ESV/SV = (1 − EF)/EF. An EF of 60% corresponds to Ea/Ees of about 0.67, an EF of 40% to about 1.5, and an EF of 25% to about 3. This is why EF behaves like a coupling ratio rather than a pure contractility index: it falls when afterload rises even if Ees is unchanged. The approximation fails when V₀ is large, as in dilated ventricles, and it cannot separate a high Ea from a low Ees.</p>
-
-  <div class="card" id="calc-lv">
-    <h3>Calculator: LV coupling from echo and cuff pressure</h3>
-    <div class="two-col">
-      <div>
-        <div class="slider"><div class="row"><label for="lv-sbp">Brachial SBP</label><span class="val" data-for="lv-sbp"></span></div><input type="range" id="lv-sbp" min="60" max="220" step="1" value="120"></div>
-        <div class="slider"><div class="row"><label for="lv-d">LVOT diameter</label><span class="val" data-for="lv-d"></span></div><input type="range" id="lv-d" min="15" max="28" step="0.5" value="20"></div>
-        <div class="slider"><div class="row"><label for="lv-vti">LVOT VTI</label><span class="val" data-for="lv-vti"></span></div><input type="range" id="lv-vti" min="6" max="35" step="0.5" value="22"></div>
-        <div class="slider"><div class="row"><label for="lv-ef">Ejection fraction</label><span class="val" data-for="lv-ef"></span></div><input type="range" id="lv-ef" min="10" max="80" step="1" value="60"></div>
-        <div class="slider"><div class="row"><label for="lv-hr">Heart rate</label><span class="val" data-for="lv-hr"></span></div><input type="range" id="lv-hr" min="40" max="160" step="1" value="70"></div>
-      </div>
-      <div id="lv-out"></div>
-    </div>
+  <div class="prose">
+    <h1>Echo lab</h1>
+    <p class="lede">Measure on simulated Doppler and M-mode screens. Every display is generated from the model beat of the chosen patient, so each measurement can be checked against catheter truth.</p>
   </div>
+  <div class="seg cases" id="cases" role="group" aria-label="Patient"></div>
 
-  <h2 id="rv">Right heart</h2>
-  <h3>TAPSE/PASP</h3>
-  <p>The ratio of tricuspid annular plane systolic excursion to Doppler-estimated pulmonary artery systolic pressure is the most widely used echo surrogate of RV–PA coupling. TAPSE stands in for RV contractile function (a length rather than an elastance) and PASP for load. TAPSE alone is prognostic: in pulmonary hypertension, TAPSE below 18 mm was associated with markedly lower survival <cite data-ref="forfia2006"></cite>. Guazzi and colleagues introduced it in heart failure, where a TAPSE/PASP below 0.36 mm/mmHg identified patients at higher risk <cite data-ref="guazzi2013"></cite>. In pulmonary arterial hypertension, Tello and colleagues found that 0.31 mm/mmHg discriminated invasively measured RV–arterial uncoupling, defined as Ees/Ea below 0.805 <cite data-ref="tello2019img"></cite>. Their prognostic tertiles (&lt; 0.19, 0.19–0.32 and &gt; 0.32 mm/mmHg) <cite data-ref="tello2018"></cite> are the thresholds used in the 2022 ESC/ERS risk assessment table <cite data-ref="humbert2022"></cite>.</p>
-  <p>PASP is usually estimated as 4·(peak TR velocity)² plus an estimate of right atrial pressure. The estimate depends on an adequate TR envelope, and in individual patients it can differ substantially from the catheter value. In 65 patients evaluated for pulmonary hypertension, Doppler PASP was more than 10 mmHg from the invasive value in 48%, and underestimates were larger than overestimates <cite data-ref="fisher2009"></cite>. TAPSE is angle-dependent and reflects longitudinal motion only, so it can underestimate function after cardiac surgery and be pulled along by LV motion. For these reasons TAPSE/PASP is a screening and risk tool. It is not a measurement of Ees/Ea.</p>
-
-  <div class="card" id="calc-rv">
-    <h3>Calculator: TAPSE/PASP</h3>
-    <div class="two-col">
-      <div>
-        <div class="slider"><div class="row"><label for="rv-tapse">TAPSE</label><span class="val" data-for="rv-tapse"></span></div><input type="range" id="rv-tapse" min="5" max="30" step="0.5" value="22"></div>
-        <div class="slider"><div class="row"><label for="rv-trv">Peak TR velocity</label><span class="val" data-for="rv-trv"></span></div><input type="range" id="rv-trv" min="1.5" max="5.5" step="0.05" value="2.4"></div>
-        <div class="slider"><div class="row"><label for="rv-rap">Estimated RAP</label><span class="val" data-for="rv-rap"></span></div><input type="range" id="rv-rap" min="3" max="20" step="1" value="3"></div>
-      </div>
-      <div id="rv-out"></div>
+  <section class="station" id="st-lvot">
+    <h2>1 · LVOT VTI → stroke volume → Ea</h2>
+    <div class="acq">
+      <div class="view" data-view="lvot"></div>
+      <ol class="steps">
+        <li><b>View</b> Apical five-chamber.</li>
+        <li><b>Cursor</b> Pulsed-wave sample volume in the LVOT, just below the aortic valve, parallel to flow.</li>
+        <li><b>Measure</b> Trace the modal velocity envelope of one beat (VTI). LVOT diameter from the parasternal long axis in mid-systole. SV = π(D/2)² × VTI <cite data-ref="quinones2002,blanco2020"></cite>. Ea ≈ 0.9 × SBP / SV <cite data-ref="kelly1992,chen2001"></cite>.</li>
+      </ol>
     </div>
-  </div>
+    <div class="lab">
+      <div class="monitor screen"><canvas id="scr-lvot" aria-label="Pulsed-wave Doppler display. Drag along the envelope to trace it."></canvas>
+        <p class="hint-line">Drag along the bright edge of one envelope, from onset to end of ejection.</p></div>
+      <div class="lab-side">
+        <div class="btn-row"><button class="btn primary" id="lvot-show" type="button">Show me</button><button class="btn" id="lvot-clear" type="button">Clear trace</button></div>
+        <p class="k">Doppler angle to flow</p><div class="seg" id="lvot-angle"></div>
+        <p class="k">Measured LVOT diameter</p><div class="seg" id="lvot-d"></div>
+        <div id="out-lvot"></div>
+      </div>
+    </div>
+  </section>
 
-  <h3>Volume method: SV/ESV</h3>
-  <p>When RV volumes can be measured, by cardiac MRI or three-dimensional echo, the same algebra as on the left gives Ees/Ea ≈ SV/ESV, assuming V₀ ≈ 0 <cite data-ref="sanz2012"></cite>. Vanderpool and colleagues found that an SV/ESV of 0.515 or less predicted worse outcome in patients referred for pulmonary hypertension <cite data-ref="vanderpool2015"></cite>. Because a dilated RV has a positive V₀, SV/ESV reads lower than the true Ees/Ea. In the simulator, compare the "true" Ees/Ea with SV/ESV in the decompensated PAH scenario to see the size of this bias.</p>
+  <section class="station" id="st-tr">
+    <h2>2 · TR velocity → PASP</h2>
+    <div class="acq">
+      <div class="view" data-view="tr"></div>
+      <ol class="steps">
+        <li><b>View</b> RV-focused apical four-chamber or parasternal RV inflow.</li>
+        <li><b>Cursor</b> Continuous-wave Doppler through the TR jet, aligned with it.</li>
+        <li><b>Measure</b> Peak velocity at the dense envelope edge. PASP = 4v² + RAP; RAP from IVC size and collapse <cite data-ref="rudski2010"></cite>.</li>
+      </ol>
+    </div>
+    <div class="lab">
+      <div class="monitor screen"><canvas id="scr-tr" aria-label="Continuous-wave Doppler display. Drag vertically to place the velocity caliper."></canvas>
+        <p class="hint-line">Press and drag to place the caliper on the peak.</p></div>
+      <div class="lab-side">
+        <div class="btn-row"><button class="btn primary" id="tr-show" type="button">Show me</button></div>
+        <p class="k">Signal quality</p><div class="seg" id="tr-weak"></div>
+        <p class="k">RAP estimate from IVC (mmHg)</p><div class="seg stack" id="tr-rap"></div>
+        <div id="out-tr"></div>
+        <p class="status">Doppler vs catheter PASP: > 10 mmHg apart in 48% of 65 patients; underestimates were larger <cite data-ref="fisher2009"></cite>.</p>
+      </div>
+    </div>
+  </section>
 
-  <h3>Other pieces of the picture</h3>
-  <p>RV size relative to the LV, septal flattening in systole (pressure load) or diastole (volume load), fractional area change, tissue Doppler S′, right atrial size and IVC behaviour all describe the RV side of the coupling equation <cite data-ref="rudski2010"></cite>. A notch in the RV outflow tract Doppler envelope indicates early wave reflection from a stiff, high-resistance pulmonary circulation. Arkles and colleagues found mid-systolic notching was 96% specific for PVR above 5 WU, and PA compliance was lowest in that group <cite data-ref="arkles2011"></cite>. None of these is a coupling ratio, but together they show whether the RV has adapted by hypertrophy or by dilatation.</p>
+  <section class="station" id="st-tap">
+    <h2>3 · TAPSE and TAPSE/PASP</h2>
+    <div class="acq">
+      <div class="view" data-view="tap"></div>
+      <ol class="steps">
+        <li><b>View</b> RV-focused apical four-chamber.</li>
+        <li><b>Cursor</b> M-mode through the lateral tricuspid annulus, parallel to the RV free wall.</li>
+        <li><b>Measure</b> Annular excursion from end-diastole to peak systole. Divide by PASP.</li>
+      </ol>
+    </div>
+    <div class="lab">
+      <div class="monitor screen"><canvas id="scr-tap" aria-label="M-mode display. Click to place end-diastole then peak-systole calipers."></canvas>
+        <p class="hint-line">Click the annulus at end-diastole (lowest), then at peak systole (highest). Drag to adjust.</p></div>
+      <div class="lab-side">
+        <div class="btn-row"><button class="btn primary" id="tap-show" type="button">Show me</button></div>
+        <div id="out-tap"></div>
+        <svg id="tap-bar" aria-label="TAPSE/PASP thresholds"></svg>
+        <p class="status">0.19 and 0.32: prognostic tertiles in PAH <cite data-ref="tello2018"></cite>, used in the ESC/ERS 2022 risk table <cite data-ref="humbert2022"></cite>. 0.31: predicted Ees/Ea &lt; 0.805 in PAH <cite data-ref="tello2019img"></cite>. 0.36: risk threshold in heart failure <cite data-ref="guazzi2013"></cite>. TAPSE &lt; 18 mm: lower survival in PH <cite data-ref="forfia2006"></cite>.</p>
+        <p class="status">Model TAPSE scales linearly with RV stroke volume (normal 22 mm). Real TAPSE is longitudinal motion only and angle-dependent.</p>
+      </div>
+    </div>
+  </section>
 
+  <section class="station" id="st-rv">
+    <h2>4 · RV volumes → SV/ESV</h2>
+    <div class="acq">
+      <div class="view" data-view="rv"></div>
+      <ol class="steps">
+        <li><b>Modality</b> 3D echo or cardiac MRI.</li>
+        <li><b>Frames</b> End-diastole (largest) and end-systole (smallest).</li>
+        <li><b>Compute</b> SV/ESV ≈ Ees/Ea, assuming V₀ ≈ 0 <cite data-ref="sanz2012"></cite>. ≤ 0.515 predicted worse outcome <cite data-ref="vanderpool2015"></cite>.</li>
+      </ol>
+    </div>
+    <div class="lab">
+      <div class="monitor screen"><canvas id="scr-rv" aria-label="Animated right ventricle"></canvas></div>
+      <div class="lab-side">
+        <div class="btn-row"><button class="btn" id="rv-play" type="button">Freeze</button><button class="btn" id="rv-back" type="button">◀ frame</button><button class="btn" id="rv-fwd" type="button">frame ▶</button></div>
+        <div class="btn-row"><button class="btn primary" id="rv-ed" type="button">Mark end-diastole</button><button class="btn primary" id="rv-es" type="button">Mark end-systole</button></div>
+        <div id="out-rv"></div>
+        <p class="status">With a right-shifted ESPVR (large V₀), SV/ESV reads below the true Ees/Ea. Compare the two in decompensated PAH.</p>
+      </div>
+    </div>
+  </section>
+
+  <details class="panel">
+    <summary>EF as a coupling index</summary>
+    <p>With V₀ ≈ 0, Ea/Ees ≈ ESV/SV = (1 − EF)/EF. EF 60% → 0.67; EF 40% → 1.5; EF 25% → 3. EF falls when Ea rises at constant Ees. The approximation fails with large V₀ and cannot separate high Ea from low Ees.</p>
+  </details>
+  <details class="panel">
+    <summary>Other RV findings</summary>
+    <p>RV size relative to LV, systolic (pressure) or diastolic (volume) septal flattening, fractional area change, tissue Doppler S′, RA size and IVC <cite data-ref="rudski2010"></cite>. Mid-systolic notching of the RVOT Doppler envelope: 96% specific for PVR > 5 WU <cite data-ref="arkles2011"></cite>. Chen single-beat Ees uses cuff pressures, Doppler SV, EF and an estimated normalized elastance <cite data-ref="chen2001"></cite>.</p>
+  </details>
   <div id="page-refs"></div>
-</article>
 </main>
 <script type="module">
   import { initLayout } from './js/layout.js';
-  import { initEchoCalcs } from './js/calc.js';
+  import { initEcho, drawViews } from './js/echo.js';
   initLayout();
-  initEchoCalcs();
+  drawViews();
+  initEcho();
 </script>
 </body>
 </html>

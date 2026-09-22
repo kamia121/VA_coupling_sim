@@ -15,56 +15,79 @@
 </head>
 <body>
 <main>
-  <h1>Simulator</h1>
-  <p class="lede prose">The grey loop is always the normal ventricle. The green loop is the ventricle you are changing. Pin a snapshot to compare before and after an intervention.</p>
-
-  <div class="toolbar">
-    <label for="preset">Scenario</label>
-    <select id="preset"></select>
-    <button class="btn" id="reset" type="button">Reset to normal</button>
-    <button class="btn primary" id="pin" type="button">Pin snapshot</button>
-    <button class="btn" id="clear" type="button">Clear snapshot</button>
-    <label><input type="checkbox" id="adv"> Show advanced parameters</label>
-  </div>
-  <div id="preset-text" class="prose"></div>
-
-  <div class="tabs" role="tablist" aria-label="Ventricle">
-    <button type="button" role="tab" data-side="lv">Left ventricle – systemic</button>
-    <button type="button" role="tab" data-side="rv">Right ventricle – pulmonary</button>
-  </div>
-
-  <div class="sim">
-    <div class="controls" id="controls" aria-label="Model parameters"></div>
-    <div class="plots">
-      <div class="plot-card">
-        <h3 id="pv-title">Pressure–volume loop</h3>
-        <svg id="pv"></svg>
-        <div class="legend" id="pv-legend"></div>
-      </div>
-      <div class="plot-card">
-        <h3 id="gauge-title">Coupling ratio</h3>
-        <svg id="gauge" aria-label="Coupling ratio scale"></svg>
-      </div>
-      <div class="interp" id="interp" aria-live="polite"></div>
-      <div class="plot-card table-wrap" id="metrics"></div>
-      <div class="plot-card">
-        <h3>Pressure over one beat</h3>
-        <svg id="pt"></svg>
-        <div class="legend" id="pt-legend"></div>
-      </div>
-      <p class="status" id="status"></p>
-      <div class="note caution prose">
-        <p>This is a lumped model. Ventricular interdependence (septal shift, pericardial constraint), valve disease, atrial contraction, reflexes and the force–frequency relation are not modelled. Parameter sets are synthetic teaching examples, not patient data or treatment targets. See <a href="learn.html#model">how the model works</a>.</p>
-      </div>
+  <div class="sim-head">
+    <h1>Simulator</h1>
+    <div class="toolbar">
+      <label for="preset">Scenario</label>
+      <select id="preset"></select>
+      <button class="btn" id="reset" type="button">Reset</button>
+      <button class="btn" id="pin" type="button">Pin snapshot</button>
+      <button class="btn" id="clear" type="button">Clear snapshot</button>
     </div>
   </div>
+  <div id="preset-text" class="prose preset-text"><p>Drag the three handles on the loop, or give a treatment. Grey is the normal ventricle.</p></div>
+
+  <div class="tabs" role="tablist" aria-label="Ventricle">
+    <button type="button" role="tab" data-side="lv">Left ventricle · systemic</button>
+    <button type="button" role="tab" data-side="rv">Right ventricle · pulmonary</button>
+  </div>
+  <div class="tiles" id="tiles" aria-live="polite"></div>
+
+  <div class="sim2">
+    <div class="monitor pv-card">
+      <div class="mon-head"><h2 id="pv-title">Pressure–volume loop</h2><div class="phase" id="phase" aria-hidden="true"></div></div>
+      <svg id="pv"></svg>
+      <div class="legend" id="pv-legend"></div>
+      <p class="hint-line">Handles: <b>upper line</b> contractility (Ees) · <b>dashed line</b> afterload (Ea) · <b>volume axis</b> preload</p>
+    </div>
+    <div class="side-col">
+      <section class="panel">
+        <h2>Give</h2>
+        <div class="give-row" id="give"></div>
+        <p class="status">Fixed, illustrative parameter changes; not doses.</p>
+      </section>
+      <section class="panel">
+        <h2>What changed</h2>
+        <div class="chips" id="chips" aria-live="polite"></div>
+        <button class="btn primary" id="why" type="button" disabled>Replay: why did it move?</button>
+        <p class="why-label" id="why-label" aria-live="polite"></p>
+      </section>
+      <section class="panel">
+        <h2 id="gauge-title">Coupling</h2>
+        <svg id="gauge" aria-label="Coupling ratio scale"></svg>
+        <button class="btn" id="hidden-toggle" type="button"></button>
+        <div class="chips" id="hidden-list" hidden></div>
+        <p class="status">A ratio inside the band does not exclude disease. In HFpEF, Ees and Ea rise together (Kawaguchi 2003: Ees 4.7, Ea 2.6 mmHg/mL; ratio ≈ 0.55) <cite data-ref="kawaguchi2003"></cite>.</p>
+      </section>
+    </div>
+  </div>
+
+  <div class="monitor">
+    <div class="mon-head"><h2>Pressure over one beat</h2></div>
+    <svg id="pt"></svg>
+    <div class="legend" id="pt-legend"></div>
+  </div>
+
+  <details class="panel">
+    <summary>All numbers</summary>
+    <div class="table-wrap" id="metrics"></div>
+  </details>
+  <details class="panel">
+    <summary>Fine control (sliders)</summary>
+    <div class="controls" id="controls"></div>
+  </details>
+  <p class="status" id="status"></p>
+  <details class="panel">
+    <summary>Model limits</summary>
+    <p>Lumped model. No septal interdependence, pericardium, valve disease, atrial contraction, reflexes or force–frequency relation. Scenario parameters are synthetic. <a href="learn.html#model">How the model works</a>.</p>
+  </details>
+  <div id="page-refs"></div>
 </main>
 <script type="module">
   import { initLayout } from './js/layout.js';
   import { initSimulator } from './js/sim.js';
   initLayout();
   initSimulator();
-  document.addEventListener('themechange', () => {});
 </script>
 </body>
 </html>

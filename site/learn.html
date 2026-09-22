@@ -17,50 +17,52 @@
 <main>
 <article class="prose">
   <h1>Concepts</h1>
-  <p class="lede">Ventricular–arterial coupling describes how the pump and the load it ejects into share the work of each beat. Both are expressed as elastances in the same units, mmHg/mL, so they can be compared directly on the pressure–volume plane.</p>
+  <p class="lede">Ventricle and arterial load are both elastances (mmHg/mL). Their ratio sets stroke volume, ejection fraction and how energy is spent.</p>
 
   <h2 id="loop">The pressure–volume loop</h2>
-  <p>Each beat traces a counter-clockwise loop when ventricular pressure is plotted against volume. Filling runs along the bottom from end-systolic to end-diastolic volume. Isovolumic contraction is the vertical right side, which ends when the outflow valve opens. Ejection runs across the top from right to left, and isovolumic relaxation is the vertical left side, which ends when the inflow valve opens. The width of the loop is the stroke volume, and the area enclosed is the external stroke work.</p>
-  <figure>
+  <figure class="monitor fig">
     <svg id="fig-loop"></svg>
-    <figcaption>Figure 1. Simulated normal left ventricular loop. The ESPVR (solid line) passes through V₀ with slope Ees. The Ea line (dashed) joins end-diastolic volume on the volume axis to the end-systolic point with slope −Ea. The dotted line is the EDPVR.</figcaption>
+    <figcaption>Simulated normal LV. Solid line: ESPVR, slope Ees. Dashed: Ea line, from EDV on the volume axis to the end-systolic point, slope −Ea. Dotted: EDPVR. The dot traces one beat in real time.</figcaption>
   </figure>
+  <p>Counter-clockwise: filling along the bottom, isovolumic contraction up the right side, ejection across the top, isovolumic relaxation down the left side. Width = stroke volume. Area = stroke work.</p>
 
-  <h2 id="ees">End-systolic elastance (Ees): the ventricle</h2>
-  <p>Suga and Sagawa showed in the isolated canine ventricle that the ratio of pressure to volume (above a volume intercept V₀) rises during systole to a maximum that is nearly independent of loading conditions <cite data-ref="suga1973,suga1974"></cite>. When preload is varied, the end-systolic pressure–volume points of successive beats fall on an approximately straight line, the end-systolic pressure–volume relation (ESPVR). Its slope, Ees, is a load-independent index of chamber contractility, and the same framework applies to the right ventricle <cite data-ref="maughan1979"></cite>. Ees is a property of the whole chamber: it rises with inotropy but also with concentric remodelling and a smaller chamber, which is why a high Ees in hypertensive heart disease is often called systolic stiffening rather than "strong contraction" <cite data-ref="kawaguchi2003,borlaug2008"></cite>.</p>
-  <p>Ees is a systolic property. Diastolic stiffness is described separately by the end-diastolic pressure–volume relation (EDPVR), which is exponential. The two can change independently, and in the simulator they have separate controls.</p>
+  <h2 id="ees">Ees: the ventricle</h2>
+  <p>Pressure/(volume − V₀) rises through systole to a maximum that is nearly independent of load <cite data-ref="suga1973,suga1974"></cite>. End-systolic points from beats at different preloads fall on one line, the ESPVR; its slope is Ees. The same holds for the RV <cite data-ref="maughan1979"></cite>. Ees rises with inotropy and with concentric remodelling (systolic stiffening) <cite data-ref="kawaguchi2003,borlaug2008"></cite>. Diastolic stiffness is a separate curve, the exponential EDPVR.</p>
 
-  <h2 id="ea">Effective arterial elastance (Ea): the load</h2>
-  <p>Sunagawa and colleagues described arterial load in the same units as the ventricle by relating end-systolic pressure to stroke volume <cite data-ref="sunagawa1983"></cite>. Effective arterial elastance is Ea = Pes / SV. Kelly and colleagues validated it in humans: Ea measured from pressure–volume loops agreed closely with an estimate derived from aortic input impedance and arterial compliance using a three-element Windkessel model <cite data-ref="kelly1992"></cite>. Ea is, however, dominated by the steady component of load. Chirinos and colleagues showed that Ea tracks SVR divided by the heart period almost perfectly (correlation 0.97–0.99) and is insensitive to pulsatile load, so a stiff aorta and a high resistance cannot be separated from Ea alone <cite data-ref="chirinos2014"></cite>.</p>
-  <div class="eq">Ea = Pes / SV &nbsp;&nbsp;≈&nbsp;&nbsp; SVR / T (T = heart period)</div>
-  <p>Because Ea depends on heart period, a faster heart rate raises Ea at an unchanged resistance. The workbook this site grew out of made the same point: changing heart rate alone changes cardiac output but does not change Ea if systolic pressure and stroke volume are fixed.</p>
+  <h2 id="ea">Ea: the load</h2>
+  <div class="eq">Ea = Pes / SV ≈ SVR / T</div>
+  <p>Defined by Sunagawa <cite data-ref="sunagawa1983"></cite>; in humans, PV-loop Ea agreed with a three-element Windkessel estimate from aortic impedance and compliance <cite data-ref="kelly1992"></cite>. Ea tracks SVR divided by heart period (r 0.97–0.99) and is insensitive to pulsatile load <cite data-ref="chirinos2014"></cite>. At fixed SVR, tachycardia raises Ea.</p>
 
-  <h2 id="ratio">The coupling ratio</h2>
-  <p>Writing Pes = Ees·(ESV − V₀) and Pes = Ea·SV and solving gives stroke volume in terms of the two elastances:</p>
-  <div class="eq">SV = (EDV − V₀) · Ees / (Ees + Ea) &nbsp;&nbsp;⇒&nbsp;&nbsp; EF ≈ 1 / (1 + Ea/Ees) when V₀ is small</div>
-  <p>The ratio therefore determines ejection fraction, and it also determines how energy is used. Burkhoff and Sagawa showed analytically that stroke work is maximal when Ea equals Ees and that mechanical efficiency peaks at a lower Ea <cite data-ref="burkhoff1986"></cite>. In isolated canine hearts De Tombe and colleagues found that stroke work peaked at Ea/Ees 0.80 and efficiency at 0.70, and that both stayed at or above 90% of their optimum from about 0.3 to 1.3 <cite data-ref="detombe1993"></cite>. In normal human hearts Starling measured Ees/Ea 1.62, that is, Ea/Ees near 0.6 <cite data-ref="starling1993"></cite>.</p>
-  <figure>
+  <h2 id="ratio">The ratio</h2>
+  <div class="eq">SV = (EDV − V₀) · Ees / (Ees + Ea) &nbsp;⇒&nbsp; EF ≈ 1 / (1 + Ea/Ees)</div>
+  <p>Stroke work peaks at Ea = Ees; efficiency peaks at lower Ea <cite data-ref="burkhoff1986"></cite>. Isolated canine hearts: work peaked at Ea/Ees 0.80, efficiency at 0.70, both ≥ 90% of optimum from 0.3 to 1.3 <cite data-ref="detombe1993"></cite>. Normal human hearts: Ees/Ea 1.62 (Ea/Ees ≈ 0.62) <cite data-ref="starling1993"></cite>.</p>
+  <figure class="monitor fig">
     <svg id="fig-sweep"></svg>
-    <figcaption>Figure 2. Stroke work and efficiency (SW/PVA) in the simulated normal left ventricle as SVR is swept from very low to very high at constant contractility and blood volume. Each is scaled to its own maximum. This curve comes from the model, not from a published data set. Stroke work peaks near Ea/Ees ≈ 1.2 here, close to the theoretical optimum of 1. SW/PVA keeps rising as the ratio falls, because it ignores the oxygen the heart consumes independent of PVA (basal metabolism and excitation–contraction coupling). Once that fixed cost is included, as in Burkhoff and Sagawa's analysis, efficiency peaks at an intermediate ratio below the work optimum.</figcaption>
+    <figcaption>Model sweep of SVR at fixed Ees and volume. Stroke work peaks near Ea/Ees 1.2. SW/PVA keeps rising as the ratio falls because it omits the heart's fixed oxygen cost; with that cost included, efficiency peaks below the work optimum <cite data-ref="burkhoff1986,suga1979"></cite>.</figcaption>
   </figure>
-  <div class="note caution">
-    <p>Two cautions carry over from the original workbook. First, the normal human value (Ea/Ees about 0.6) and the broad near-optimal band from animal work are reference points, not diagnostic cut-offs or treatment targets. Second, a normal ratio can coexist with serious disease: when Ees and Ea rise together (HFpEF) or fall together, the ratio is preserved while pressure becomes labile or perfusion inadequate <cite data-ref="kawaguchi2003,ikonomidis2019"></cite>.</p>
-  </div>
 
-  <h2 id="energy">Stroke work, pressure–volume area and efficiency</h2>
-  <p>Pressure–volume area (PVA) is the stroke work plus the potential energy enclosed between the ESPVR, the EDPVR and the isovolumic relaxation line. In canine hearts PVA correlates linearly with myocardial oxygen consumption per beat <cite data-ref="suga1979"></cite>, so SW/PVA is a mechanical efficiency: the fraction of the contraction's energy that is delivered to the circulation as external work. The simulator approximates potential energy as ½·Pes·(ESV − V₀) and ignores the small diastolic area. It does not compute oxygen consumption.</p>
+  <h2 id="range">In range, still sick</h2>
+  <p>The ratio compresses two numbers into one. When Ees and Ea move together, the ratio stays in the normal band while pressures, volumes or flow are abnormal. HFpEF: Ees 4.7 and Ea 2.6 mmHg/mL, ratio ≈ 0.55 <cite data-ref="kawaguchi2003"></cite>. The band markers stay on every screen; read them with the absolute Ees, Ea, filling pressure and output.</p>
+  <figure class="monitor fig">
+    <svg id="fig-range"></svg>
+    <figcaption>Three model ventricles with Ea/Ees inside the De Tombe band. Grey: normal. Amber: HFpEF (high LAP, labile BP). Green: vasoplegia (MAP below 70 mmHg). Values beside each loop.</figcaption>
+  </figure>
 
-  <h2 id="rv">How the right ventricle differs</h2>
-  <p>The right ventricle is thin-walled and ejects into a circulation with low resistance and high compliance. Its normal loop is trapezoidal or nearly triangular, and ejection continues while pressure is falling. In the pulmonary circulation, pulsatile load is a large fraction of total load. Lankhaar and colleagues showed that pulmonary compliance and resistance are inversely related, with a product (the RC time) that is similar across patients with and without pulmonary hypertension and that stays constant during treatment <cite data-ref="lankhaar2006,lankhaar2008"></cite>. In chronic thromboembolic disease Saouti and colleagues measured a total RC time of 0.49 ± 0.2 s <cite data-ref="saouti2009"></cite>. One practical consequence is that a modest rise in PVR from a normal value is accompanied by a large fall in compliance, so the RV's pulsatile load rises early in the disease.</p>
-  <p>Coupling on the right is usually reported as Ees/Ea rather than Ea/Ees. Normal values lie around 1.5–2 <cite data-ref="tello2019hf,naeije2014"></cite>. With chronic pressure overload the RV first adapts homeometrically, increasing its contractility through hypertrophy so that Ees/Ea and volumes are maintained. When contractility can no longer increase, it adapts heterometrically by dilating <cite data-ref="naeije2014,vonk2013"></cite>. Tello and colleagues found that RV dilatation and failure appeared when Ees/Ea fell below 0.805 <cite data-ref="tello2019hf"></cite>, and Kuehne and colleagues measured Emax/Ea of 1.1 ± 0.3 in pulmonary hypertension against 1.9 ± 0.4 in controls <cite data-ref="kuehne2004"></cite>.</p>
-  <p>The ventricles are in series. When RV output falls, LV preload falls, and systemic hypotension can follow even though LV contractility is normal. The simulator reproduces this series effect. It does not model septal shift or pericardial constraint, which make the effect worse in practice <cite data-ref="konstam2018"></cite>.</p>
+  <h2 id="energy">Stroke work and PVA</h2>
+  <p>PVA = stroke work + potential energy (area between ESPVR, EDPVR and the relaxation limb). In canine hearts PVA is linear with myocardial oxygen consumption per beat <cite data-ref="suga1979"></cite>. SW/PVA = mechanical efficiency. The simulator uses PE ≈ ½·Pes·(ESV − V₀).</p>
 
-  <h2 id="model">How the model works</h2>
-  <p>The simulator is a closed-loop lumped model with six compartments: the two ventricles, systemic and pulmonary arteries, and systemic and pulmonary veins, with the atria lumped into the veins as passive reservoirs. Each ventricle follows a time-varying elastance</p>
+  <h2 id="rv">The right ventricle</h2>
+  <p>Thin wall, low-resistance high-compliance load, trapezoidal or triangular loop with ejection continuing as pressure falls. Pulmonary R and C are inversely related; their product (RC time) is similar across patients and stays constant with treatment <cite data-ref="lankhaar2006,lankhaar2008"></cite>; 0.49 ± 0.2 s in CTEPH <cite data-ref="saouti2009"></cite>. A small PVR rise from normal brings a large compliance fall.</p>
+  <p>Reported as Ees/Ea: normal 1.5–2 <cite data-ref="tello2019hf,naeije2014"></cite>. Chronic pressure overload: homeometric adaptation first (Ees up by hypertrophy, volumes preserved), then heterometric (dilatation) <cite data-ref="naeije2014,vonk2013"></cite>. Dilatation and failure below Ees/Ea 0.805 <cite data-ref="tello2019hf"></cite>. MRI: Emax/Ea 1.1 ± 0.3 in PH vs 1.9 ± 0.4 in controls <cite data-ref="kuehne2004"></cite>. Ventricles in series: low RV output lowers LV preload. Septal shift and pericardial constraint add to this in patients and are not modelled <cite data-ref="konstam2018"></cite>.</p>
+
+  <h2 id="model">Model</h2>
   <div class="eq">P(V,t) = e(t)·Ees·(V − V₀) + [1 − e(t)]·A·(e<sup>β(V − V₀)</sup> − 1)</div>
-  <p>where e(t) is a normalized double-Hill activation curve with time to peak scaled to the cardiac cycle <cite data-ref="stergiopulos1996"></cite>. At e = 1 the pressure lies exactly on the ESPVR, and at e = 0 it lies on the EDPVR. Each arterial bed is a three-element Windkessel: characteristic impedance, compliance and resistance. Valves are ideal diodes. The equations are integrated with a fourth-order Runge–Kutta method at 0.5 ms steps until successive beats agree, and the last beat is displayed. Ea is not an input: it is measured from the simulated beat as Pes/SV, with Pes taken at peak elastance. In this model Pes is about 0.97 × SBP rather than the 0.9 × SBP used at the bedside, so the simulator shows both the model Ea and the bedside approximation, and the two differ by roughly 8%.</p>
-  <p>Normal parameters were calibrated so that the resting adult values fall in accepted ranges: LV EF about 57%, blood pressure about 116/71 mmHg, cardiac output 5.5 L/min, left atrial pressure 9 mmHg, LV Ea/Ees 0.62 (Starling reported Ees/Ea 1.62 <cite data-ref="starling1993"></cite>), mean PA pressure 15 mmHg (healthy subjects 14.0 ± 3.3 mmHg <cite data-ref="kovacs2009"></cite>), PVR 1 WU and RV Ees/Ea 2.0.</p>
-  <p>Deliberate simplifications: no ventricular interdependence or pericardium, no valve disease, no active atrial contraction, no baroreflex or sympathetic response, no force–frequency relation, no coronary perfusion and no explicit relaxation time constant. When you lower SVR in the simulator, nothing compensates. That isolates the mechanics, but it means absolute blood pressures in the shock and PE scenarios are lower than a patient with intact reflexes would have. An R version of the same equations is in the project repository so the numbers can be audited independently.</p>
+  <p>Six compartments: two ventricles, systemic and pulmonary arteries (three-element Windkessels) and veins (passive, atria lumped in). e(t): normalized double-Hill activation <cite data-ref="stergiopulos1996"></cite>. Ideal valves. RK4 at 0.5 ms to beat-to-beat steady state. Ea is measured from the beat (Pes at peak elastance), not set. Model Pes ≈ 0.97 × SBP, so model Ea runs about 8% above the bedside 0.9 × SBP/SV.</p>
+  <details class="panel">
+    <summary>Calibration and limits</summary>
+    <p>Normal: EF 57%, BP 116/71, CO 5.5 L/min, LAP 9, LV Ea/Ees 0.62 <cite data-ref="starling1993"></cite>, mPAP 15 (healthy 14.0 ± 3.3 <cite data-ref="kovacs2009"></cite>), PVR 1 WU, RV Ees/Ea 2.0.</p>
+    <p>Not modelled: ventricular interdependence, pericardium, valve disease, atrial contraction, baroreflex, force–frequency relation, coronary flow, relaxation time constant. Without reflexes, shock and PE pressures run lower than in patients. An R implementation of the same equations is in the repository.</p>
+  </details>
 
   <div id="page-refs"></div>
 </article>

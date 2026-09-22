@@ -100,7 +100,7 @@ function initialState(p) {
 function simulateBeat(s0, p, act, T, dt, record) {
   const n = Math.round(T / dt);
   let s = s0.slice();
-  const rec = record ? { t: [], Vlv: [], Plv: [], Pao: [], Vrv: [], Prv: [], Ppa: [], Psv: [], Ppv: [] } : null;
+  const rec = record ? { t: [], Vlv: [], Plv: [], Pao: [], Vrv: [], Prv: [], Ppa: [], Psv: [], Ppv: [], Qao: [], Qpv: [] } : null;
   const add = (a, k, h) => a.map((x, i) => x + h * k[i]);
   for (let i = 0; i < n; i++) {
     const t = i * dt;
@@ -111,6 +111,7 @@ function simulateBeat(s0, p, act, T, dt, record) {
       rec.Vrv.push(s[3]); rec.Prv.push(q.Prv);
       rec.Ppa.push(q.Ppa + q.Qpv * p.zcPa);
       rec.Psv.push(q.Psv); rec.Ppv.push(q.Ppv);
+      rec.Qao.push(q.Qao); rec.Qpv.push(q.Qpv);   // outflow, mL/s (for synthetic Doppler)
     }
     const e1 = act.e(t), e2 = act.e(t + dt / 2), e3 = act.e(t + dt);
     const k1 = deriv(s, e1, p);

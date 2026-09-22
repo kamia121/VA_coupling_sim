@@ -7,63 +7,73 @@ export const PRESETS = [
   {
     id: 'normal', side: 'both', label: 'Normal adult at rest',
     params: {},
-    text: 'Reference ventricle. Left ventricular Ea/Ees sits near 0.6, the value Starling measured in normal human hearts (Ees/Ea 1.62). The right ventricle operates with Ees/Ea near 2, inside the 1.5–2 range reported for normal pulmonary circulation. Both ventricles eject into their loads with stroke work close to its maximum and high mechanical efficiency.',
+    text: 'Resting adult. LV Ea/Ees 0.62; Starling measured Ees/Ea 1.62 in normal human hearts. RV Ees/Ea 2.0; normal range 1.5–2.',
     refs: ['starling1993', 'tello2019hf', 'naeije2014'],
   },
   {
     id: 'hfpef', side: 'lv', label: 'Hypertensive heart / HFpEF',
     params: { lvEes: 4.5, lvBeta: 0.042, lvA: 0.3, svr: 1.5, cSys: 0.7, zcAo: 0.06, vStressed: 820 },
-    text: 'Ventricular systolic stiffness (Ees) and arterial elastance (Ea) are both raised, as Kawaguchi and colleagues measured in HFpEF (Ees 4.7 vs 2.1–3.3 mmHg/mL in controls). Because the numerator and denominator rise together, the ratio can look normal. The steep ESPVR and stiff EDPVR make pressure very sensitive to small volume shifts, so compare this loop with the reference after moving the volume slider.',
+    text: 'Ees and Ea both high; the ratio sits in the normal band. Kawaguchi 2003: Ees 4.7 vs 2.1–3.3 mmHg/mL in controls. The stiff EDPVR turns small volume changes into large LAP and BP swings. Try the fluid and vasodilator buttons.',
     refs: ['kawaguchi2003', 'borlaug2008'],
   },
   {
     id: 'hfref', side: 'lv', label: 'HFrEF (dilated, low Ees)',
     params: { lvEes: 0.8, lvV0: 40, lvBeta: 0.021, lvA: 0.3, svr: 1.2, hr: 85, vStressed: 760 },
-    text: 'Contractility is depressed and the ESPVR is shifted rightward. With vasoconstriction raising Ea, the ratio climbs well above 1. Stroke work and efficiency both fall, and the ventricle depends on a larger end-diastolic volume (heterometric compensation) to keep a stroke volume. Lowering SVR by 30% raises stroke volume by about 20% in this ventricle but by only about 8% in the normal heart. This is the afterload sensitivity of the failing ventricle.',
+    text: 'Low Ees, ESPVR shifted right (V₀ 40 mL), vasoconstriction. Ea/Ees above 2, low SW/PVA. With a flat ESPVR, a 30% SVR reduction raises SV about 20% here and about 8% in the normal heart.',
     refs: ['borlaug2008', 'burkhoff1986'],
   },
   {
     id: 'vasoplegia', side: 'lv', label: 'Septic shock: vasoplegia',
     params: { svr: 0.36, cSys: 1.8, hr: 110, vStressed: 700 },
-    text: 'Arterial elastance is low because resistance is low. Ees is preserved, so Ea/Ees falls below the usual range and the loop is wide with a low end-systolic pressure. A normal or low ratio does not mean the circulation is adequate: MAP can be unacceptable while coupling looks "efficient". Pressure, flow and perfusion have to be read together.',
+    text: 'Low SVR and Ea, normal Ees. Ea/Ees falls below the band while MAP is under 70 mmHg.',
     refs: ['guarracino2014', 'ikonomidis2019'],
   },
   {
     id: 'septicCM', side: 'lv', label: 'Septic shock: depressed Ees',
     params: { lvEes: 1.0, svr: 0.62, cSys: 1.6, hr: 110, vStressed: 760 },
-    text: 'Guarracino and colleagues found ventriculo-arterial uncoupling in septic shock, with Ea/Ees 1.81 in the uncoupled group, driven largely by low Ees. Here contractility is depressed and SVR is low, yet Ea is close to normal because tachycardia shortens the heart period and Ea ≈ SVR/T. The high ratio comes from the low Ees, which is why the absolute values of Ea and Ees matter as much as the ratio. STRESS-L found no benefit, and possible harm, from landiolol in established septic shock, so heart-rate control is not taught here as a way to "recouple".',
+    text: 'Low Ees with low SVR and tachycardia. Ea stays near normal because Ea ≈ SVR/T and T is short; the high ratio comes from Ees. Guarracino 2014: Ea/Ees 1.81 in uncoupled septic shock. STRESS-L: landiolol did not reduce organ failure and stopped early for possible harm.',
     refs: ['guarracino2014', 'whitehouse2023'],
   },
   {
     id: 'highAfterload', side: 'lv', label: 'Acute afterload rise (hypertensive)',
     params: { svr: 1.7, cSys: 0.8 },
-    text: 'Contractility is normal but SVR and arterial stiffness increase acutely. Ea climbs, end-systolic volume rises along the unchanged ESPVR, and stroke volume falls. Here stroke volume falls by about 16%. Make the same change in the HFrEF scenario and compare how far end-systolic volume moves along the flatter ESPVR.',
+    text: 'SVR and arterial stiffness up, Ees unchanged. The Ea line steepens, the end-systolic point climbs the same ESPVR, and SV falls about 16%. Repeat the change in HFrEF for comparison.',
     refs: ['sunagawa1983', 'chirinos2014'],
   },
   {
     id: 'pahComp', side: 'rv', label: 'PAH, compensated RV',
     params: { pvr: 7 * WU, cPa: 1.0, zcPa: 0.03, rvEes: 1.05, rvBeta: 0.028, rvA: 0.3, vStressed: 820 },
-    text: 'Pulmonary vascular resistance is high and compliance low. The RV has adapted homeometrically: Ees has risen with hypertrophy, so Ees/Ea stays near 1, similar to the 1.1 ± 0.3 Kuehne measured by MRI in pulmonary hypertension. RV volumes remain close to normal and cardiac output is preserved at rest, but the reserve is small.',
+    text: 'PVR 7 WU, low PA compliance, hypertrophied RV (Ees 1.05). Ees/Ea about 1.2 with near-normal RV volumes. Kuehne 2004: Emax/Ea 1.1 ± 0.3 in PH vs 1.9 ± 0.4 in controls.',
     refs: ['kuehne2004', 'naeije2014', 'tello2019hf'],
   },
   {
     id: 'pahDecomp', side: 'rv', label: 'PAH, decompensated RV',
     params: { pvr: 12 * WU, cPa: 0.7, zcPa: 0.035, rvEes: 0.55, rvV0: 45, rvBeta: 0.024, rvA: 0.3, hr: 95, vStressed: 860 },
-    text: 'Contractility can no longer match load and Ees/Ea falls below 0.8, the threshold Tello and colleagues linked to RV dilatation and failure. The RV dilates (heterometric adaptation), right atrial pressure rises, and the LV is underfilled because the two ventricles are in series. The low LV end-diastolic volume, not LV contractility, is what drops systemic pressure.',
+    text: 'PVR 12 WU, RV Ees 0.55, ESPVR shifted right. Ees/Ea below 0.805, the Tello 2019 threshold for RV dilatation and failure; SV/ESV below 0.515 (Vanderpool 2015). Dilated RV, RAP above 10 mmHg, underfilled LV and low BP with normal LV Ees.',
     refs: ['tello2019hf', 'vanderpool2015', 'naeije2014'],
   },
   {
     id: 'acutePE', side: 'rv', label: 'Acute massive PE',
     params: { pvr: 6 * WU, cPa: 1.4, zcPa: 0.03 },
-    text: 'A normal, unadapted RV meets a sudden rise in PVR. It cannot raise its Ees acutely, so Ees/Ea falls and cardiac output drops even though mean PA pressure is only moderately raised. Compare this loop with compensated PAH at similar PVR: the difference is the higher Ees of the hypertrophied RV.',
+    text: 'A normal RV meets PVR 6 WU acutely. Ees is unchanged, Ees/Ea falls below 1, and CO drops while mPAP is only moderately raised. Compare with compensated PAH at similar PVR, where RV Ees is higher.',
     refs: ['konstantinides2020', 'konstam2018', 'naeije2014'],
   },
   {
     id: 'cpcph', side: 'rv', label: 'HFpEF with combined pre-/post-capillary PH',
     params: { lvEes: 4.5, lvBeta: 0.042, lvA: 0.3, svr: 1.5, cSys: 0.7, zcAo: 0.06, vStressed: 1080, pvr: 3.5 * WU, cPa: 1.8 },
-    text: 'The stiff left heart raises left atrial pressure, which is transmitted back to the pulmonary circulation. With an added pre-capillary component (PVR above 2 WU) the RV faces both a higher downstream pressure and a higher resistance. Note that PA pressure rises partly because of left atrial pressure alone. This is why the diastolic and transpulmonary gradients are used to separate the two components.',
+    text: 'HFpEF left heart plus PVR above 2 WU. LAP above 15 mmHg raises PA pressure; the added PVR is a pre-capillary load. ESC/ERS 2022: combined post- and pre-capillary PH = PAWP > 15 mmHg and PVR > 2 WU.',
     refs: ['humbert2022', 'kawaguchi2003'],
   },
+];
+
+// Illustrative interventions: fixed parameter changes, not doses or predicted drug responses.
+export const INTERVENTIONS = [
+  { id: 'fluid', label: 'Fluid bolus', icon: '💧', note: '+150 mL stressed volume', apply: (p) => ({ vStressed: p.vStressed + 150 }) },
+  { id: 'diurese', label: 'Remove volume', icon: '⤓', note: '−150 mL stressed volume', apply: (p) => ({ vStressed: Math.max(450, p.vStressed - 150) }) },
+  { id: 'norepi', label: 'Norepinephrine', icon: '▲', note: 'SVR ×1.35, Ees ×1.1', apply: (p) => ({ svr: p.svr * 1.35, lvEes: p.lvEes * 1.1, rvEes: p.rvEes * 1.1 }) },
+  { id: 'dilate', label: 'Arterial vasodilator', icon: '▽', note: 'SVR ×0.7', apply: (p) => ({ svr: p.svr * 0.7 }) },
+  { id: 'dobut', label: 'Inotrope', icon: '♥', note: 'Ees ×1.35 (LV and RV), HR +10, SVR ×0.9', apply: (p) => ({ lvEes: p.lvEes * 1.35, rvEes: p.rvEes * 1.35, hr: Math.min(160, p.hr + 10), svr: p.svr * 0.9 }) },
+  { id: 'pvd', label: 'Pulmonary vasodilator', icon: '◌', note: 'PVR ×0.7, PA compliance ×1.2', apply: (p) => ({ pvr: p.pvr * 0.7, cPa: p.cPa * 1.2 }) },
 ];
 
 export function presetById(id) { return PRESETS.find((p) => p.id === id); }

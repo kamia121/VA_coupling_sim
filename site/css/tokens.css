@@ -73,3 +73,16 @@
   --focus: #9DB2EC;
   color-scheme: dark;
 }
+
+/* Dark "monitor" panels used for PV loops, pressure traces and echo screens in both themes.
+   Traces are brighter tints of the MCW green and navy. */
+:root {
+  --mon-bg: #0A1311;
+  --mon-grid: #16251F;
+  --mon-axis: #7E918B;
+  --mon-text: #D5E2DE;
+  --mon-current: #5FD0BD;
+  --mon-ref: #5E6D69;
+  --mon-snap: #A9BCF2;
+  --mon-flag: #E8B962;
+}

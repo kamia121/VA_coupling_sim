@@ -17,7 +17,7 @@
 <main>
 <article class="prose">
   <h1>Pulmonary artery catheter</h1>
-  <p class="lede">Right heart catheterization measures pressures and flow directly. From them you can describe the pulmonary arterial load in detail and, with some assumptions, estimate how well the RV is coupled to it.</p>
+  <p class="lede">Right heart catheterization measures pressure and flow directly: the pulmonary load in detail and, with assumptions, RV–PA coupling.</p>
 
   <h2 id="measured">What is measured</h2>
   <p>A standard study records right atrial pressure (RAP), RV pressure during passage, pulmonary artery systolic, diastolic and mean pressures (PASP, PADP, mPAP), pulmonary artery wedge pressure (PAWP) as a surrogate of left atrial pressure, and cardiac output by thermodilution or the direct Fick method. Stroke volume is cardiac output divided by heart rate. All pressures are read at end-expiration with the transducer zeroed at the level of the left atrium.</p>
@@ -35,29 +35,29 @@
     </tbody>
   </table></div>
   <p>The 2022 ESC/ERS guidelines define pulmonary hypertension as mPAP above 20 mmHg at rest. Pre-capillary PH is defined by PAWP of 15 mmHg or less with PVR above 2 WU. Isolated post-capillary PH is PAWP above 15 mmHg with PVR of 2 WU or less, and combined post- and pre-capillary PH is PAWP above 15 mmHg with PVR above 2 WU <cite data-ref="humbert2022"></cite>. The 20 mmHg threshold was introduced by the 6th World Symposium task force, which kept a PVR threshold of 3 WU at the time <cite data-ref="simonneau2019"></cite>. The diastolic pressure gradient was proposed as a marker of pulmonary vascular disease that is less affected by flow and left atrial pressure than the TPG <cite data-ref="naeije2013"></cite>. Resting mPAP in healthy subjects is 14.0 ± 3.3 mmHg <cite data-ref="kovacs2009"></cite>.</p>
-  <p>Resistance and compliance are not independent in the lung. Their product, the RC time, is roughly constant across patients and during treatment <cite data-ref="lankhaar2006,lankhaar2008"></cite>, and in chronic thromboembolic disease it measured 0.49 ± 0.2 s <cite data-ref="saouti2009"></cite>. PAC therefore falls steeply as PVR rises from normal, and a lower PVR from therapy brings a disproportionate gain in compliance. PA compliance measured as SV/PP is an approximation that treats the pulmonary circulation as a single compliance <cite data-ref="saouti2010"></cite>.</p>
-  <p>In acute inferior myocardial infarction, a PAPi of 0.9 or less identified severe RV dysfunction with high sensitivity and specificity <cite data-ref="korabathina2012"></cite>. PAPi has since been used more widely in cardiogenic shock and advanced heart failure. It is calculated as PA pulse pressure divided by RAP <cite data-ref="zern2022"></cite>. Thresholds in those settings come from different cohorts, and it should not be transferred between contexts without checking the source.</p>
+  <p>Resistance and compliance are not independent in the lung. Their product, the RC time, is roughly constant across patients and during treatment <cite data-ref="lankhaar2006,lankhaar2008"></cite>, and in chronic thromboembolic disease it measured 0.49 ± 0.2 s <cite data-ref="saouti2009"></cite>. PAC falls steeply as PVR rises from normal; lowering PVR brings a proportionally larger gain in compliance. PA compliance measured as SV/PP is an approximation that treats the pulmonary circulation as a single compliance <cite data-ref="saouti2010"></cite>.</p>
+  <p>In acute inferior myocardial infarction, a PAPi of 0.9 or less identified severe RV dysfunction with high sensitivity and specificity <cite data-ref="korabathina2012"></cite>. PAPi has since been used more widely in cardiogenic shock and advanced heart failure. It is calculated as PA pulse pressure divided by RAP <cite data-ref="zern2022"></cite>. Thresholds from other settings come from different cohorts.</p>
 
   <h2 id="coupling">Estimating RV–PA coupling invasively</h2>
   <p>The reference method is the multi-beat approach: RV pressure and volume are recorded with a conductance catheter while preload is reduced (for example by transient caval occlusion), the ESPVR is fitted to the end-systolic points, and its slope is Ees. This is a research procedure.</p>
   <p>The single-beat method avoids caval occlusion. A sine wave is fitted to the isovolumic portions of a single high-fidelity RV pressure curve to estimate the maximal pressure the RV would generate if it contracted without ejecting (Pmax). Brimioulle and colleagues showed that the line from Pmax at end-diastolic volume, tangent to the end-systolic point, estimates the ESPVR <cite data-ref="brimioulle2003"></cite>. Because the same triangle defines both elastances, the coupling ratio simplifies to</p>
   <div class="eq">Ees/Ea ≈ Pmax / Pes − 1</div>
-  <p>where mean PA pressure is often used for Pes <cite data-ref="vanderpool2015"></cite>. The method needs a good RV pressure waveform. A fluid-filled pulmonary artery catheter can record RV pressure during insertion, but damping and catheter whip affect the isovolumic upstroke that the sine-wave fit depends on. Treat bedside estimates as approximate.</p>
-  <p>Effective PA elastance on its own, Ea ≈ mPAP/SV or PASP/SV, is a useful single number for RV afterload. It rises with PVR, with lower compliance and with heart rate.</p>
+  <p>where mean PA pressure is often used for Pes <cite data-ref="vanderpool2015"></cite>. It needs a high-fidelity RV pressure waveform; with a fluid-filled catheter, damping and whip distort the isovolumic upstroke the fit depends on.</p>
+  <p>Effective PA elastance, Ea ≈ mPAP/SV or PASP/SV, summarizes RV afterload; it rises with PVR, falling compliance and heart rate.</p>
 
   <div class="card" id="calc-pac">
     <h3>Calculator: haemodynamic profile</h3>
     <p class="status">Enter values from a right heart catheterization. The calculator derives the indices above and applies the 2022 ESC/ERS haemodynamic definitions. It does not diagnose, because the definitions require clinical context.</p>
     <div class="two-col">
-      <div>
-        <div class="slider"><div class="row"><label for="p-rap">RAP</label><span class="val" data-for="p-rap"></span></div><input type="range" id="p-rap" min="0" max="30" step="1" value="5"></div>
-        <div class="slider"><div class="row"><label for="p-pasp">PASP</label><span class="val" data-for="p-pasp"></span></div><input type="range" id="p-pasp" min="10" max="130" step="1" value="23"></div>
-        <div class="slider"><div class="row"><label for="p-padp">PADP</label><span class="val" data-for="p-padp"></span></div><input type="range" id="p-padp" min="2" max="60" step="1" value="9"></div>
-        <div class="slider"><div class="row"><label for="p-pawp">PAWP</label><span class="val" data-for="p-pawp"></span></div><input type="range" id="p-pawp" min="2" max="40" step="1" value="9"></div>
-        <div class="slider"><div class="row"><label for="p-co">Cardiac output</label><span class="val" data-for="p-co"></span></div><input type="range" id="p-co" min="1.5" max="10" step="0.1" value="5.5"></div>
-        <div class="slider"><div class="row"><label for="p-hr">Heart rate</label><span class="val" data-for="p-hr"></span></div><input type="range" id="p-hr" min="40" max="160" step="1" value="70"></div>
-        <p class="status">mPAP is estimated as PADP + (PASP − PADP)/3. Replace it with the measured mean if you have one.</p>
-        <div class="slider"><div class="row"><label for="p-mpap">Measured mPAP (0 = estimate)</label><span class="val" data-for="p-mpap"></span></div><input type="range" id="p-mpap" min="0" max="90" step="1" value="0"></div>
+      <div class="num-grid">
+        <label class="num-in" for="p-rap">RAP <span class="val" data-for="p-rap"></span><input type="number" id="p-rap" min="0" max="30" step="1" value="5" inputmode="decimal"></label>
+        <label class="num-in" for="p-pasp">PASP <span class="val" data-for="p-pasp"></span><input type="number" id="p-pasp" min="10" max="130" step="1" value="23" inputmode="decimal"></label>
+        <label class="num-in" for="p-padp">PADP <span class="val" data-for="p-padp"></span><input type="number" id="p-padp" min="2" max="60" step="1" value="9" inputmode="decimal"></label>
+        <label class="num-in" for="p-pawp">PAWP <span class="val" data-for="p-pawp"></span><input type="number" id="p-pawp" min="2" max="40" step="1" value="9" inputmode="decimal"></label>
+        <label class="num-in" for="p-co">Cardiac output <span class="val" data-for="p-co"></span><input type="number" id="p-co" min="1.5" max="10" step="0.1" value="5.5" inputmode="decimal"></label>
+        <label class="num-in" for="p-hr">Heart rate <span class="val" data-for="p-hr"></span><input type="number" id="p-hr" min="40" max="160" step="1" value="70" inputmode="decimal"></label>
+        
+        <label class="num-in" for="p-mpap">Measured mPAP (0 = estimate from PADP + PP/3) <span class="val" data-for="p-mpap"></span><input type="number" id="p-mpap" min="0" max="90" step="1" value="0" inputmode="decimal"></label>
       </div>
       <div id="pac-out"></div>
     </div>

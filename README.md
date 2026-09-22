@@ -10,9 +10,9 @@ The site is static HTML and JavaScript, so there is no server to maintain. It wo
 |---|---|
 | `index.html` | Overview and a suggested learning path |
 | `learn.html` | Concepts: the PV loop, Ees, Ea, Ea/Ees, stroke work and efficiency, RV vs LV, and how the model works |
-| `simulator.html` | Interactive LV and RV simulator with a normal-reference overlay, snapshot comparison and shareable URLs |
+| `simulator.html` | LV and RV simulator: drag handles on the loop (Ees, afterload, preload), intervention buttons, animated transitions, beat cursor with valve/phase strip, step-by-step "why did it move?" replay, normal-reference overlay, in-range-disease overlay, snapshot comparison, shareable URLs |
 | `scenarios.html` | HFpEF, HFrEF, septic vasoplegia, septic cardiomyopathy, acute afterload rise, compensated and decompensated PAH, acute PE and CpcPH |
-| `echo.html` | Echo surrogates (LVOT SV, 0.9·SBP/SV, EF as a coupling index, TAPSE/PASP, SV/ESV), with calculators |
+| `echo.html` | Echo lab: model-generated PW Doppler (trace LVOT VTI), CW Doppler (TR peak velocity → PASP), M-mode (TAPSE) and RV volume frames (SV/ESV), with acquisition steps and pitfall toggles (Doppler angle, LVOT diameter, weak signal, IVC-based RAP) |
 | `pac.html` | PA catheter indices (TPG, DPG, PVR, PAC, RC time, PAPi, single-beat Ees/Ea), with a haemodynamic calculator |
 | `references.html` | Full bibliography with PubMed and DOI links |
 
