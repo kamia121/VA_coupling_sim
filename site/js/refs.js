@@ -1098,6 +1098,50 @@ export const REFS = [
   "pages": "155485",
   "pmid": "41747522",
   "doi": "10.1016/j.jcrc.2026.155485"
+ },
+ {
+  "key": "dalto2025",
+  "authors": "D'Alto M, Vergara A, Orlando A, Naeije R",
+  "title": "The fluid challenge for identification of pulmonary hypertension associated with left heart disease",
+  "journal": "Curr Opin Pulm Med",
+  "year": 2025,
+  "volume": "31",
+  "pages": "464-9",
+  "pmid": "40767090",
+  "doi": "10.1097/MCP.0000000000001189"
+ },
+ {
+  "key": "qaiser2023",
+  "authors": "Qaiser KN, Almoushref A, Mehta AK, et al",
+  "title": "Fluid loading during the hemodynamic evaluation of pulmonary hypertension: a cross-sectional study",
+  "journal": "Cardiovasc Diagn Ther",
+  "year": 2023,
+  "volume": "13",
+  "pages": "833-42",
+  "pmid": "37941834",
+  "doi": "10.21037/cdt-23-59"
+ },
+ {
+  "key": "sitbon2005",
+  "authors": "Sitbon O, Humbert M, Jaïs X, et al",
+  "title": "Long-term response to calcium channel blockers in idiopathic pulmonary arterial hypertension",
+  "journal": "Circulation",
+  "year": 2005,
+  "volume": "111",
+  "pages": "3105-11",
+  "pmid": "15939821",
+  "doi": "10.1161/CIRCULATIONAHA.104.488486"
+ },
+ {
+  "key": "magder2007",
+  "authors": "Magder S, Bafaqeeh F",
+  "title": "The clinical role of central venous pressure measurements",
+  "journal": "J Intensive Care Med",
+  "year": 2007,
+  "volume": "22",
+  "pages": "44-51",
+  "pmid": "17259568",
+  "doi": "10.1177/0885066606295303"
  }
 ];
 

@@ -108,5 +108,25 @@ check('healthy adult: all four interfaces coupled', interfaces(createPatient('no
   check('LVOTO case: stop dobutamine + phenylephrine lowers gradient and raises MAP', off.o.grad < off.o0.grad - 30 && off.o.map > off.o0.map + 10);
 }
 
+// ---------- PA catheter: challenges and where to read ----------
+{
+  const { _pac } = await import('../site/js/pacsim.js');
+  const run = (preset, challenge) => { Object.assign(_pac.st, { preset, challenge, atr: 'sinus', resp: 'none', damp: 'ok', level: 0 }); _pac.buildBeat(); return { before: _pac.R0.hemo, after: _pac.R.hemo }; };
+  const hf = run('hfpef', 'fluid'), nl = run('normal', 'fluid');
+  check('PAC fluid challenge: HFpEF PAWP rises above 18', hf.before.LAP <= 18 && hf.after.LAP > 18, `${f2(hf.before.LAP)} → ${f2(hf.after.LAP)}`);
+  check('PAC fluid challenge: normal PAWP stays at or below 18', nl.after.LAP <= 18 && nl.after.LAP > nl.before.LAP);
+  const no = run('pahDecomp', 'ino');
+  check('PAC inhaled NO: mPAP and PVR fall, CO does not', no.after.mPAP < no.before.mPAP - 5 && no.after.PVR_WU < no.before.PVR_WU && no.after.CO >= no.before.CO);
+  run('normal', null);
+  for (const pos of ['ra', 'rv', 'pa', 'wedge']) {
+    _pac.st.pos = pos; const { out } = _pac.signal(40); const rd = _pac.reading(pos, out, 40 * _pac.FS - out.length);
+    const s = _pac.stats(out);
+    check(`PAC reading ${pos}: inside the trace's range`, rd && rd.value >= s.min - 1e-9 && rd.value <= s.max + 1e-9, rd ? f2(rd.value) : 'none');
+  }
+  Object.assign(_pac.st, { pos: 'wedge', atr: 'af' }); _pac.buildBeat();
+  { const { out } = _pac.signal(40), rd = _pac.reading('wedge', out, 40 * _pac.FS - out.length); check('PAC reading wedge in AF: 130–160 ms band', rd && rd.band && Math.abs((rd.band[1] - rd.band[0]) / _pac.FS - 0.03) < 0.01); }
+  Object.assign(_pac.st, { atr: 'sinus', pos: 'ra', challenge: null }); _pac.buildBeat();
+}
+
 console.log(failed ? `\n${failed} test(s) failed` : '\nall shock tests passed');
 process.exit(failed ? 1 : 0);
