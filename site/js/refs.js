@@ -684,6 +684,39 @@ export const REFS = [
   "doi": "10.1016/0002-9149(82)91968-3"
  },
  {
+  "key": "shasby1981",
+  "authors": "Shasby DM, Dauber IM, Pfister S, et al.",
+  "title": "Swan-Ganz catheter location and left atrial pressure determine the accuracy of the wedge pressure when positive end-expiratory pressure is used",
+  "journal": "Chest",
+  "year": 1981,
+  "volume": "80",
+  "pages": "666-70",
+  "pmid": "7030651",
+  "doi": "10.1378/chest.80.6.666"
+ },
+ {
+  "key": "teboul1989",
+  "authors": "Teboul JL, Zapol WM, Brun-Buisson C, et al.",
+  "title": "A comparison of pulmonary artery occlusion pressure and left ventricular end-diastolic pressure during mechanical ventilation with PEEP in patients with severe ARDS",
+  "journal": "Anesthesiology",
+  "year": 1989,
+  "volume": "70",
+  "pages": "261-6",
+  "pmid": "2643895",
+  "doi": "10.1097/00000542-198902000-00014"
+ },
+ {
+  "key": "bootsma2021",
+  "authors": "Bootsma IT, Boerma EC, de Lange F, Scheeren TWL",
+  "title": "The contemporary pulmonary artery catheter. Part 1: placement and waveform analysis",
+  "journal": "J Clin Monit Comput",
+  "year": 2021,
+  "volume": "36",
+  "pages": "5-15",
+  "pmid": "33564995",
+  "doi": "10.1007/s10877-021-00662-8"
+ },
+ {
   "key": "lloyddonald2025",
   "authors": "Lloyd-Donald P, Fujino M, Waldman B, et al",
   "title": "Measurement and interpretation of central venous pressure: a narrative review",
@@ -1142,6 +1175,26 @@ export const REFS = [
   "pages": "44-51",
   "pmid": "17259568",
   "doi": "10.1177/0885066606295303"
+ },
+ {
+  "key": "buyukoglan2011",
+  "authors": "Buyukoglan H, Kaya MG, Ardic I, et al.",
+  "title": "Assessment of atrial conduction time in patients with sarcoidosis",
+  "journal": "J Investig Med",
+  "year": 2011,
+  "volume": "59",
+  "pages": "15-21",
+  "pmid": "21060284"
+ },
+ {
+  "key": "dogdu2011",
+  "authors": "Dogdu O, Yarlioglues M, Kaya MG, et al.",
+  "title": "Assessment of atrial conduction time in patients with systemic lupus erythematosus",
+  "journal": "J Investig Med",
+  "year": 2011,
+  "volume": "59",
+  "pages": "281-6",
+  "pmid": "21200335"
  }
 ];
 

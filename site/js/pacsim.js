@@ -36,7 +36,7 @@ const CHALLENGES = {
 
 const st = {
   preset: 'normal', pos: 'ra', damp: 'ok', level: 0, resp: 'none', atr: 'sinus', showLA: true, showLVEDP: true, labels: true, view: 'tip',
-  win: 6, rate: 0.5, guide: true, scale: 'auto', challenge: null, t0: 0, last: null, playing: !reduce, tFrozen: 0,
+  win: 6, rate: 0.5, guide: true, tipH: -5, peep: 0, scale: 'auto', challenge: null, t0: 0, last: null, playing: !reduce, tFrozen: 0,
   quiz: { on: false, y: null, revealed: false },
 };
 let R = null, R0 = null, beat = null, ev = null, evs = null, BREATH = 4, TB = 1;   // TB: beat period as sampled
@@ -58,15 +58,18 @@ export const ATRIAL = {
   tr: 'Severe tricuspid regurgitation',
 };
 // Engine settings for each option. Acute MR opens a 0.5 cm² orifice into a normal-sized, stiffer LA.
-const RHYTHM = { af: { aKick: 0 }, junc: { aShift: PR + 0.05 }, mr: { mrEroa: 0.5, laEmin: 0.6, laEmax: 2.0 }, tr: { trEroa: 0.9 } };
+// AV dissociation: atrial contraction starts with the QRS (P wave buried in it), against closing valves.
+const RHYTHM = { af: { aKick: 0 }, junc: { aShift: PR - 0.05 }, mr: { mrEroa: 0.5, laEmin: 0.6, laEmax: 2.0 }, tr: { trEroa: 1.2 } };
 
 function waveTimes(side) {            // side: 'ra' (right heart events) or 'la' (left heart events)
   const e = evs[side === 'ra' ? 'rv' : 'lv'].events, m = R.rec.t.length, T = R.T;
   const at = (i) => (i / m) * T;
   const tIn = at(e.inClose), tOpen = at(e.outOpen), tClose = at(e.outClose), tIO = at(e.inOpen);
-  let ia = 0;                         // peak of atrial activation
+  // a wave: the pressure peaks about a third of the way into atrial contraction, before activation peaks
+  let ia = 0;
   for (let i = 1; i < m; i++) if (R.rec.aAct[i] > R.rec.aAct[ia]) ia = i;
-  return { a: at(ia), c: tIn + 0.03, x: tOpen + 0.35 * (tClose - tOpen), v: tIO - 0.02, y: tIO + 0.09, tIn, tOpen, tClose, tIO };
+  const aT = at(ia) - 0.2 * R.params.aDur;
+  return { a: aT, c: tIn + 0.02, x: tOpen + 0.35 * (tClose - tOpen), v: tIO - 0.02, y: tIO + 0.09, tIn, tOpen, tClose, tIO };
 }
 
 function params(challenge) {
@@ -118,6 +121,36 @@ function resp(t) {
 }
 const endExp = () => 0.95 * BREATH;   // time within each breath at which pressures are read
 
+// ---------- PEEP and West zones ----------
+// About half of PEEP reaches the pleural space and the heart in a normal lung, so every intrathoracic
+// pressure rises by half of it (the circulation itself is not changed by PEEP in this model).
+// Alveolar pressure is PEEP plus the breath: positive-pressure breaths add more at the alveolus than in the
+// pleural space; spontaneous breaths move it by about 1 mmHg.
+const CM_BLOOD = 0.74;                // mmHg per cm of vertical blood column
+const CMH2O = 0.735;                  // mmHg per cmH2O
+const pleuralPeep = () => 0.5 * st.peep * CMH2O;
+function palv(t) {
+  const sw = st.resp === 'ppv' ? 1.5 * resp(t) : 0.15 * resp(t);
+  return st.peep * CMH2O + sw;
+}
+// With the balloon inflated, the tip reads pulmonary venous pressure through a static column, as long as the
+// vessel between the tip and the left atrium stays open. Where alveolar pressure exceeds the local venous
+// pressure (the LA pressure less the height of the tip above it), the vessel collapses and the tip reads
+// alveolar pressure, carried to the transducer through the catheter's own fluid column.
+const tipReading = (pLA, t) => Math.max(pLA, palv(t) + CM_BLOOD * st.tipH);
+// West zone at the tip at end-expiration and at the peak of a breath, from mean PA and LA pressures.
+function westZone() {
+  const mean = (a) => a.reduce((x, y) => x + y, 0) / a.length;
+  const h = CM_BLOOD * st.tipH, pl = pleuralPeep();
+  const pa = mean(beat.pa) + pl - h, la = mean(beat.la) + pl - h, laMin = Math.min(...beat.la) + pl - h;
+  // vascular pressures move with the pleural swing of each breath; alveolar pressure moves more
+  const zoneAt = (t) => { const alv = palv(t), sh = resp(t); return alv > pa + sh ? 1 : alv > la + sh ? 2 : alv > laMin + sh ? '2–3' : 3; };
+  const rank = { 1: 0, 2: 1, '2–3': 2, 3: 3 };
+  let pk = zoneAt(0);
+  for (let t = 0; t < BREATH; t += 0.02) { const z = zoneAt(t); if (rank[z] < rank[pk]) pk = z; }
+  return { ee: zoneAt(endExp()), peak: pk, pa, la };
+}
+
 // True tip pressure plus breathing and transducer level, then the catheter–tubing dynamics.
 function signal(tEnd, pos = st.pos) {
   const N = st.win * FS, warm = FS, out = new Array(N), raw = new Array(N), ed = [];
@@ -130,7 +163,8 @@ function signal(tEnd, pos = st.pos) {
   for (let j = -warm; j < N; j++) {
     const t = (s0 + j) / FS;
     const k = (((s0 + j) % beat.n) + beat.n) % beat.n;
-    const u = b[k] + resp(t) + st.level * MMHG_PER_10CM;
+    const p = b[k] + resp(t) + pleuralPeep();
+    const u = (pos === 'wedge' ? tipReading(p, t) : p) + st.level * MMHG_PER_10CM;
     if (x === null) x = u;
     if (dyn) { for (let s = 0; s < 4; s++) { const acc = dyn.wn ** 2 * (u - x) - 2 * dyn.z * dyn.wn * v; v += acc * dt / 4; x += v * dt / 4; } }
     else x = u;
@@ -233,7 +267,7 @@ function drawBreathing(g, s0, N, map, x0, pw, top, ph) {
 // end-expiration marker; without, the last complete beat on screen.
 // how: completes "read at …"; ecg: short label on the tracing; ecgLong: completes "on the ECG, …".
 const READ = {
-  ra: { name: 'RAP (CVP)', how: 'the base of the c wave, at end-expiration', ecg: 'end of QRS', ecgLong: 'at the end of the QRS' },
+  ra: { name: 'RAP (CVP)', how: 'the base of the c wave, at end-expiration', ecg: 'R wave', ecgLong: 'at the R wave, just before the c wave' },
   rv: { name: 'RVEDP', how: 'end-diastole, just before the systolic upstroke', ecg: 'QRS', ecgLong: 'at the QRS' },
   pa: { name: 'PADP', how: 'end-diastole, just before the systolic upstroke', ecg: 'end of QRS', ecgLong: 'at the end of the QRS' },
   wedge: { name: 'PAWP', how: 'the mean of the a wave, at end-expiration', ecg: 'a wave just after QRS', ecgLong: 'just after the QRS, because the a wave reaches the tip through the capillary bed' },
@@ -248,11 +282,13 @@ function readPoints(pos, out, s0, minJ = 0) {
   const one = (bs) => {
     const wr = waveTimes('ra'), wl = waveTimes('la');
     if (pos === 'ra') {
-      if (A === 'junc' || A === 'tr') { const j = at(bs, 0.08); return { j, band: null, how: 'the end of the QRS, because there is no separate c wave', ecg: 'end of QRS', ecgLong: 'at the end of the QRS' }; }
-      return { j: argmin(at(bs, wr.c - 0.07), at(bs, wr.c)), band: null };
+      if (A === 'junc') { const j = at(bs, 0); return { j, band: null, how: 'the onset of the QRS, before the cannon a wave, because atrial and ventricular contraction coincide', ecg: 'QRS onset', ecgLong: 'at the onset of the QRS' }; }
+      if (A === 'tr') { const j = at(bs, wr.tIn); return { j, band: null, how: 'the QRS, before the regurgitant cv wave begins, because the c wave merges into it', ecg: 'QRS', ecgLong: 'at the QRS' }; }
+      // base of the c wave: the low point between the a-wave downslope and the c-wave upstroke
+      return { j: argmin(at(bs, wr.tIn - 0.01), at(bs, wr.c)), band: null };
     }
     if (pos === 'rv') return { j: at(bs, wr.tIn), band: null };
-    if (pos === 'pa') return { j: argmin(at(bs, wr.tOpen - 0.04), at(bs, wr.tOpen + 0.01)), band: null };
+    if (pos === 'pa') return { j: argmin(at(bs, wr.tIn - 0.01), at(bs, wr.tOpen + 0.01)), band: null };
     if (A === 'junc') return null;                           // cannon a in systole: no end-diastolic a wave
     const ta = wl.a > TB / 2 ? wl.a - TB : wl.a;
     const [t0, t1] = A === 'af' ? [0.13, 0.16] : [ta + WEDGE_LAG - 0.05, ta + WEDGE_LAG + 0.05];
@@ -277,7 +313,7 @@ function reading(pos, out, s0, minJ = 0) { return readPoints(pos, out, s0, minJ)
 // window that ends on a whole breath, so it does not move as the sweep advances.
 const stableCache = new Map();
 function stableReading(pos) {
-  const key = JSON.stringify([st.preset, st.atr, st.resp, st.damp, st.level, st.challenge, pos]);
+  const key = JSON.stringify([st.preset, st.atr, st.resp, st.damp, st.level, st.challenge, st.tipH, st.peep, pos]);
   if (!stableCache.has(key)) {
     const tRef = Math.ceil(60 / BREATH) * BREATH, win = st.win;
     st.win = 6; const { out } = signal(tRef, pos); st.win = win;
@@ -352,7 +388,7 @@ function drawAll(tEnd, target) {
     if (k === 'wedge' && la) { g.strokeStyle = 'rgba(169,188,242,0.75)'; g.lineWidth = 1.3; drawTrace(g, (j) => la[j], map, N, x0, pw, Y); }
     if (k === 'wedge' && st.showLVEDP) lvedpLine(g, Y, x0, pw);
     g.strokeStyle = '#E8D35F'; g.lineWidth = 1.8; drawTrace(g, (j) => out[j], map, N, x0, pw, Y);
-    if (st.labels && (k === 'ra' || k === 'wedge')) labelWaves(g, out, s0, map, Y, k);
+    if (st.labels && (k === 'ra' || (k === 'wedge' && westZone().ee === 3))) labelWaves(g, out, s0, map, Y, k);
     if (st.guide) drawGuide(g, stableReading(k), readPoints(k, out, s0, map.G), map, Y, x0, pw, top, bot, false);
     read[k] = report(out.slice(-beat.n * 2), k, ed, N - beat.n * 2);
     g.textAlign = 'left'; g.font = '600 12px system-ui'; g.fillStyle = '#E6EFEC';
@@ -402,7 +438,13 @@ function draw(tEnd, target) {
     g.fillStyle = '#A9BCF2'; g.fillText('— true LA pressure', lx, top + 30);
   }
   if (st.pos === 'wedge' && st.showLVEDP && !(st.quiz.on && !st.quiz.revealed)) lvedpLine(g, Y, x0, pw);
-  if (st.labels && (st.pos === 'ra' || st.pos === 'wedge')) labelWaves(g, out, s0, map, Y);
+  if (st.pos === 'wedge') {                                            // West zone of the tip
+    const z = westZone().ee;
+    g.font = '600 12px system-ui'; g.textAlign = 'right'; g.fillStyle = ZONE_COLOR[z];
+    g.fillText(`West zone ${z}`, x0 + pw - 6, top + ph - 6); g.textAlign = 'left';
+  }
+  // outside zone 3 the wedge trace is alveolar pressure, so there are no atrial waves to label
+  if (st.labels && (st.pos === 'ra' || (st.pos === 'wedge' && westZone().ee === 3))) labelWaves(g, out, s0, map, Y);
   const rd = stableReading(st.pos);
   const showGuide = st.quiz.on ? st.quiz.revealed : st.guide;
   if (showGuide) drawGuide(g, rd, readPoints(st.pos, out, s0, map.G), map, Y, x0, pw, top, h - 30);
@@ -529,16 +571,39 @@ function challengePanel() {
   box.innerHTML = `<table class="data metrics"><thead><tr><th></th><th class="num">Before</th><th class="num">After</th></tr></thead><tbody>${rows.map(([k, x, y, f]) => `<tr><td>${k}</td><td class="num">${f(x)}</td><td class="num cur">${f(y)}</td></tr>`).join('')}</tbody></table><p>${verdict}</p>`;
 }
 
+// ---------- West zone ----------
+const ZONE_COLOR = { 1: '#E0605A', 2: '#E8B962', '2–3': '#E8B962', 3: '#7BC47F' };
+function zonePanel() {
+  const box = $('#pac-zone'); if (!box || !beat) return;
+  const z = westZone(), f0 = (v) => v.toFixed(0);
+  const tEE = endExp(), mean = (a) => a.reduce((x, y) => x + y, 0) / a.length;
+  const pawp = mean(beat.wedge.map((v) => tipReading(v + resp(tEE) + pleuralPeep(), tEE)));
+  const laTrue = mean(beat.la) + pleuralPeep(), padp = Math.min(...beat.pa) + pleuralPeep();
+  const where = st.tipH < 0 ? `${-st.tipH} cm below the LA` : st.tipH === 0 ? 'level with the LA' : `${st.tipH} cm above the LA`;
+  const text = {
+    3: 'Alveolar pressure stays below the pulmonary venous pressure at the tip, so the column to the left atrium stays open and the PAWP follows LA pressure.',
+    '2–3': 'Alveolar pressure exceeds the pulmonary venous pressure at the tip during the lowest part of each beat, so the trough of the PAWP is clipped at alveolar pressure.',
+    2: 'Alveolar pressure exceeds the pulmonary venous pressure at the tip, so the vessel between the tip and the left atrium collapses and the tip reads alveolar pressure, which is higher than LA pressure and swings with each breath.',
+    1: 'Alveolar pressure exceeds even the pulmonary arterial pressure at the tip. The tip reads alveolar pressure throughout, with no a or v waves and a large swing with each breath.',
+  }[z.ee];
+  const brk = st.resp !== 'none' && z.peak !== z.ee ? ` During each breath the tip passes into zone ${z.peak}.` : '';
+  box.innerHTML = `<p><b style="color:${ZONE_COLOR[z.ee]}">West zone ${z.ee}</b> at end-expiration, with the tip ${where} and PEEP ${st.peep} cmH₂O. ${text}${brk}</p>`
+    + `<table class="data metrics"><tbody><tr><td>PAWP read at end-expiration</td><td class="num cur">${f0(pawp)}</td></tr><tr><td>True mean LA pressure</td><td class="num">${f0(laTrue)}</td></tr><tr><td>PADP</td><td class="num">${f0(padp)}</td></tr></tbody></table>`
+    + (pawp > padp + 0.5 ? '<p>A PAWP above the PADP is a sign that the tip is not in zone 3.</p>' : '');
+}
+
 // ---------- quiz ----------
 const QUIZ_CASES = ['normal', 'hfpef', 'hfref', 'pahComp', 'pahDecomp', 'cpcph', 'acutePE', 'trSevere', 'mrAcute'];
 function newQuestion() {
   const pick = (a) => a[Math.floor(Math.random() * a.length)];
   const ids = PRESETS.map((p) => p.id).filter((id) => QUIZ_CASES.includes(id));
   st.preset = pick(ids); st.pos = pick(['ra', 'ra', 'wedge', 'wedge', 'rv', 'pa']); st.resp = pick(['none', 'spont', 'spont', 'ppv', 'tachy']);
-  st.atr = pick(['trSevere', 'mrAcute'].includes(st.preset) ? ['sinus', 'sinus', 'af'] : ['sinus', 'sinus', 'sinus', 'af', 'mr', 'tr']);   // no second valve lesion on a valve case st.view = 'tip'; st.challenge = null; st.damp = 'ok'; st.level = 0;
+  // no second valve lesion on a valve case
+  st.atr = pick(['trSevere', 'mrAcute'].includes(st.preset) ? ['sinus', 'sinus', 'af'] : ['sinus', 'sinus', 'sinus', 'af', 'mr', 'tr']);
+  st.view = 'tip'; st.challenge = null; st.damp = 'ok'; st.level = 0; st.tipH = -5; st.peep = 0;
   Object.assign(st.quiz, { on: true, y: null, revealed: false });
   $('#pac-case').value = st.preset;
-  buildBeat(); syncSegs(); mapPos = null;
+  buildBeat(); syncSegs(); zonePanel(); mapPos = null;
   st.playing = false; $('#pac-play').textContent = '▶ Run';
   const rdName = READ[st.pos].name;
   $('#pac-quiz-out').innerHTML = `<p><b>Question.</b> ${presetById(st.preset).label}, ${ATRIAL[st.atr].toLowerCase()}, ${st.resp === 'none' ? 'no breathing' : { spont: 'spontaneous breathing', tachy: 'tachypnea with active expiration', ppv: 'positive-pressure ventilation' }[st.resp]}. Drag a horizontal line on the tracing to where you would read the ${rdName}, then check your answer.</p>`;
@@ -580,7 +645,7 @@ function pacSpec() {
   return {
     file: `va-coupling-pac-${all ? 'all' : st.pos}-${st.preset}${st.atr === 'sinus' ? '' : '-' + st.atr}${faults.length ? '-artifact' : ''}`,
     title: `PA catheter, ${label} · ${patient}`,
-    caption: all ? `RA, RV, PA and wedge pressures from the same model beats, stacked over one ECG${rhythm ? `, with ${rhythm}` : ''} (${fault}). RV and PA share a scale, as do RA and wedge.` : `Pressure at the catheter tip in the ${label} position, generated from the model beat${rhythm ? ` with ${rhythm}` : ''} (${fault}).${st.pos === 'ra' || st.pos === 'wedge' ? ' Every atrial wave comes from the model beat.' : ''}${st.pos === 'wedge' && st.showLA ? ' The lavender line is the true LA pressure.' : ''}${st.guide ? ' The dotted lines mark where the pressure is read and where that falls on the ECG.' : ''}${faults.length ? ' The gray line is the true tip pressure without the artifact.' : ''}${st.resp !== 'none' ? ' The shaded bands mark inspiration, and pressures are read at end-expiration, which is marked.' : ''}`,
+    caption: all ? `RA, RV, PA and wedge (PAWP) pressures from the same model beats, stacked over one ECG${rhythm ? `, with ${rhythm}` : ''} (${fault}). RV and PA share a scale, as do RA and wedge.` : `Pressure at the catheter tip in the ${label} position, generated from the model beat${rhythm ? ` with ${rhythm}` : ''} (${fault}).${st.pos === 'ra' || st.pos === 'wedge' ? ' Every atrial wave comes from the model beat.' : ''}${st.pos === 'wedge' && st.showLA ? ' The lavender line is the true LA pressure.' : ''}${st.guide ? ' The dotted lines mark where the pressure is read and where that falls on the ECG.' : ''}${faults.length ? ' The gray line is the true tip pressure without the artifact.' : ''}${st.resp !== 'none' ? ' The shaded bands mark inspiration, and pressures are read at end-expiration, which is marked.' : ''}`,
     notes: '',
     async prepare() {
       const W = 1100, h = Math.round(W * (all ? 0.95 : 0.42)), top = 56, band = 44, H = even(top + h + band);
@@ -588,7 +653,7 @@ function pacSpec() {
       const cg = c.getContext('2d'), t0 = 100 * BREATH;          // well past start-up, on a whole breath and beat
       const duration = st.resp === 'none' ? Math.ceil(3 / TB) * TB : BREATH;
       const first = draw(t0 + duration, { g: cg, w: W, h });
-      this.notes = all ? `Last 2 beats: RA ${first.ra}, RV ${first.rv}, PA ${first.pa}, wedge ${first.wedge} mmHg. Artifact: ${fault}.` : `Monitor reads ${first.monitor} (whole screen), last 2 beats ${first.last}; true tip pressure ${first.truth} mmHg.${first.reading ? ` ${first.reading.name} read at ${first.reading.how}: ${first.reading.value.toFixed(0)} mmHg.` : ''} Artifact: ${fault}.`;
+      this.notes = all ? `Last 2 beats: RA ${first.ra}, RV ${first.rv}, PA ${first.pa}, PAWP ${first.wedge} mmHg. Artifact: ${fault}.` : `Monitor reads ${first.monitor} (whole screen), last 2 beats ${first.last}; true tip pressure ${first.truth} mmHg.${first.reading ? ` ${first.reading.name} read at ${first.reading.how}: ${first.reading.value.toFixed(0)} mmHg.` : ''} Artifact: ${fault}.`;
       return {
         W, H, duration,
         async frame(g, t) {
@@ -622,6 +687,16 @@ function seg(id, opts, get, set) {
   SEGS.push(sync);
   sync();
 }
+// Independent on/off buttons: each press flips one st flag.
+function toggles(id, opts) {
+  const box = document.getElementById(id);
+  if (!box) return;
+  box.innerHTML = opts.map(([k, t]) => `<button type="button" data-k="${k}">${t}</button>`).join('');
+  const sync = () => box.querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', String(!!st[b.dataset.k])));
+  box.addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; st[b.dataset.k] = !st[b.dataset.k]; sync(); if (!st.playing) draw(st.tFrozen); });
+  SEGS.push(sync);
+  sync();
+}
 function syncSegs() {
   SEGS.forEach((f) => f());
   $('#pac-path').hidden = st.view === 'all'; $('#pac-float').hidden = st.view === 'all';
@@ -630,17 +705,17 @@ function syncSegs() {
 export function initPacSim() {
   const sel = $('#pac-case');
   sel.innerHTML = PRESETS.map((p) => `<option value="${p.id}">${p.label}</option>`).join('');
-  sel.addEventListener('change', () => { st.preset = sel.value; buildBeat(); challengePanel(); if (!st.playing) draw(st.tFrozen); });
+  sel.addEventListener('change', () => { st.preset = sel.value; buildBeat(); challengePanel(); zonePanel(); if (!st.playing) draw(st.tFrozen); });
   $('#pac-path').addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; st.pos = b.dataset.v; draw(st.tFrozen); });
   seg('pac-damp', [['ok', 'Optimal'], ['over', 'Overdamped'], ['under', 'Underdamped (whip)']], () => st.damp, (v) => { st.damp = v; });
   seg('pac-level', [['0', 'At phlebostatic axis'], ['1', '10 cm below'], ['-1', '10 cm above']], () => st.level, (v) => { st.level = +v; });
-  seg('pac-atr', Object.entries(ATRIAL), () => st.atr, (v) => { st.atr = v; buildBeat(); challengePanel(); });
+  seg('pac-atr', Object.entries(ATRIAL), () => st.atr, (v) => { st.atr = v; buildBeat(); challengePanel(); zonePanel(); });
   seg('pac-view', [['tip', 'Catheter tip'], ['all', 'All four positions']], () => st.view, (v) => { st.view = v; syncSegs(); mapPos = null; drawMap(); drawHeart(); });
   seg('pac-lbl', [['1', 'Label waves'], ['0', 'No labels']], () => (st.labels ? '1' : '0'), (v) => { st.labels = v === '1'; });
-  seg('pac-guide', [['1', 'Where to read'], ['0', 'Off']], () => (st.guide ? '1' : '0'), (v) => { st.guide = v === '1'; });
-  seg('pac-la', [['1', 'True LA at wedge'], ['0', 'Off']], () => (st.showLA ? '1' : '0'), (v) => { st.showLA = v === '1'; });
-  seg('pac-lvedp', [['1', 'LVEDP at wedge'], ['0', 'Off']], () => (st.showLVEDP ? '1' : '0'), (v) => { st.showLVEDP = v === '1'; });
-  seg('pac-resp', [['none', 'Apnoeic'], ['spont', 'Spontaneous, 15/min'], ['tachy', 'Tachypnea, 30/min'], ['ppv', 'Positive-pressure breaths']], () => st.resp, (v) => { st.resp = v; setBreath(); });
+  toggles('pac-quick', [['guide', 'Where to read'], ['showLA', 'True LA at wedge'], ['showLVEDP', 'LVEDP at wedge']]);
+  seg('pac-tip', [['-5', '5 cm below the LA'], ['0', 'Level with the LA'], ['5', '5 cm above'], ['10', '10 cm above']], () => st.tipH, (v) => { st.tipH = +v; zonePanel(); });
+  seg('pac-peep', [['0', '0'], ['5', '5'], ['10', '10'], ['15', '15'], ['20', '20 cmH₂O']], () => st.peep, (v) => { st.peep = +v; zonePanel(); });
+  seg('pac-resp', [['none', 'Apneic'], ['spont', 'Spontaneous, 15/min'], ['tachy', 'Tachypnea, 30/min'], ['ppv', 'Positive-pressure breaths']], () => st.resp, (v) => { st.resp = v; setBreath(); zonePanel(); });
   seg('pac-win', [['6', '6 s'], ['12', '12 s'], ['24', '24 s']], () => st.win, (v) => { st.win = +v; });
   seg('pac-scale', [['auto', 'Fit this site'], ['20', '0–20'], ['40', '0–40'], ['80', '0–80']], () => st.scale, (v) => { st.scale = v; });
   seg('pac-rate', [['0.25', '¼ speed'], ['0.5', '½ speed'], ['1', 'Real time']], () => st.rate, (v) => { st.rate = +v; });
@@ -659,7 +734,7 @@ export function initPacSim() {
   $('#pac-chal')?.addEventListener('click', (e) => {
     const b = e.target.closest('button[data-c]'); if (!b) return;
     st.challenge = b.dataset.c === 'none' ? null : b.dataset.c;
-    buildBeat(); challengePanel(); if (!st.playing) draw(st.tFrozen);
+    buildBeat(); challengePanel(); zonePanel(); if (!st.playing) draw(st.tFrozen);
   });
   // quiz: drag a horizontal line on the tracing
   const cv = $('#pac-scr');
@@ -677,7 +752,7 @@ export function initPacSim() {
   $('#pac-quiz-check')?.addEventListener('click', checkAnswer);
   $('#pac-quiz-end')?.addEventListener('click', endQuiz);
   buildBeat();
-  challengePanel();
+  challengePanel(); zonePanel();
   drawHeart();
   addExport($('#pac-scr').parentElement, pacSpec);
   let rt;
