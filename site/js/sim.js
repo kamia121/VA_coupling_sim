@@ -146,7 +146,7 @@ async function animateTo(target) {
   busy = true;
   markChange();
   const from = { ...params };
-  const steps = reduceMotion ? 1 : 8;
+  const steps = reduceMotion ? 1 : Math.round(8 / Math.sqrt(play.speed));   // 8 frames at 1×, 16 at ¼×, 25 at ⅒×
   for (let i = 1; i <= steps; i++) {
     const u = ease(i / steps);
     for (const k of Object.keys(target)) params[k] = lerp(from[k], target[k], u);
@@ -181,27 +181,94 @@ function buildPhases(r) {
 }
 const PHASE_LABEL = { fill: 'Filling', ivc: 'Isovolumic contraction', eject: 'Ejection', ivr: 'Isovolumic relaxation' };
 
-function tick(now) {
-  if (result && !reduceMotion) {
-    const T = result.T, n = result.rec.t.length;
-    const i = Math.floor(((now / 1000) % T) / T * n);
-    const V = side === 'lv' ? result.rec.Vlv[i] : result.rec.Vrv[i];
-    const P = side === 'lv' ? result.rec.Plv[i] : result.rec.Prv[i];
-    const c = document.getElementById('cursor');
-    if (c && map && !busy) { c.setAttribute('cx', map.sx(V)); c.setAttribute('cy', map.sy(P)); }
-    const tl = document.getElementById('tcursor');
-    if (tl && ptMap) { const x = ptMap.sx(result.rec.t[i] * 1000); tl.setAttribute('x1', x); tl.setAttribute('x2', x); }
-    const ph = phases?.[side]?.[i];
-    const strip = $('#phase');
-    if (strip && strip.dataset.phase !== ph) {
-      strip.dataset.phase = ph;
-      const [inV, outV] = side === 'lv' ? ['Mitral', 'Aortic'] : ['Tricuspid', 'Pulmonic'];
+// Playback: the beat cursor runs in model time scaled by `speed`; it can be paused and stepped.
+const play = { on: !reduceMotion, speed: 0.25, t: 0, last: null };
+let nextStepResolve = null;           // set while the replay waits for "Next step"
+
+function beatIndex() {
+  const n = result.rec.t.length;
+  return Math.min(n - 1, Math.floor((play.t / result.T) * n));
+}
+
+function drawCursor() {
+  if (!result) return;
+  const i = beatIndex();
+  const V = side === 'lv' ? result.rec.Vlv[i] : result.rec.Vrv[i];
+  const P = side === 'lv' ? result.rec.Plv[i] : result.rec.Prv[i];
+  const c = document.getElementById('cursor');
+  if (c && map && !busy) { c.setAttribute('cx', map.sx(V)); c.setAttribute('cy', map.sy(P)); }
+  const tl = document.getElementById('tcursor');
+  if (tl && ptMap) { const x = ptMap.sx(result.rec.t[i] * 1000); tl.setAttribute('x1', x); tl.setAttribute('x2', x); }
+  const ph = phases?.[side]?.[i];
+  const strip = $('#phase');
+  if (strip) {
+    const [inV, outV] = side === 'lv' ? ['Mitral', 'Aortic'] : ['Tricuspid', 'Pulmonic'];
+    const key = ph + side;
+    if (strip.dataset.phase !== key) {
+      strip.dataset.phase = key;
       strip.innerHTML = `<span class="ph-name">${PHASE_LABEL[ph]}</span>
         <span class="valve ${ph === 'fill' ? 'open' : ''}">${inV} ${ph === 'fill' ? 'open' : 'closed'}</span>
         <span class="valve ${ph === 'eject' ? 'open' : ''}">${outV} ${ph === 'eject' ? 'open' : 'closed'}</span>`;
     }
   }
+  const ro = $('#pb-read');
+  if (ro) ro.textContent = `t ${(result.rec.t[i] * 1000).toFixed(0)} ms · V ${V.toFixed(0)} mL · P ${P.toFixed(0)} mmHg`;
+}
+
+function tick(now) {
+  if (result) {
+    if (play.on && play.last != null) play.t = (play.t + ((now - play.last) / 1000) * play.speed) % result.T;
+    play.last = now;
+    drawCursor();
+  }
   requestAnimationFrame(tick);
+}
+
+// Jump to the start of the next (dir = 1) or previous (dir = -1) phase and pause there.
+function stepPhase(dir) {
+  const ph = phases[side], n = ph.length;
+  let i = beatIndex();
+  const cur = ph[i];
+  if (dir > 0) {
+    let k = 0;
+    while (k < n && ph[(i + k) % n] === cur) k++;
+    i = (i + k) % n;
+  } else {
+    let k = 1;
+    while (k < n && ph[(i - k + n) % n] === cur) k++;          // back to the start of the current phase
+    const prevPh = ph[(i - k + n) % n];
+    while (k < n && ph[(i - k - 1 + n) % n] === prevPh) k++;   // then to the start of the one before
+    i = (i - k + n) % n;
+  }
+  play.t = ((i + 0.5) / n) * result.T;   // mid-sample, so rounding cannot fall back into the previous phase
+  setPlaying(false);
+  drawCursor();
+}
+
+function setPlaying(on) {
+  play.on = on;
+  const b = $('#pb-play');
+  if (b) { b.textContent = on ? '❚❚ Pause' : '▶ Play'; b.setAttribute('aria-pressed', String(!on)); }
+}
+
+function buildPlayback() {
+  $('#pb').innerHTML = `
+    <button type="button" class="pb-btn" id="pb-prev" title="Previous phase">⏮ Phase</button>
+    <button type="button" class="pb-btn" id="pb-play"></button>
+    <button type="button" class="pb-btn" id="pb-next" title="Next phase">Phase ⏭</button>
+    <span class="pb-speed" role="group" aria-label="Speed">${[[1, '1×'], [0.5, '½×'], [0.25, '¼×'], [0.1, '⅒×']]
+      .map(([v, t]) => `<button type="button" class="pb-btn" data-speed="${v}">${t}</button>`).join('')}</span>
+    <span class="pb-read" id="pb-read"></span>`;
+  const syncSpeed = () => document.querySelectorAll('[data-speed]').forEach((b) => b.setAttribute('aria-pressed', String(+b.dataset.speed === play.speed)));
+  $('#pb').addEventListener('click', (e) => {
+    const b = e.target.closest('button');
+    if (!b) return;
+    if (b.id === 'pb-play') setPlaying(!play.on);
+    else if (b.id === 'pb-next') stepPhase(1);
+    else if (b.id === 'pb-prev') stepPhase(-1);
+    else if (b.dataset.speed) { play.speed = +b.dataset.speed; syncSpeed(); }
+  });
+  setPlaying(play.on); syncSpeed();
 }
 
 // ---------- PV plot ----------
@@ -353,7 +420,7 @@ async function replay() {
     { text: `End-systole where they cross: ESV ${f0(a.ESV)} → ${f0(b.ESV)} mL, Pes ${f0(a.Pes)} → ${f0(b.Pes)} mmHg`, k: 'es' },
     { text: `New loop: SV ${f0(a.SV)} → ${f0(b.SV)} mL, ${ratioName()} ${f2(ratioOf(prev))} → ${f2(ratioOf(result))}`, k: 'loop' },
   ];
-  const n = reduceMotion ? 1 : 24;
+  const n = reduceMotion ? 1 : Math.round(24 / play.speed ** 0.6);
   let espvr = A.espvr, ea = A.ea, es = A.es;
   for (const [si, st] of steps.entries()) {
     lbl.innerHTML = `<b>${si + 1}/4</b> ${st.text}`;
@@ -376,9 +443,15 @@ async function replay() {
       if (reduceMotion) break;
     }
     espvr = st.k === 'espvr' ? B.espvr : espvr; ea = st.k === 'ea' ? B.ea : ea; es = st.k === 'es' ? B.es : es;
-    await new Promise((r) => setTimeout(r, reduceMotion ? 0 : 450));
+    if (si < steps.length - 1) {
+      const btn = $('#why');
+      btn.disabled = false; btn.textContent = `Next step (${si + 2}/4) ▶`;
+      await new Promise((r) => { nextStepResolve = r; });
+      btn.disabled = true;
+    }
   }
   busy = false;
+  $('#why').textContent = 'Replay: why did it move?';
   render();
   lbl.innerHTML = steps.map((s, i) => `<b>${i + 1}</b> ${s.text}`).join('<br>');
 }
@@ -618,7 +691,8 @@ export function initSimulator() {
   $('#reset').addEventListener('click', () => loadPreset('normal', true));
   $('#pin').addEventListener('click', () => { snapshot = result; render(); });
   $('#clear').addEventListener('click', () => { snapshot = null; render(); });
-  $('#why').addEventListener('click', replay);
+  $('#why').addEventListener('click', () => { if (nextStepResolve) { const r = nextStepResolve; nextStepResolve = null; r(); } else replay(); });
+  buildPlayback();
   $('#hidden-toggle').addEventListener('click', () => { showHidden = !showHidden; render(); });
   document.querySelectorAll('.tabs button').forEach((b) => b.addEventListener('click', () => { side = b.dataset.side; render(); writeHash(); }));
   let rt;

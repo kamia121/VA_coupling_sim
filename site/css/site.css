@@ -304,3 +304,13 @@ a.btn.primary:hover { filter: brightness(1.1); }
   .hero h1 { font-size: 1.6rem; }
   .hero p { font-size: 1rem; }
 }
+
+/* playback bar */
+.pb { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 6px 0 4px; }
+.pb-btn { font: inherit; font-size: 0.8rem; background: #13211D; color: var(--mon-text); border: 1px solid #2A3D37; border-radius: 6px; padding: 4px 9px; cursor: pointer; }
+.pb-btn:hover { border-color: var(--mon-current); }
+.pb-btn[aria-pressed="true"] { border-color: var(--mon-current); color: var(--mon-current); }
+#pb-play { min-width: 6.5em; font-weight: 600; }
+.pb-speed { display: inline-flex; gap: 3px; }
+.pb-read { font-family: "Source Code Pro", ui-monospace, monospace; font-size: 0.75rem; color: var(--mon-axis); margin-left: auto; }
+@media (max-width: 700px) { .pb-read { width: 100%; margin: 0; } .pb-btn { padding: 4px 7px; } }

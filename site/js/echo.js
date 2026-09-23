@@ -250,7 +250,7 @@ function rvOut() {
 
 let lastT = 0;
 function playRV(now) {
-  if (st.playing && R && now - lastT > 1000 * R.T / 60) {    // 60 frames per beat, real time
+  if (st.playing && R && now - lastT > 4000 * R.T / 60) {    // 60 frames per beat, quarter speed
     lastT = now; st.frame = (st.frame + Math.max(1, Math.round(R.rec.Vrv.length / 60))) % R.rec.Vrv.length; drawRV();
   }
   requestAnimationFrame(playRV);

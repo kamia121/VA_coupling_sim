@@ -54,7 +54,7 @@ let loopFig = null;
 function tickLoop(now) {
   const c = document.getElementById('fig-cursor');
   if (c && loopFig) {
-    const { r, map } = loopFig, n = r.rec.t.length, i = Math.floor(((now / 1000) % r.T) / r.T * n);
+    const { r, map } = loopFig, n = r.rec.t.length, i = Math.floor(((now / 4000) % r.T) / r.T * n);   // quarter speed
     c.setAttribute('cx', map.sx(r.rec.Vlv[i])); c.setAttribute('cy', map.sy(r.rec.Plv[i]));
   }
   if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) requestAnimationFrame(tickLoop);
@@ -183,7 +183,7 @@ export function initHero() {
       series: [{ points: ref, color: 'var(--series-ref)', width: 1.5 }, { points: cur, color: 'var(--series-current)', width: 3 }],
       annotations: [{ x: 240, y: 168, text: name, anchor: 'end', color: 'var(--series-current)' }],
     });
-    const j = Math.floor(((now / 1000) % 0.857) / 0.857 * 160);
+    const j = Math.floor(((now / 1000) % 3.4) / 3.4 * 160);   // quarter speed
     svgEl('circle', { r: 5, class: 'beat-cursor', cx: m.sx(cur[j][0]), cy: m.sy(cur[j][1]) }, svg);
     if (u >= 1) { k = (k + 1) % seq.length; t0 = now; }
     if (!still) requestAnimationFrame(draw);
