@@ -28,26 +28,27 @@ The GIF encoder (`site/js/gif.js`) has no dependencies. PptxGenJS and mp4-muxer 
 
 ## Model
 
-The model is a closed-loop lumped circulation with six compartments. Each ventricle is a time-varying elastance with an exponential EDPVR:
+The model is a closed-loop lumped circulation with eight compartments, including two contracting atria. Each ventricle is a time-varying elastance with an exponential EDPVR:
 
 ```
 P(V,t) = e(t)·Ees·(V − V0) + [1 − e(t)]·A·(exp(β(V − V0)) − 1)
 ```
 
-Activation e(t) is a normalized double-Hill function, and time to peak is 0.2 + 0.15·T s. The systemic and pulmonary arterial beds are three-element Windkessels (Zc, C, R). The venous and atrial compartments are passive compliances, and the valves are ideal diodes. The equations are integrated with fixed-step RK4 (0.5 ms) until the state changes by less than 0.05 mL per beat. Ea is measured from the simulated beat as Pes/SV, with Pes taken at peak elastance. It is not an input.
+Activation e(t) is a normalized double-Hill function, and time to peak is 0.2 + 0.15·T s. The systemic and pulmonary arterial beds are three-element Windkessels (Zc, C, R). Each atrium is a time-varying elastance whose contraction starts at the P wave, 160 ms before ventricular activation, and lasts 140 ms. Atrial contraction can be switched off, as in atrial fibrillation, or moved into ventricular systole, as in AV dissociation. The venous compartments are passive compliances, and the valves are ideal diodes. The equations are integrated with fixed-step RK4 (0.5 ms) until the state changes by less than 0.05 mL per beat. Ea is measured from the simulated beat as Pes/SV, with Pes taken at peak elastance. It is not an input.
 
-The model deliberately leaves out ventricular interdependence and the pericardium, valve disease, atrial contraction, baroreflexes, the force–frequency relation and coronary perfusion.
+The model deliberately leaves out ventricular interdependence and the pericardium, valve disease, baroreflexes, the force–frequency relation and coronary perfusion.
 
 ### Normal calibration (tests/engine.test.mjs checks each)
 
 | Quantity | Model | Target / source |
 |---|---|---|
-| LV EF | 57% | 50–65% |
-| BP | 116/71 mmHg | resting adult |
-| CO | 5.5 L/min | resting adult |
+| LV EF | 58% | 50–65% |
+| BP | 119/73 mmHg | resting adult |
+| CO | 5.7 L/min | resting adult |
+| LAP | 7 mmHg | resting adult |
 | LV Ea/Ees | 0.62 | Ees/Ea 1.62 in normal human hearts (Starling 1993) |
-| mPAP | 15 mmHg | 14.0 ± 3.3 mmHg (Kovacs 2009) |
-| PVR | 1.0 WU | < 2 WU (ESC/ERS 2022) |
+| mPAP | 14 mmHg | 14.0 ± 3.3 mmHg (Kovacs 2009) |
+| PVR | 1.2 WU | < 2 WU (ESC/ERS 2022) |
 | RV Ees/Ea | 2.0 | 1.5–2 (Tello 2019) |
 
 Scenario parameter sets are synthetic. They were chosen to reproduce the direction and approximate size of the changes reported in the cited studies. They are not patient data or treatment targets.

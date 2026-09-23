@@ -17,7 +17,7 @@ export const NORMAL = Object.freeze({
   lvA: 0.22,          // EDPVR scale, mmHg
   lvBeta: 0.029,      // EDPVR stiffness, 1/mL
   // Right ventricle
-  rvEes: 0.50,
+  rvEes: 0.45,
   rvV0: 15,
   rvA: 0.25,
   rvBeta: 0.026,
@@ -25,16 +25,25 @@ export const NORMAL = Object.freeze({
   svr: 0.95,          // systemic vascular resistance, mmHg·s/mL (~1270 dyn·s·cm^-5)
   cSys: 1.3,          // total systemic arterial compliance, mL/mmHg
   zcAo: 0.035,        // aortic characteristic impedance, mmHg·s/mL
-  cSv: 45,            // systemic venous compliance (incl. RA), mL/mmHg
+  cSv: 40,            // systemic venous compliance, mL/mmHg
+  rSvRa: 0.01,        // caval inflow resistance into the RA (no valve), mmHg·s/mL
   rTv: 0.004,         // tricuspid inflow resistance
   // Pulmonary circulation
   pvr: 0.8 * WU,      // pulmonary vascular resistance, mmHg·s/mL (clinical PVR ≈ 1 WU once Zc is included)
   cPa: 3.4,           // pulmonary arterial compliance, mL/mmHg
   zcPa: 0.012,        // pulmonary characteristic impedance
-  cPv: 16,            // pulmonary venous compliance (incl. LA), mL/mmHg
+  cPv: 13,            // pulmonary venous compliance, mL/mmHg
+  rPvLa: 0.01,        // pulmonary venous inflow resistance into the LA (no valve)
   rMv: 0.004,         // mitral inflow resistance
+  // Atria: time-varying elastance, P = [Emin + a(t)·(Emax − Emin)]·(V − V0)
+  laEmax: 1.4, laEmin: 0.2, laV0: 10,
+  raEmax: 1.0, raEmin: 0.14, raV0: 10,
+  pr: 0.16,           // P-wave onset to QRS (start of ventricular activation), s
+  aDur: 0.14,         // duration of atrial contraction, s
+  aKick: 1,           // atrial contraction strength: 1 sinus, 0 none (atrial fibrillation)
+  aShift: 0,          // s added to atrial timing; > PR puts atrial systole inside ventricular systole (AV dissociation)
   // Blood volume
-  vStressed: 740,     // total stressed volume in the circuit, mL (unstressed volume omitted)
+  vStressed: 700,     // total stressed volume in the circuit, mL (unstressed volume omitted)
 });
 
 // Double-Hill activation (Stergiopulos et al. 1996), with the time to peak
@@ -56,68 +65,91 @@ function makeActivation(T) {
   return { e, tPeak };
 }
 
+// Atrial activation: a raised-cosine pulse of duration aDur that starts at the P wave,
+// PR seconds before the QRS (t = 0), shifted by aShift; periodic in T.
+function makeAtrialActivation(T, p) {
+  const onset = (((-p.pr + p.aShift) % T) + T) % T;
+  return (t) => {
+    const u = ((((t - onset) % T) + T) % T) / p.aDur;
+    return u < 1 ? p.aKick * 0.5 * (1 - Math.cos(2 * Math.PI * u)) : 0;
+  };
+}
+
 function ventP(V, e, Ees, V0, A, beta) {
   return e * Ees * (V - V0) + (1 - e) * A * (Math.exp(beta * (V - V0)) - 1);
 }
 
-// state = [Vlv, Vsa, Vsv, Vrv, Vpa, Vpv]; arterial compartments hold stressed volume.
-function pressures(s, e, p) {
+// state = [Vlv, Vsa, Vsv, Vrv, Vpa, Vpv, Vra, Vla]; arterial and venous compartments hold
+// stressed volume; ventricles and atria hold total volume (their V0 is unstressed).
+function pressures(s, e, ea, p) {
   const Plv = ventP(s[0], e, p.lvEes, p.lvV0, p.lvA, p.lvBeta);
   const Prv = ventP(s[3], e, p.rvEes, p.rvV0, p.rvA, p.rvBeta);
   const Psa = s[1] / p.cSys, Psv = s[2] / p.cSv;
   const Ppa = s[4] / p.cPa, Ppv = s[5] / p.cPv;
+  const Pra = (p.raEmin + ea * (p.raEmax - p.raEmin)) * (s[6] - p.raV0);
+  const Pla = (p.laEmin + ea * (p.laEmax - p.laEmin)) * (s[7] - p.laV0);
   const Qao = Plv > Psa ? (Plv - Psa) / p.zcAo : 0;   // aortic valve + Zc
-  const Qmv = Ppv > Plv ? (Ppv - Plv) / p.rMv : 0;    // mitral valve
+  const Qmv = Pla > Plv ? (Pla - Plv) / p.rMv : 0;    // mitral valve
   const Qpv = Prv > Ppa ? (Prv - Ppa) / p.zcPa : 0;   // pulmonic valve + Zc
-  const Qtv = Psv > Prv ? (Psv - Prv) / p.rTv : 0;    // tricuspid valve
+  const Qtv = Pra > Prv ? (Pra - Prv) / p.rTv : 0;    // tricuspid valve
   const Qsys = (Psa - Psv) / p.svr;
   const Qpul = (Ppa - Ppv) / p.pvr;
-  return { Plv, Prv, Psa, Psv, Ppa, Ppv, Qao, Qmv, Qpv, Qtv, Qsys, Qpul };
+  const Qra = (Psv - Pra) / p.rSvRa;                  // venae cavae → RA (can reverse during atrial systole)
+  const Qla = (Ppv - Pla) / p.rPvLa;                  // pulmonary veins → LA
+  return { Plv, Prv, Psa, Psv, Ppa, Ppv, Pra, Pla, Qao, Qmv, Qpv, Qtv, Qsys, Qpul, Qra, Qla };
 }
 
-function deriv(s, e, p) {
-  const q = pressures(s, e, p);
+function deriv(s, e, ea, p) {
+  const q = pressures(s, e, ea, p);
   return [
     q.Qmv - q.Qao,
     q.Qao - q.Qsys,
-    q.Qsys - q.Qtv,
+    q.Qsys - q.Qra,
     q.Qtv - q.Qpv,
     q.Qpv - q.Qpul,
-    q.Qpul - q.Qmv,
+    q.Qpul - q.Qla,
+    q.Qra - q.Qtv,
+    q.Qla - q.Qmv,
   ];
+}
+
+// Stressed volume held in a state (unstressed V0 of the chambers excluded).
+function stressed(s, p) {
+  return s[0] - p.lvV0 + s[1] + s[2] + s[3] - p.rvV0 + s[4] + s[5] + s[6] - p.raV0 + s[7] - p.laV0;
 }
 
 function initialState(p) {
   // rough distribution of the stressed volume; the loop converges from here
-  const V = p.vStressed;
-  const s = [p.lvV0 + 100, 150, 0, p.rvV0 + 110, 60, 0];
-  const rest = V - (s[0] - p.lvV0) - s[1] - (s[3] - p.rvV0) - s[4];
+  const s = [p.lvV0 + 100, 150, 0, p.rvV0 + 110, 60, 0, p.raV0 + 30, p.laV0 + 40];
+  const rest = p.vStressed - stressed(s, p);
   s[2] = rest * 0.8; s[5] = rest * 0.2;
-  // ventricles hold their own unstressed V0, which is not part of vStressed
   return s;
 }
 
 function simulateBeat(s0, p, act, T, dt, record) {
   const n = Math.round(T / dt);
   let s = s0.slice();
-  const rec = record ? { t: [], Vlv: [], Plv: [], Pao: [], Vrv: [], Prv: [], Ppa: [], Psv: [], Ppv: [], Qao: [], Qpv: [] } : null;
+  const rec = record ? { t: [], Vlv: [], Plv: [], Pao: [], Vrv: [], Prv: [], Ppa: [], Psv: [], Ppv: [], Pra: [], Pla: [], Vla: [], Vra: [], Qao: [], Qpv: [], Qmv: [], Qtv: [], aAct: [] } : null;
   const add = (a, k, h) => a.map((x, i) => x + h * k[i]);
   for (let i = 0; i < n; i++) {
     const t = i * dt;
     if (rec) {
-      const q = pressures(s, act.e(t), p);
+      const q = pressures(s, act.e(t), act.a(t), p);
       rec.t.push(t); rec.Vlv.push(s[0]); rec.Plv.push(q.Plv);
       rec.Pao.push(q.Psa + q.Qao * p.zcAo);
       rec.Vrv.push(s[3]); rec.Prv.push(q.Prv);
       rec.Ppa.push(q.Ppa + q.Qpv * p.zcPa);
-      rec.Psv.push(q.Psv); rec.Ppv.push(q.Ppv);
+      rec.Psv.push(q.Psv); rec.Ppv.push(q.Ppv);   // venous reservoirs
+      rec.Pra.push(q.Pra); rec.Pla.push(q.Pla); rec.Vra.push(s[6]); rec.Vla.push(s[7]);
       rec.Qao.push(q.Qao); rec.Qpv.push(q.Qpv);   // outflow, mL/s (for synthetic Doppler)
+      rec.Qmv.push(q.Qmv); rec.Qtv.push(q.Qtv); rec.aAct.push(act.a(t));
     }
     const e1 = act.e(t), e2 = act.e(t + dt / 2), e3 = act.e(t + dt);
-    const k1 = deriv(s, e1, p);
-    const k2 = deriv(add(s, k1, dt / 2), e2, p);
-    const k3 = deriv(add(s, k2, dt / 2), e2, p);
-    const k4 = deriv(add(s, k3, dt), e3, p);
+    const a1 = act.a(t), a2 = act.a(t + dt / 2), a3 = act.a(t + dt);
+    const k1 = deriv(s, e1, a1, p);
+    const k2 = deriv(add(s, k1, dt / 2), e2, a2, p);
+    const k3 = deriv(add(s, k2, dt / 2), e2, a2, p);
+    const k4 = deriv(add(s, k3, dt), e3, a3, p);
     s = s.map((x, j) => x + (dt / 6) * (k1[j] + 2 * k2[j] + 2 * k3[j] + k4[j]));
   }
   return { s, rec };
@@ -168,11 +200,11 @@ export function simulate(params, opt = {}) {
   const dt = opt.dt ?? 0.0005, maxBeats = opt.maxBeats ?? 200, tol = opt.tol ?? 0.05;
   const T = 60 / p.hr;
   const act = makeActivation(T);
-  let s = opt.state ? opt.state.slice() : initialState(p);
+  act.a = makeAtrialActivation(T, p);
+  let s = opt.state && opt.state.length === 8 ? opt.state.slice() : initialState(p);
   // rescale a warm-start state so it carries exactly this stressed volume
-  if (opt.state) {
-    const cur = s[0] - p.lvV0 + s[1] + s[2] + s[3] - p.rvV0 + s[4] + s[5];
-    const d = p.vStressed - cur;
+  if (opt.state && opt.state.length === 8) {
+    const d = p.vStressed - stressed(s, p);
     s[2] += d * 0.8; s[5] += d * 0.2;
   }
   let beats = 0, converged = false;
@@ -187,7 +219,10 @@ export function simulate(params, opt = {}) {
   const iEs = Math.round(act.tPeak / dt);
   const lv = ventricleMetrics(rec.Vlv, rec.Plv, rec.Pao, iEs, p.lvEes, p.lvV0, p.hr);
   const rv = ventricleMetrics(rec.Vrv, rec.Prv, rec.Ppa, iEs, p.rvEes, p.rvV0, p.hr);
-  const RAP = mean(rec.Psv), LAP = mean(rec.Ppv);
+  const RAP = mean(rec.Pra), LAP = mean(rec.Pla);
+  // LV filling during atrial systole (mitral flow while the atrium is active), as a share of SV
+  let aFill = 0;
+  for (let i = 0; i < rec.t.length; i++) if (rec.aAct[i] > 0.02) aFill += rec.Qmv[i] * dt;
   const coLmin = lv.CO;
   const hemo = {
     SBP: lv.artMax, DBP: lv.artMin, MAP: lv.artMean,
@@ -200,6 +235,7 @@ export function simulate(params, opt = {}) {
     SAC: lv.SV / (lv.artMax - lv.artMin),
   };
   hemo.RC = hemo.PVR_WU * WU * hemo.PAC;       // pulmonary RC time, s
+  hemo.atrialFill = aFill / lv.SV;              // share of LV filling during atrial systole
   hemo.PAPi = (hemo.PASP - hemo.PADP) / Math.max(RAP, 1);
   // Ea as clinicians approximate it: 0.9·SBP / SV (Kelly 1992)
   lv.EaClin = 0.9 * hemo.SBP / lv.SV;
@@ -224,7 +260,7 @@ export function cardiacPhases(r) {
   const n = r.rec.t.length, res = {};
   for (const s of ['lv', 'rv']) {
     const out = (i) => (s === 'lv' ? r.rec.Qao[i] > 0 : r.rec.Qpv[i] > 0);
-    const inflow = (i) => (s === 'lv' ? r.rec.Ppv[i] > r.rec.Plv[i] : r.rec.Psv[i] > r.rec.Prv[i]);
+    const inflow = (i) => (s === 'lv' ? r.rec.Pla[i] > r.rec.Plv[i] : r.rec.Pra[i] > r.rec.Prv[i]);
     let outOpen = n, outClose = n;
     for (let i = 0; i < n; i++) if (out(i)) { outOpen = i; break; }
     for (let i = outOpen; i < n; i++) if (!out(i)) { outClose = i; break; }

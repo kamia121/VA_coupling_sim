@@ -89,7 +89,7 @@ function drawRange() {
 function drawEesFig() {
   const svg = document.getElementById('fig-ees');
   if (!svg) return;
-  const rs = [520, 740, 1150].map((vStressed) => simulate({ vStressed }));
+  const rs = [480, 700, 1100].map((vStressed) => simulate({ vStressed }));
   const p = rs[1].params, m = rs[1].lv, W = Math.max(340, Math.min(720, svg.parentElement.clientWidth || 640));
   const shades = [C.ref, C.cur, C.ref];
   drawPlot(svg, {
@@ -128,7 +128,7 @@ function drawEaFig() {
 }
 
 // The ratio: two lines, EDV and V0 fixed; sliders move Ees and Ea.
-const RQ = { EDV: 138, V0: 10 };
+const RQ = { EDV: 142, V0: 10 };
 function drawRatioFig() {
   const svg = document.getElementById('fig-ratio');
   if (!svg) return;

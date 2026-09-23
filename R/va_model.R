@@ -16,10 +16,13 @@ va_normal <- function() {
   list(
     hr = 70,
     lvEes = 2.3, lvV0 = 10, lvA = 0.22, lvBeta = 0.029,
-    rvEes = 0.50, rvV0 = 15, rvA = 0.25, rvBeta = 0.026,
-    svr = 0.95, cSys = 1.3, zcAo = 0.035, cSv = 45, rTv = 0.004,
-    pvr = 0.8 * WU, cPa = 3.4, zcPa = 0.012, cPv = 16, rMv = 0.004,
-    vStressed = 740
+    rvEes = 0.45, rvV0 = 15, rvA = 0.25, rvBeta = 0.026,
+    svr = 0.95, cSys = 1.3, zcAo = 0.035, cSv = 40, rSvRa = 0.01, rTv = 0.004,
+    pvr = 0.8 * WU, cPa = 3.4, zcPa = 0.012, cPv = 13, rPvLa = 0.01, rMv = 0.004,
+    laEmax = 1.4, laEmin = 0.2, laV0 = 10,
+    raEmax = 1.0, raEmin = 0.14, raV0 = 10,
+    pr = 0.16, aDur = 0.14, aKick = 1, aShift = 0,
+    vStressed = 700
   )
 }
 
@@ -36,56 +39,76 @@ va_activation <- function(T) {
   list(e = function(t) raw(t) / max(v), tPeak = tt[which.max(v)])
 }
 
+#' Atrial activation: raised-cosine pulse of duration aDur starting at the P wave
+#' (PR before the QRS at t = 0), shifted by aShift; periodic in T
+va_atrial_activation <- function(T, p) {
+  onset <- ((-p$pr + p$aShift) %% T + T) %% T
+  function(t) {
+    u <- (((t - onset) %% T) + T) %% T / p$aDur
+    if (u < 1) p$aKick * 0.5 * (1 - cos(2 * pi * u)) else 0
+  }
+}
+
 va_ventP <- function(V, e, Ees, V0, A, beta) {
   e * Ees * (V - V0) + (1 - e) * A * (exp(beta * (V - V0)) - 1)
 }
 
-# state s = c(Vlv, Vsa, Vsv, Vrv, Vpa, Vpv)
-va_pressures <- function(s, e, p) {
+# state s = c(Vlv, Vsa, Vsv, Vrv, Vpa, Vpv, Vra, Vla)
+va_pressures <- function(s, e, ea, p) {
   Plv <- va_ventP(s[1], e, p$lvEes, p$lvV0, p$lvA, p$lvBeta)
   Prv <- va_ventP(s[4], e, p$rvEes, p$rvV0, p$rvA, p$rvBeta)
   Psa <- s[2] / p$cSys; Psv <- s[3] / p$cSv
   Ppa <- s[5] / p$cPa;  Ppv <- s[6] / p$cPv
+  Pra <- (p$raEmin + ea * (p$raEmax - p$raEmin)) * (s[7] - p$raV0)
+  Pla <- (p$laEmin + ea * (p$laEmax - p$laEmin)) * (s[8] - p$laV0)
   list(
-    Plv = Plv, Prv = Prv, Psa = Psa, Psv = Psv, Ppa = Ppa, Ppv = Ppv,
+    Plv = Plv, Prv = Prv, Psa = Psa, Psv = Psv, Ppa = Ppa, Ppv = Ppv, Pra = Pra, Pla = Pla,
     Qao = if (Plv > Psa) (Plv - Psa) / p$zcAo else 0,
-    Qmv = if (Ppv > Plv) (Ppv - Plv) / p$rMv else 0,
+    Qmv = if (Pla > Plv) (Pla - Plv) / p$rMv else 0,
     Qpv = if (Prv > Ppa) (Prv - Ppa) / p$zcPa else 0,
-    Qtv = if (Psv > Prv) (Psv - Prv) / p$rTv else 0,
+    Qtv = if (Pra > Prv) (Pra - Prv) / p$rTv else 0,
     Qsys = (Psa - Psv) / p$svr,
-    Qpul = (Ppa - Ppv) / p$pvr
+    Qpul = (Ppa - Ppv) / p$pvr,
+    Qra = (Psv - Pra) / p$rSvRa,
+    Qla = (Ppv - Pla) / p$rPvLa
   )
 }
 
-va_deriv <- function(s, e, p) {
-  q <- va_pressures(s, e, p)
-  c(q$Qmv - q$Qao, q$Qao - q$Qsys, q$Qsys - q$Qtv,
-    q$Qtv - q$Qpv, q$Qpv - q$Qpul, q$Qpul - q$Qmv)
+va_deriv <- function(s, e, ea, p) {
+  q <- va_pressures(s, e, ea, p)
+  c(q$Qmv - q$Qao, q$Qao - q$Qsys, q$Qsys - q$Qra,
+    q$Qtv - q$Qpv, q$Qpv - q$Qpul, q$Qpul - q$Qla,
+    q$Qra - q$Qtv, q$Qla - q$Qmv)
+}
+
+va_stressed <- function(s, p) {
+  s[1] - p$lvV0 + s[2] + s[3] + s[4] - p$rvV0 + s[5] + s[6] + s[7] - p$raV0 + s[8] - p$laV0
 }
 
 va_initial_state <- function(p) {
-  s <- c(p$lvV0 + 100, 150, 0, p$rvV0 + 110, 60, 0)
-  rest <- p$vStressed - (s[1] - p$lvV0) - s[2] - (s[4] - p$rvV0) - s[5]
+  s <- c(p$lvV0 + 100, 150, 0, p$rvV0 + 110, 60, 0, p$raV0 + 30, p$laV0 + 40)
+  rest <- p$vStressed - va_stressed(s, p)
   s[3] <- rest * 0.8; s[6] <- rest * 0.2
   s
 }
 
 va_beat <- function(s, p, act, T, dt, record = FALSE) {
   n <- round(T / dt)
-  if (record) rec <- matrix(NA_real_, n, 9,
-    dimnames = list(NULL, c("t", "Vlv", "Plv", "Pao", "Vrv", "Prv", "Ppa", "Psv", "Ppv")))
+  if (record) rec <- matrix(NA_real_, n, 11,
+    dimnames = list(NULL, c("t", "Vlv", "Plv", "Pao", "Vrv", "Prv", "Ppa", "Psv", "Ppv", "Pra", "Pla")))
   for (i in seq_len(n)) {
     t <- (i - 1) * dt
     if (record) {
-      q <- va_pressures(s, act$e(t), p)
+      q <- va_pressures(s, act$e(t), act$a(t), p)
       rec[i, ] <- c(t, s[1], q$Plv, q$Psa + q$Qao * p$zcAo, s[4], q$Prv,
-                    q$Ppa + q$Qpv * p$zcPa, q$Psv, q$Ppv)
+                    q$Ppa + q$Qpv * p$zcPa, q$Psv, q$Ppv, q$Pra, q$Pla)
     }
     e1 <- act$e(t); e2 <- act$e(t + dt / 2); e3 <- act$e(t + dt)
-    k1 <- va_deriv(s, e1, p)
-    k2 <- va_deriv(s + dt / 2 * k1, e2, p)
-    k3 <- va_deriv(s + dt / 2 * k2, e2, p)
-    k4 <- va_deriv(s + dt * k3, e3, p)
+    a1 <- act$a(t); a2 <- act$a(t + dt / 2); a3 <- act$a(t + dt)
+    k1 <- va_deriv(s, e1, a1, p)
+    k2 <- va_deriv(s + dt / 2 * k1, e2, a2, p)
+    k3 <- va_deriv(s + dt / 2 * k2, e2, a2, p)
+    k4 <- va_deriv(s + dt * k3, e3, a3, p)
     s <- s + dt / 6 * (k1 + 2 * k2 + 2 * k3 + k4)
   }
   list(s = s, rec = if (record) as.data.frame(rec) else NULL)
@@ -111,11 +134,12 @@ va_ventricle_metrics <- function(V, P, Part, iEs, Ees, V0, hr) {
 #' @param params named list overriding va_normal()
 #' @param dt integration step (s)
 #' @param max_beats,tol convergence controls (tol in mL, max state change per beat)
-#' @return list with lv, rv (ventricle metrics), hemo (haemodynamics), rec (last beat)
+#' @return list with lv, rv (ventricle metrics), hemo (hemodynamics), rec (last beat)
 va_simulate <- function(params = list(), dt = 0.0005, max_beats = 200, tol = 0.05) {
   p <- utils::modifyList(va_normal(), params)
   T <- 60 / p$hr
   act <- va_activation(T)
+  act$a <- va_atrial_activation(T, p)
   s <- va_initial_state(p)
   beats <- 0; converged <- FALSE
   while (beats < max_beats) {
@@ -128,7 +152,7 @@ va_simulate <- function(params = list(), dt = 0.0005, max_beats = 200, tol = 0.0
   iEs <- round(act$tPeak / dt) + 1   # R is 1-indexed
   lv <- va_ventricle_metrics(rec$Vlv, rec$Plv, rec$Pao, iEs, p$lvEes, p$lvV0, p$hr)
   rv <- va_ventricle_metrics(rec$Vrv, rec$Prv, rec$Ppa, iEs, p$rvEes, p$rvV0, p$hr)
-  RAP <- mean(rec$Psv); LAP <- mean(rec$Ppv); CO <- lv$CO
+  RAP <- mean(rec$Pra); LAP <- mean(rec$Pla); CO <- lv$CO
   hemo <- list(
     SBP = lv$artMax, DBP = lv$artMin, MAP = lv$artMean,
     PASP = rv$artMax, PADP = rv$artMin, mPAP = rv$artMean,
@@ -144,15 +168,15 @@ va_simulate <- function(params = list(), dt = 0.0005, max_beats = 200, tol = 0.0
 va_presets <- function() {
   list(
     normal        = list(),
-    hfpef         = list(lvEes = 4.5, lvBeta = 0.042, lvA = 0.3, svr = 1.5, cSys = 0.7, zcAo = 0.06, vStressed = 820),
+    hfpef         = list(lvEes = 4.5, lvBeta = 0.042, lvA = 0.3, svr = 1.5, cSys = 0.7, zcAo = 0.06, vStressed = 880),
     hfref         = list(lvEes = 0.8, lvV0 = 40, lvBeta = 0.021, lvA = 0.3, svr = 1.2, hr = 85, vStressed = 760),
     vasoplegia    = list(svr = 0.36, cSys = 1.8, hr = 110, vStressed = 700),
     septicCM      = list(lvEes = 1.0, svr = 0.62, cSys = 1.6, hr = 110, vStressed = 760),
     highAfterload = list(svr = 1.7, cSys = 0.8),
     pahComp       = list(pvr = 7 * WU, cPa = 1.0, zcPa = 0.03, rvEes = 1.05, rvBeta = 0.028, rvA = 0.3, vStressed = 820),
-    pahDecomp     = list(pvr = 12 * WU, cPa = 0.7, zcPa = 0.035, rvEes = 0.55, rvV0 = 45, rvBeta = 0.024, rvA = 0.3, hr = 95, vStressed = 860),
+    pahDecomp     = list(pvr = 12 * WU, cPa = 0.7, zcPa = 0.035, rvEes = 0.55, rvV0 = 45, rvBeta = 0.024, rvA = 0.3, hr = 95, vStressed = 920),
     acutePE       = list(pvr = 6 * WU, cPa = 1.4, zcPa = 0.03),
-    cpcph         = list(lvEes = 4.5, lvBeta = 0.042, lvA = 0.3, svr = 1.5, cSys = 0.7, zcAo = 0.06, vStressed = 1080, pvr = 3.5 * WU, cPa = 1.8)
+    cpcph         = list(lvEes = 4.5, lvBeta = 0.042, lvA = 0.3, svr = 1.5, cSys = 0.7, zcAo = 0.06, vStressed = 1240, pvr = 3.5 * WU, cPa = 1.8)
   )
 }
 

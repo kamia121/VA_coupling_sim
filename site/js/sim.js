@@ -12,6 +12,8 @@ const C = { cur: 'var(--series-current)', ref: 'var(--series-ref)', snap: 'var(-
 const S = (o) => ({ step: 0.01, digits: 2, to: (v) => v, from: (p) => p[o.key], ...o });
 const SLIDERS = [
   S({ group: 'global', key: 'hr', label: 'Heart rate', unit: '/min', min: 40, max: 160, step: 1, digits: 0, range: [60, 100] }),
+  S({ group: 'global', key: 'aKick', label: 'Atrial contraction', unit: '× normal', min: 0, max: 1.5, step: 0.05,
+    hint: 'Zero removes atrial contraction, as in atrial fibrillation, and with it the a wave and the late-diastolic filling it provides.' }),
   S({ group: 'global', key: 'vStressed', label: 'Stressed blood volume (preload)', unit: 'mL', min: 450, max: 1400, step: 10, digits: 0,
     hint: 'The volume that distends the vessels. It changes the filling pressures and EDV.' }),
 
@@ -676,9 +678,9 @@ function drawStrip(sd, sel, atrialOnly = false) {
   const pick = (arr) => ms.map((t, i) => [t, arr[i]]).filter((_, i) => i % 3 === 0);
   const vent = sd === 'lv' ? r.rec.Plv : r.rec.Prv;
   const art = sd === 'lv' ? r.rec.Pao : r.rec.Ppa;
-  const atr = sd === 'lv' ? r.rec.Ppv : r.rec.Psv;
+  const atr = sd === 'lv' ? r.rec.Pla : r.rec.Pra;
   const refV = sd === 'lv' ? REF.rec.Plv : REF.rec.Prv;
-  const refA = sd === 'lv' ? REF.rec.Ppv : REF.rec.Psv;
+  const refA = sd === 'lv' ? REF.rec.Pla : REF.rec.Pra;
   const refMs = REF.rec.t.map((t) => t * 1000);
   const xmax = Math.max(ms[ms.length - 1], refMs[refMs.length - 1]);
   const ymax = atrialOnly ? niceMax(Math.max(...atr, ...refA) * 1.35) : niceMax(Math.max(...vent, ...art, ...refV) * 1.1);
@@ -711,12 +713,20 @@ function drawStrip(sd, sel, atrialOnly = false) {
     t.textContent = EVENT_LABELS[sd][k];
   });
   if (atrialOnly) {
-    // v wave: atrial peak while the inflow valve is closed; y descent: fall after the inflow valve opens
-    let iv = ev.inClose, iy = ev.inOpen;
+    // a wave: peak during atrial systole; x descent: fall after it, before the v wave;
+    // v wave: peak while the inflow valve is closed; y descent: fall after the inflow valve opens
+    let iv = ev.inClose, iy = ev.inOpen, ia = -1, ix = ev.inClose;
     for (let i = ev.inClose; i < Math.min(ev.inOpen, atr.length); i++) if (atr[i] > atr[iv]) iv = i;
     for (let i = ev.inOpen; i < Math.min(atr.length, ev.inOpen + Math.round(0.25 / r.dt)); i++) if (atr[i] < atr[iy]) iy = i;
-    for (const [i, lab] of [[iv, 'v'], [iy, 'y']]) {
-      const t = svgEl('text', { x: pm.sx(ms[i]), y: pm.sy(atr[i]) + (lab === 'v' ? -7 : 15), class: 'ev-wave', 'text-anchor': 'middle' }, pm.svg);
+    for (let i = 0; i < atr.length; i++) if (r.rec.aAct[i] > 0.02 && (ia < 0 || atr[i] > atr[ia])) ia = i;
+    if (ia >= 0) {                                   // x: lowest point from the a wave to the v wave, across the end of the beat
+      ix = ia;
+      for (let k = ia; k !== iv; k = (k + 1) % atr.length) if (atr[k] < atr[ix]) ix = k;
+    }
+    const marks = [[iv, 'v'], [iy, 'y']];
+    if (ia >= 0) marks.push([ia, 'a'], [ix, 'x']);
+    for (const [i, lab] of marks) {
+      const t = svgEl('text', { x: pm.sx(ms[i]), y: pm.sy(atr[i]) + (lab === 'v' || lab === 'a' ? -7 : 15), class: 'ev-wave', 'text-anchor': 'middle' }, pm.svg);
       t.textContent = lab;
     }
   }
@@ -734,10 +744,10 @@ function renderPT() {
   const sd = both ? 'lv' : side;
   $('#pt-legend').innerHTML = `<span>${swatch(C.cur, '', 2.4)}Ventricle</span>
     <span>${swatch(C.cur, '6 4')}${both ? 'Aorta / PA' : sd === 'lv' ? 'Aorta' : 'Pulmonary artery'}</span>
-    <span>${swatch(C.cur, '2 3')}${both ? 'LA / RA' : sd === 'lv' ? 'LA (pulmonary veins + LA)' : 'RA (systemic veins + RA)'}</span>
+    <span>${swatch(C.cur, '2 3')}${both ? 'LA / RA' : sd === 'lv' ? 'LA' : 'RA'}</span>
     <span>${swatch(C.ref, '', 1.4)}Normal ventricle</span><span class="iso-key"></span>Isovolumic`;
   $('#atr-title').textContent = sd === 'lv' ? 'Left atrial pressure' : 'Right atrial pressure';
-  $('#atr-note').textContent = `${sd === 'lv' ? 'LA' : 'RA'} ${ (sd === 'lv' ? result.hemo.LAP : result.hemo.RAP).toFixed(0)} mmHg mean. The v wave is atrial filling while the ${sd === 'lv' ? 'mitral' : 'tricuspid'} valve is closed, and the y descent is atrial emptying after the valve opens. The model has no atrial contraction, so there is no a wave or x descent. The PA catheter page adds these waves from a template.`;
+  $('#atr-note').textContent = `${sd === 'lv' ? 'LA' : 'RA'} ${ (sd === 'lv' ? result.hemo.LAP : result.hemo.RAP).toFixed(0)} mmHg mean. The a wave is atrial contraction at the end of diastole, and the x descent follows as the atrium relaxes. The v wave is atrial filling while the ${sd === 'lv' ? 'mitral' : 'tricuspid'} valve is closed, and the y descent is atrial emptying after the valve opens. The model has no c wave, because it does not represent the valve bulging into the atrium. ${sd === 'lv' ? `Mitral flow during atrial systole supplies ${(result.hemo.atrialFill * 100).toFixed(0)}% of the stroke volume in this beat${result.params.hr >= 100 ? '. At this heart rate early and late filling overlap, so the share includes passive filling' : ''}.` : ''}`;
 }
 
 function renderLegend() {

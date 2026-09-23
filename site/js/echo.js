@@ -5,7 +5,8 @@ import { presetById } from './presets.js';
 import { addExport, header, even } from './export.js';
 
 const LVOT_D = 2.2;                        // true LVOT diameter in this lab, cm
-const TAPSE_K = 22 / simulate({}).rv.SV;   // mm of annular excursion per mL of RV stroke volume (normal ≈ 22 mm)
+const NORM = simulate({});               // normal reference for the worked examples
+const TAPSE_K = 22 / NORM.rv.SV;   // mm of annular excursion per mL of RV stroke volume (normal ≈ 22 mm)
 const CASES = [['normal', 'Normal'], ['hfref', 'HFrEF'], ['septicCM', 'Septic, low Ees'], ['pahComp', 'PAH, compensated'], ['pahDecomp', 'PAH, decompensated'], ['acutePE', 'Acute PE']];
 const $ = (s) => document.querySelector(s);
 const css = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
@@ -100,7 +101,7 @@ function drawLVOT() {
   if (st.ov.lvot) overlay(g, x0, pw - 16, base, ph, [
     { arr: R.rec.Plv, color: OV.vent, label: 'LV' },
     { arr: R.rec.Pao, color: OV.art, dash: [5, 4], label: 'Aorta' },
-    { arr: R.rec.Ppv, color: OV.atr, dash: [2, 3], label: 'LA' },
+    { arr: R.rec.Pla, color: OV.atr, dash: [2, 3], label: 'LA' },
   ], Math.ceil(R.hemo.SBP * 1.15 / 10) * 10, 'mmHg');
   if (st.trace.length > 1) {
     g.strokeStyle = css('--mon-flag'); g.lineWidth = 2; g.beginPath();
@@ -150,7 +151,7 @@ function animatePoints(pts, cb) {
 }
 
 // ---------- TR continuous-wave Doppler ----------
-function trV() { return R.rec.Prv.map((p, i) => (p > R.rec.Psv[i] + 1 && R.rec.Qpv[i] >= 0 && p > 8 ? Math.sqrt((p - R.rec.Psv[i]) / 4) : 0)); }
+function trV() { return R.rec.Prv.map((p, i) => (p > R.rec.Pra[i] + 1 && R.rec.Qpv[i] >= 0 && p > 8 ? Math.sqrt((p - R.rec.Pra[i]) / 4) : 0)); }
 function trPeak() { return Math.max(...trV()); }
 
 function drawTR() {
@@ -172,7 +173,7 @@ function drawTR() {
   if (st.ov.tr) overlay(g, x0, pw - 16, base, ph, [
     { arr: R.rec.Prv, color: OV.vent, label: 'RV' },
     { arr: R.rec.Ppa, color: OV.art, dash: [5, 4], label: 'PA' },
-    { arr: R.rec.Psv, color: OV.atr, dash: [2, 3], label: 'RA' },
+    { arr: R.rec.Pra, color: OV.atr, dash: [2, 3], label: 'RA' },
   ], Math.ceil(Math.max(...R.rec.Prv) * 1.15 / 10) * 10, 'mmHg');
   if (st.trCal != null) {
     const y = base + (st.trCal / vmax) * ph;
@@ -194,8 +195,8 @@ function trOut() {
     ['Catheter PASP (model)', `${R.hemo.PASP.toFixed(0)} mmHg`],
     ['Catheter RAP (model)', `${R.hemo.RAP.toFixed(0)} mmHg`],
   ]) + (st.ov.tr ? (() => {
-    const i = R.rec.Prv.indexOf(Math.max(...R.rec.Prv)), grad = R.rec.Prv[i] - R.rec.Psv[i], v = Math.sqrt(grad / 4);
-    return `<p class="status">At peak systole, the RV–RA pressure difference is ${R.rec.Prv[i].toFixed(0)} − ${R.rec.Psv[i].toFixed(0)} = ${grad.toFixed(0)} mmHg, which equals 4 × ${v.toFixed(2)}², where ${v.toFixed(2)} m/s is the Doppler peak velocity.</p>`;
+    const i = R.rec.Prv.indexOf(Math.max(...R.rec.Prv)), grad = R.rec.Prv[i] - R.rec.Pra[i], v = Math.sqrt(grad / 4);
+    return `<p class="status">At peak systole, the RV–RA pressure difference is ${R.rec.Prv[i].toFixed(0)} − ${R.rec.Pra[i].toFixed(0)} = ${grad.toFixed(0)} mmHg, which equals 4 × ${v.toFixed(2)}², where ${v.toFixed(2)} m/s is the Doppler peak velocity.</p>`;
   })() : '');
   tapOut();
 }
@@ -358,7 +359,7 @@ function cplOut() {
     [`EF ${src(false)} (biplane in practice)`, `${(ef * 100).toFixed(0)}%`],
     ['Ea/Ees ≈ (1 − EF)/EF', ratio.toFixed(2), ratio > 1.36],
     ['Implied Ees = Ea ÷ ratio', `${ees.toFixed(2)} mmHg/mL`],
-  ]) + `<p class="truth">The catheter values are an Ea of ${R.lv.Ea.toFixed(2)} and an Ees of ${R.lv.Ees.toFixed(2)} mmHg/mL, for an Ea/Ees of <b>${R.lv.EaEes.toFixed(2)}</b>. The normal values are 1.43, 2.30, and 0.62.</p>`;
+  ]) + `<p class="truth">The catheter values are an Ea of ${R.lv.Ea.toFixed(2)} and an Ees of ${R.lv.Ees.toFixed(2)} mmHg/mL, for an Ea/Ees of <b>${R.lv.EaEes.toFixed(2)}</b>. The normal values are ${NORM.lv.Ea.toFixed(2)}, ${NORM.lv.Ees.toFixed(2)}, and ${NORM.lv.EaEes.toFixed(2)}.</p>`;
   const tapse = st.tapseEcho ?? TAPSE_K * R.rv.SV, pasp = st.paspEcho ?? R.hemo.PASP, tp = tapse / pasp;
   const svEsv = st.svEsvEcho ?? R.rv.svEsv;
   $('#cpl-rv').innerHTML = row([
@@ -366,7 +367,7 @@ function cplOut() {
     [`PASP ${src(st.paspEcho != null)}`, `${pasp.toFixed(0)} mmHg`],
     ['TAPSE/PASP', `${tp.toFixed(2)} mm/mmHg`, tp < 0.31],
     [`SV/ESV ${src(st.svEsvEcho != null)}`, svEsv.toFixed(2), svEsv <= 0.515],
-  ]) + `<p class="truth">The catheter value of RV Ees/Ea is <b>${R.rv.EesEa.toFixed(2)}</b>${R.rv.EesEa < 0.805 ? ', which is below 0.805' : ''}. The normal value is 2.00.</p>`;
+  ]) + `<p class="truth">The catheter value of RV Ees/Ea is <b>${R.rv.EesEa.toFixed(2)}</b>${R.rv.EesEa < 0.805 ? ', which is below 0.805' : ''}. The normal value is ${NORM.rv.EesEa.toFixed(2)}.</p>`;
 }
 
 export function initEcho() {

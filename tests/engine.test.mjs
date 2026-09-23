@@ -10,7 +10,7 @@ function check(name, cond, detail = '') {
   if (!cond) failed++;
 }
 const within = (v, lo, hi) => v >= lo && v <= hi;
-const stressed = (s, p) => s[0] - p.lvV0 + s[1] + s[2] + s[3] - p.rvV0 + s[4] + s[5];
+const stressed = (s, p) => s[0] - p.lvV0 + s[1] + s[2] + s[3] - p.rvV0 + s[4] + s[5] + s[6] - p.raV0 + s[7] - p.laV0;
 
 // 1. Normal adult calibration targets
 const n = simulate({});
@@ -26,6 +26,12 @@ check('mPAP 10–20 (Kovacs 2009: 14 ± 3.3)', within(n.hemo.mPAP, 10, 20), n.he
 check('PVR 0.7–1.5 WU', within(n.hemo.PVR_WU, 0.7, 1.5), n.hemo.PVR_WU.toFixed(2));
 check('RV Ees/Ea 1.5–2.1 (Tello 2019: 1.5–2)', within(n.rv.EesEa, 1.5, 2.1), n.rv.EesEa.toFixed(2));
 check('LV and RV stroke volumes equal at steady state', Math.abs(n.lv.SV - n.rv.SV) < 0.5, `${n.lv.SV.toFixed(2)} vs ${n.rv.SV.toFixed(2)}`);
+
+// 1b. Atrial kick
+const noKick = simulate({ aKick: 0 }), avd = simulate({ aShift: 0.21 });
+check('atrial systole supplies 10–30% of LV filling', within(n.hemo.atrialFill, 0.10, 0.30), (n.hemo.atrialFill * 100).toFixed(0) + '%');
+check('no atrial contraction (AF) → ↓SV', noKick.lv.SV < n.lv.SV - 3, `${n.lv.SV.toFixed(1)} → ${noKick.lv.SV.toFixed(1)}`);
+check('atrial contraction in ventricular systole (AV dissociation) → ↓CO', avd.hemo.CO < n.hemo.CO, `${n.hemo.CO.toFixed(2)} → ${avd.hemo.CO.toFixed(2)}`);
 
 // 2. Volume conservation across one beat
 const p = { ...NORMAL };
@@ -142,14 +148,25 @@ Object.assign(_pac.st, { preset: 'normal', damp: 'ok', resp: 'none' }); _pac.bui
 {
   const at = (side) => { const b = _pac.beat, i = (t) => ((Math.round(t * _pac.FS) % b.n) + b.n) % b.n; return { b, i, w: _pac.waveTimes(side) }; };
   const setAtr = (a) => { _pac.st.atr = a; _pac.buildBeat(); };
+  // a wave: peak around atrial systole minus the lowest pressure in the 0.25 s before it
+  const aWave = (arr, w) => { let pre = Infinity, pk = -Infinity;
+    for (let k = 1; k <= 0.25 * _pac.FS; k++) pre = Math.min(pre, arr[i(w.a - k / _pac.FS)]);
+    for (let k = -12; k <= 12; k++) pk = Math.max(pk, arr[i(w.a + k / _pac.FS)]);
+    return pk - pre; };
   setAtr('sinus'); let { b, i, w } = at('ra');
-  const aSinus = b.ra[i(w.a)] - b.ra[i(w.a - 0.15)];
-  check('RA sinus: a wave rises ≥ 2 mmHg before the QRS', aSinus >= 2, aSinus.toFixed(1));
-  check('RA sinus: x descent below the c wave', b.ra[i(w.x)] < b.ra[i(w.c)] - 1);
+  const aSinus = aWave(b.ra, w);
+  check('RA sinus: a wave from atrial contraction ≥ 2 mmHg', aSinus >= 2, aSinus.toFixed(1));
+  let xMin = Infinity; for (let t = w.c; t < w.v; t += 0.004) xMin = Math.min(xMin, b.ra[i(t)]);
+  check('RA sinus: x descent falls below the a-wave peak', xMin < b.ra[i(w.a)] - 1.5, `${xMin.toFixed(1)} vs ${b.ra[i(w.a)].toFixed(1)}`);
+  const laA = aWave(b.la, at('la').w);
+  check('LA sinus: a wave from atrial contraction ≥ 2 mmHg', laA >= 2, laA.toFixed(1));
   const wedgeSinus = _pac.stats(b.wedge).mean, laSinus = _pac.stats(b.la).mean;
   check('wedge mean equals LA mean (filter keeps the mean)', Math.abs(wedgeSinus - laSinus) < 0.05, `${wedgeSinus.toFixed(2)} vs ${laSinus.toFixed(2)}`);
-  setAtr('af'); ({ b, i, w } = at('ra'));
-  check('AF: no a wave', b.ra[i(w.a)] - b.ra[i(w.a - 0.15)] < 0.5);
+  const wSinus = w;
+  setAtr('af'); ({ b, i } = at('ra'));
+  check('AF: no a wave (rise at the sinus a-wave time under a third of the sinus a wave)', aWave(b.ra, wSinus) < aSinus / 3, `${aWave(b.ra, wSinus).toFixed(2)} vs ${aSinus.toFixed(2)}`);
+  setAtr('junc'); ({ b, i, w } = at('ra'));
+  check('AV dissociation: cannon a wave, larger than the sinus a wave', aWave(b.ra, w) > aSinus + 2, `${aWave(b.ra, w).toFixed(1)} vs ${aSinus.toFixed(1)}`);
   setAtr('mr');
   const laMR = _pac.stats(_pac.beat.la);
   check('severe MR: giant LA v wave ≥ 15 mmHg above LA minimum, wedge mean rises', laMR.max - laMR.min >= 15 && _pac.stats(_pac.beat.wedge).mean > wedgeSinus + 3, `v ${ (laMR.max - laMR.min).toFixed(0)}`);

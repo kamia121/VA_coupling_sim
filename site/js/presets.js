@@ -13,11 +13,11 @@ export const PRESETS = [
   },
   {
     id: 'hfpef', side: 'lv', label: 'Hypertensive heart / HFpEF',
-    params: { lvEes: 4.5, lvBeta: 0.042, lvA: 0.3, svr: 1.5, cSys: 0.7, zcAo: 0.06, vStressed: 820 },
+    params: { lvEes: 4.5, lvBeta: 0.042, lvA: 0.3, svr: 1.5, cSys: 0.7, zcAo: 0.06, vStressed: 880 },
     text: 'Ees and Ea are both high, so the ratio stays in the normal range. Kawaguchi found an Ees of 4.7 mmHg/mL in these patients, compared with 2.1 to 3.3 mmHg/mL in controls. Because the EDPVR is steep, small changes in volume cause large swings in LAP and blood pressure. Try the fluid and vasodilator buttons.',
     refs: ['kawaguchi2003', 'borlaug2008'],
     detail: {
-      mech: 'Concentric remodeling stiffens the ventricle in both systole and diastole. Ees and Ea rise together, with an Ees of 4.7 mmHg/mL compared with 2.1 to 3.3 mmHg/mL in controls, so Ea/Ees and EF stay normal <cite data-ref="kawaguchi2003"></cite>. As the EDPVR steepens, the ventricle requires more pressure to fill to the same volume as before.',
+      mech: 'Concentric remodeling stiffens the ventricle in both systole and diastole. Ees and Ea rise together, with an Ees of 4.7 mmHg/mL compared with 2.1 to 3.3 mmHg/mL in controls, so Ea/Ees and EF stay normal <cite data-ref="kawaguchi2003"></cite>. As the EDPVR steepens, the ventricle requires more pressure to fill to the same volume as before. The stiff ventricle also depends more on atrial contraction, and in the model, losing it lowers stroke volume by 14% in this scenario, compared with 9% in the normal heart.',
       see: 'On echo, EF is normal. Because EF is normal, (1 − EF)/EF is also normal, and so is the Ea/Ees estimated from it. However, the absolute Ees, Ea, and filling pressure are all raised. On the catheter, the wedge pressure is raised (see the table). Ventricular–arterial stiffening amplifies the rise in blood pressure under stress <cite data-ref="kawaguchi2003"></cite>.',
       manage: 'Blood pressure and filling pressure are very sensitive to changes in afterload and volume. With nitroprusside, blood pressure fell 2.6-fold more in HFpEF than in HFrEF, patients with HFpEF were four times more likely to lose stroke volume, and the gains in stroke volume and cardiac output were about 60% smaller <cite data-ref="schwartzenberg2012"></cite>. In the simulator, compare the vasodilator and volume-removal buttons in this scenario and in HFrEF.',
       note: 'A normal ratio does not exclude disease.',
@@ -62,7 +62,7 @@ export const PRESETS = [
   {
     id: 'highAfterload', side: 'lv', label: 'Acute afterload rise (hypertensive)',
     params: { svr: 1.7, cSys: 0.8 },
-    text: 'SVR and arterial stiffness rise while Ees is unchanged. The Ea line steepens, the end-systolic point climbs the same ESPVR, and stroke volume falls by about 16%. Repeat the same change in HFrEF for comparison.',
+    text: 'SVR and arterial stiffness rise while Ees is unchanged. The Ea line steepens, the end-systolic point climbs the same ESPVR, and stroke volume falls by about 15%. Repeat the same change in HFrEF for comparison.',
     refs: ['sunagawa1983', 'chirinos2014'],
     detail: {
       mech: 'SVR and arterial stiffness rise acutely while Ees is unchanged. The Ea line steepens and the end-systolic point climbs the same ESPVR, so stroke volume falls and end-systolic volume rises.',
@@ -79,14 +79,14 @@ export const PRESETS = [
     detail: {
       mech: 'High PVR and low PA compliance raise the RV Ea. The RV adapts homeometrically, raising Ees through hypertrophy while its volumes stay close to normal <cite data-ref="vonk2013,naeije2014"></cite>. On MRI, Emax/Ea was 1.1 ± 0.3 in pulmonary hypertension and 1.9 ± 0.4 in controls <cite data-ref="kuehne2004"></cite>.',
       see: 'On echo, the TR velocity is high and TAPSE/PASP is low. On the catheter, mPAP and PVR are high, RAP is at the upper limit of normal, and cardiac output is slightly below normal.',
-      manage: 'TAPSE/PASP is one of the variables in the non-invasive risk assessment that the ESC/ERS 2022 guidelines use at follow-up, in which a value above 0.32 indicates low risk and a value below 0.19 indicates high risk <cite data-ref="humbert2022,tello2018,ostermann2023"></cite>. In this scenario Ees/Ea remains above 0.805, the threshold for RV dilation and failure <cite data-ref="tello2019hf"></cite>.',
+      manage: 'TAPSE/PASP is one of the variables in the non-invasive risk assessment that the ESC/ERS 2022 guidelines use at follow-up, in which a value above 0.32 indicates low risk and a value below 0.19 indicates high risk <cite data-ref="humbert2022,tello2018,ostermann2023"></cite>. In this scenario Ees/Ea remains above 0.805, the threshold associated with RV dilation and failure <cite data-ref="tello2019hf"></cite>.',
       note: '',
     },
   },
   {
     id: 'pahDecomp', side: 'rv', label: 'PAH, decompensated RV',
-    params: { pvr: 12 * WU, cPa: 0.7, zcPa: 0.035, rvEes: 0.55, rvV0: 45, rvBeta: 0.024, rvA: 0.3, hr: 95, vStressed: 860 },
-    text: 'PVR is 12 WU, the RV Ees is 0.55 mmHg/mL, and the RV ESPVR is shifted to the right. Ees/Ea is below 0.805, the threshold Tello identified for RV dilation and failure, and SV/ESV is below 0.515, the threshold reported by Vanderpool. The RV is dilated and RAP is above 10 mmHg. The LV is underfilled, and blood pressure is low even though the LV Ees is normal.',
+    params: { pvr: 12 * WU, cPa: 0.7, zcPa: 0.035, rvEes: 0.55, rvV0: 45, rvBeta: 0.024, rvA: 0.3, hr: 95, vStressed: 920 },
+    text: 'PVR is 12 WU, the RV Ees is 0.55 mmHg/mL, and the RV ESPVR is shifted to the right. Ees/Ea is below 0.805, the threshold Tello associated with RV dilation and failure, and SV/ESV is below 0.515, the threshold reported by Vanderpool. The RV is dilated and RAP is above 10 mmHg. The LV is underfilled, and blood pressure is low even though the LV Ees is normal.',
     refs: ['tello2019hf', 'vanderpool2015', 'naeije2014'],
     detail: {
       mech: 'The RV has adapted heterometrically and dilates because its Ees can no longer match its Ea <cite data-ref="vonk2013,naeije2014"></cite>. Ees/Ea is below 0.805 <cite data-ref="tello2019hf"></cite>, and SV/ESV is below 0.515 <cite data-ref="vanderpool2015"></cite>. Because the ventricles work in series, the low RV output underfills the LV, and blood pressure falls even though the LV Ees is normal.',
@@ -109,7 +109,7 @@ export const PRESETS = [
   },
   {
     id: 'cpcph', side: 'rv', label: 'HFpEF with combined pre-/post-capillary PH',
-    params: { lvEes: 4.5, lvBeta: 0.042, lvA: 0.3, svr: 1.5, cSys: 0.7, zcAo: 0.06, vStressed: 1080, pvr: 3.5 * WU, cPa: 1.8 },
+    params: { lvEes: 4.5, lvBeta: 0.042, lvA: 0.3, svr: 1.5, cSys: 0.7, zcAo: 0.06, vStressed: 1240, pvr: 3.5 * WU, cPa: 1.8 },
     text: 'An HFpEF left heart is combined with a PVR above 2 WU. A LAP above 15 mmHg raises PA pressure, and the added PVR is a pre-capillary load on the RV. The ESC/ERS 2022 guidelines define combined post- and pre-capillary PH as a PAWP above 15 mmHg with a PVR above 2 WU.',
     refs: ['humbert2022', 'kawaguchi2003'],
     detail: {
