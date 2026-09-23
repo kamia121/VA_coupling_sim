@@ -314,6 +314,18 @@ button.btn[aria-pressed="true"] { border-color: var(--mcw-green); box-shadow: in
 #pb-play { min-width: 6.5em; font-weight: 600; }
 .pb-speed { display: inline-flex; gap: 3px; }
 .pb-read { font-family: "Source Code Pro", ui-monospace, monospace; font-size: 0.75rem; color: var(--mon-axis); margin-left: auto; }
+/* Export for slides: a disclosure that opens inline, full width, so it never overflows on phones */
+.export > summary { list-style: none; font-size: 0.8rem; background: #13211D; color: var(--mon-text); border: 1px solid #2A3D37; border-radius: 6px; padding: 4px 9px; cursor: pointer; display: inline-block; }
+.export > summary::-webkit-details-marker { display: none; }
+.export > summary::after { content: " ▾"; }
+.export[open] > summary::after { content: " ▴"; }
+.export > summary:hover { border-color: var(--mon-current); }
+.export[open] { flex-basis: 100%; }
+.export-menu { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+.export-menu .pb-btn:disabled { opacity: 0.5; cursor: progress; }
+.export-note, .export-status { flex-basis: 100%; margin: 0; font-size: 0.78rem; color: var(--mon-axis); }
+.export-status:empty { display: none; }
+.export-status { color: var(--mon-current); }
 @media (max-width: 700px) { .pb-read { width: 100%; margin: 0; } .pb-btn { padding: 4px 7px; } }
 
 /* LV + RV view, valve events, atrial strip */

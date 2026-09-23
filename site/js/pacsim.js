@@ -2,17 +2,18 @@
 // model beat of the chosen scenario, with common measurement artifacts applied on top.
 import { simulate, cardiacPhases } from './engine.js';
 import { PRESETS, presetById } from './presets.js';
+import { addExport, header, even } from './export.js';
 
 const FS = 250;                       // display sample rate, Hz
 const WIN = 6;                        // seconds shown
-const BREATH = 4;                     // s per breath (15/min); inspiration = first third
+const BREATH_TARGET = 4;              // s per breath (≈15/min); inspiration = first third
 const MMHG_PER_10CM = 7.4;            // 10 cmH2O × 0.735 mmHg/cmH2O
 const POS = [['ra', 'RA'], ['rv', 'RV'], ['pa', 'PA'], ['wedge', 'Wedge']];
 const $ = (s) => document.querySelector(s);
 const reduce = typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 const st = { preset: 'normal', pos: 'ra', damp: 'ok', level: 0, resp: 'none', t0: performance.now(), playing: !reduce, tFrozen: 0 };
-let R = null, beat = null, ev = null;
+let R = null, beat = null, ev = null, BREATH = BREATH_TARGET, TB = 1;   // TB: beat period as sampled
 
 // One beat of each site's pressure, resampled to FS. Wedge = LA (pulmonary venous) pressure,
 // smoothed (τ 50 ms) and delayed 60 ms to mimic transmission through the occluded capillary bed.
@@ -25,11 +26,13 @@ function buildBeat() {
   let y = la.reduce((s, v) => s + v, 0) / n;
   for (let pass = 0; pass < 2; pass++) for (let k = 0; k < n; k++) { y += a * (la[(k - d + n) % n] - y); wedge[k] = y; }
   beat = { n, ra: pick(R.rec.Psv), rv: pick(R.rec.Prv), pa: pick(R.rec.Ppa), wedge };
+  TB = n / FS;
+  BREATH = Math.max(2, Math.round(BREATH_TARGET / TB)) * TB;   // whole number of beats, so the pattern repeats exactly
 }
 
 function resp(t) {
   if (st.resp === 'none') return 0;
-  const ph = (t % BREATH) / BREATH;
+  const ph = (((t % BREATH) + BREATH) % BREATH) / BREATH;
   if (ph > 1 / 3) return 0;                                   // expiration: intrathoracic pressure at baseline
   const s = Math.sin((ph * 3) * Math.PI);
   return st.resp === 'spont' ? -6 * s : 8 * s;                // spontaneous inspiration lowers, positive-pressure breath raises
@@ -43,9 +46,10 @@ function signal(tEnd) {
   const dyn = st.damp === 'over' ? { wn: 2 * Math.PI * 3, z: 1.6 } : st.damp === 'under' ? { wn: 2 * Math.PI * 9, z: 0.08 } : null;
   let x = null, v = 0;
   const dt = 1 / FS;
+  const s0 = Math.round(tEnd * FS) - N;                 // whole sample numbers, so the pattern repeats exactly
   for (let j = -warm; j < N; j++) {
-    const t = tEnd - WIN + j / FS;
-    const k = ((Math.floor(t * FS) % beat.n) + beat.n) % beat.n;
+    const t = (s0 + j) / FS;
+    const k = (((s0 + j) % beat.n) + beat.n) % beat.n;
     const u = b[k] + resp(t) + st.level * MMHG_PER_10CM;
     if (x === null) x = u;
     if (dyn) { for (let s = 0; s < 4; s++) { const acc = dyn.wn ** 2 * (u - x) - 2 * dyn.z * dyn.wn * v; v += acc * dt / 4; x += v * dt / 4; } }
@@ -73,12 +77,17 @@ function report(arr, kind, ed = [], offset = 0) {
   return `${s.max.toFixed(0)}/${s.min.toFixed(0)} (${s.mean.toFixed(0)})`;
 }
 
-function draw(tEnd) {
-  const c = $('#pac-scr'), cs = getComputedStyle(c.parentElement), w = Math.floor(Math.min(800, c.parentElement.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight))), h = Math.round(w * (w < 520 ? 0.75 : 0.42));
-  const dpr = window.devicePixelRatio || 1;
-  if (c.width !== w * dpr || c.height !== h * dpr) { c.width = w * dpr; c.height = h * dpr; c.style.width = w + 'px'; c.style.height = h + 'px'; }
-  const g = c.getContext('2d');
-  g.setTransform(dpr, 0, 0, dpr, 0, 0);
+// target (export only): { g, w, h } of an off-page canvas; the page readout is left alone.
+function draw(tEnd, target) {
+  let g, w, h;
+  if (target) ({ g, w, h } = target);
+  else {
+    const c = $('#pac-scr'), cs = getComputedStyle(c.parentElement);
+    w = Math.floor(Math.min(800, c.parentElement.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight))); h = Math.round(w * (w < 520 ? 0.75 : 0.42));
+    const dpr = window.devicePixelRatio || 1;
+    if (c.width !== w * dpr || c.height !== h * dpr) { c.width = w * dpr; c.height = h * dpr; c.style.width = w + 'px'; c.style.height = h + 'px'; }
+    g = c.getContext('2d'); g.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
   g.fillStyle = '#05090A'; g.fillRect(0, 0, w, h);
   const { out, raw, ed } = signal(tEnd);
   const x0 = 40, pw = w - x0 - 12, top = 12, ph = h - top - 50;
@@ -104,15 +113,17 @@ function draw(tEnd) {
   // ECG
   g.strokeStyle = '#7CE38B'; g.lineWidth = 1.2; g.beginPath();
   for (let j = 0; j <= pw; j++) {
-    const t = tEnd - WIN + (j / pw) * WIN, phs = ((t % R.T) + R.T) % R.T / R.T;
+    const t = tEnd - WIN + (j / pw) * WIN, phs = ((t % TB) + TB) % TB / TB;
     const d = phs < 0.03 ? Math.sin(phs / 0.03 * Math.PI) * 12 * (phs < 0.015 ? 1 : -0.4) : phs > 0.3 && phs < 0.45 ? Math.sin((phs - 0.3) / 0.15 * Math.PI) * 3.5 : 0;
     j ? g.lineTo(x0 + j, h - 18 - d) : g.moveTo(x0 + j, h - 18 - d);
   }
   g.stroke();
   // readout
-  const lastBeats = out.slice(-Math.round(R.T * FS * 2)), trueBeats = raw.slice(-Math.round(R.T * FS * 2));
+  const lastBeats = out.slice(-beat.n * 2), trueBeats = raw.slice(-beat.n * 2);
   const label = POS.find((p) => p[0] === st.pos)[1];
   const off = out.length - lastBeats.length;
+  const read = { label, monitor: report(out, st.pos, ed), last: report(lastBeats, st.pos, ed, off), truth: report(trueBeats, st.pos, ed, off) };
+  if (target) return read;
   $('#pac-read').innerHTML = `<div class="tile"><div class="tile-v">${report(out, st.pos, ed)}</div><div class="tile-k">Monitor reads (${label}, whole ${WIN}-s screen)</div></div>
     <div class="tile"><div class="tile-v">${report(lastBeats, st.pos, ed, off)}</div><div class="tile-k">Last 2 beats on screen</div></div>
     <div class="tile"><div class="tile-v">${report(trueBeats, st.pos, ed, off)}</div><div class="tile-k">True tip pressure, no artifact (model)</div></div>`;
@@ -132,6 +143,49 @@ function loop(now) {
   if (st.playing) st.tFrozen = t;
   draw(t);
   if (st.playing) requestAnimationFrame(loop);
+}
+
+// ---------- export for slides ----------
+// One breath cycle (a whole number of beats) or, without breathing, whole beats filling ≥ 3 s.
+const DAMP = { ok: '', over: 'overdamped', under: 'underdamped (whip)' };
+const LEVEL = { 0: '', 1: 'transducer 10 cm below the phlebostatic axis', '-1': 'transducer 10 cm above the phlebostatic axis' };
+const RESP = { none: '', spont: 'spontaneous breaths', ppv: 'positive-pressure breaths' };
+function pacSpec() {
+  const label = POS.find((p) => p[0] === st.pos)[1], patient = presetById(st.preset).label;
+  const faults = [DAMP[st.damp], LEVEL[st.level], RESP[st.resp]].filter(Boolean);
+  const fault = faults.length ? faults.join(', ') : 'no artifact';
+  return {
+    file: `va-coupling-pac-${st.pos}-${st.preset}${faults.length ? '-artifact' : ''}`,
+    title: `PA catheter, ${label} tracing · ${patient}`,
+    caption: `Pressure at the catheter tip (${label}), generated from the model beat; ${fault}.${faults.length ? ' Grey: true tip pressure without the artifact.' : ''}${st.resp !== 'none' ? ' Shaded: inspiration; read at end-expiration (marked).' : ''}`,
+    notes: '',
+    async prepare() {
+      const W = 1100, h = Math.round(W * 0.42), top = 56, band = 44, H = even(top + h + band);
+      const c = document.createElement('canvas'); c.width = W; c.height = h;
+      const cg = c.getContext('2d'), t0 = 100 * BREATH;          // well past start-up, on a whole breath and beat
+      const duration = st.resp === 'none' ? Math.ceil(3 / TB) * TB : BREATH;
+      const first = draw(t0 + duration, { g: cg, w: W, h });
+      this.notes = `Monitor reads ${first.monitor} (whole screen), last 2 beats ${first.last}; true tip pressure ${first.truth} mmHg. Artifact: ${fault}.`;
+      return {
+        W, H, duration,
+        async frame(g, t) {
+          const r = draw(t0 + t, { g: cg, w: W, h });
+          g.fillStyle = '#05090A'; g.fillRect(0, 0, W, H);
+          header(g, W, `${label} · ${patient}`, fault);
+          g.drawImage(c, 0, top);
+          g.font = '600 17px system-ui, sans-serif'; g.textAlign = 'left';
+          const items = [['Monitor reads', r.monitor, '#E8D35F'], ['Last 2 beats', r.last, '#E8D35F'], ['True pressure (model)', r.truth, '#A7B8B2']];
+          let x = 20;
+          for (const [k, v, col] of items) {
+            g.fillStyle = '#A7B8B2'; g.font = '14px system-ui, sans-serif'; g.fillText(k, x, top + h + 28);
+            x += g.measureText(k).width + 8;
+            g.fillStyle = col; g.font = '600 17px system-ui, sans-serif'; g.fillText(v, x, top + h + 28);
+            x += g.measureText(v).width + 32;
+          }
+        },
+      };
+    },
+  };
 }
 
 function seg(id, opts, get, set) {
@@ -162,10 +216,11 @@ export function initPacSim() {
   });
   $('#pac-play').textContent = st.playing ? '❚❚ Freeze' : '▶ Run';
   buildBeat();
+  addExport($('#pac-scr').parentElement, pacSpec);
   let rt;
   window.addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(() => draw(st.tFrozen), 150); });
   if (st.playing) requestAnimationFrame(loop); else draw(0);
 }
 
 // exported for tests
-export const _pac = { st, buildBeat, signal, stats, get beat() { return beat; }, MMHG_PER_10CM, FS };
+export const _pac = { st, buildBeat, signal, stats, get beat() { return beat; }, get breath() { return BREATH; }, get tb() { return TB; }, MMHG_PER_10CM, FS };

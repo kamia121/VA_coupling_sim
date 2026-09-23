@@ -2,6 +2,7 @@
 // animated transitions, a beat cursor, and a step-by-step replay of each change.
 import { simulate, NORMAL, WU, DYN, cardiacPhases } from './engine.js';
 import { PRESETS, INTERVENTIONS, presetById } from './presets.js';
+import { addExport, svgCapture, header, even } from './export.js';
 import { drawPlot, niceMax, swatch, svgPoint, svgEl } from './plot.js';
 import { REF_INDEX } from './refs.js';
 
@@ -280,6 +281,81 @@ function buildPlayback() {
   });
   setPlaying(play.on); syncSpeed();
   $('#pb-dwell').setAttribute('aria-pressed', 'true');
+  addExport($('#pb'), exportSpec);
+}
+
+// ---------- export for slides ----------
+// One beat at the current speed (isovolumic phases slowed if that is on): PV loop(s) left,
+// pressure strips right, phase and time in the header.
+function exportSpec() {
+  const sides = sidesInView(), both = view === 'both';
+  const isNormal = Object.keys(NORMAL).every((k) => params[k] === NORMAL[k]);
+  const pid = $('#preset').value || (isNormal ? 'normal' : '');
+  const patient = pid ? presetById(pid).label : 'Custom settings';
+  const name = { lv: 'Left ventricular', rv: 'Right ventricular' };
+  const ev = sides.map((sd) => EVENT_LABELS[sd].join(', ')).join('; ');
+  const speed = { 1: 'real time', 0.5: '½ speed', 0.25: '¼ speed', 0.1: '⅒ speed' }[play.speed] || `${play.speed}× speed`;
+  const r = result, h = r.hemo, f1 = (v) => v.toFixed(1), f2 = (v) => v.toFixed(2), f0 = (v) => v.toFixed(0);
+  const notes = [`Patient: ${patient}. HR ${f0(r.params.hr)}/min, CO ${f1(h.CO)} L/min.`,
+    sides.includes('lv') ? `LV: EDV ${f0(r.lv.EDV)} mL, ESV ${f0(r.lv.ESV)} mL, EF ${f0(r.lv.EF * 100)}%, Ees ${f2(r.lv.Ees)} and Ea ${f2(r.lv.Ea)} mmHg/mL, Ea/Ees ${f2(r.lv.EaEes)}. BP ${f0(h.SBP)}/${f0(h.DBP)} (MAP ${f0(h.MAP)}) mmHg, LAP ${f0(h.LAP)} mmHg.` : '',
+    sides.includes('rv') ? `RV: EDV ${f0(r.rv.EDV)} mL, ESV ${f0(r.rv.ESV)} mL, EF ${f0(r.rv.EF * 100)}%, Ees ${f2(r.rv.Ees)} and Ea ${f2(r.rv.Ea)} mmHg/mL, Ees/Ea ${f2(r.rv.EesEa)}. PA ${f0(h.PASP)}/${f0(h.PADP)} (mean ${f0(h.mPAP)}) mmHg, RAP ${f0(h.RAP)} mmHg, PVR ${f1(h.PVR_WU)} WU.` : '',
+    'Valve events: MVC/TVC inflow valve closes, AVO/PVO outflow valve opens, AVC/PVC outflow valve closes, MVO/TVO inflow valve opens.'].filter(Boolean).join('\n');
+  return {
+    file: `va-coupling-${view}-${pid || 'custom'}`,
+    title: `${both ? 'LV and RV' : name[side]} pressure–volume loop${both ? 's' : ''} · ${patient}`,
+    caption: `One beat at ${speed}${play.dwell ? ', isovolumic phases a further 5× slower' : ''}. Dots: valve events (${ev}). Shaded: isovolumic contraction and relaxation. Grey: normal ventricle.`,
+    notes,
+    async prepare() {
+      if (busy) throw new Error('wait for the animation to finish, then export again.');
+      const saved = { on: play.on, t: play.t };
+      setPlaying(false);
+      const pvs = (both ? ['#pv', '#pv2'] : ['#pv']).map((q) => svgCapture($(q)));
+      const strips = [['#pt', both ? 'LV · aorta · LA' : side === 'lv' ? 'LV · aorta · LA' : 'RV · pulmonary artery · RA'],
+        ['#pt2', 'RV · pulmonary artery · RA'], ['#pt-atr', $('#atr-title').textContent]]
+        .filter(([q]) => $(q).getClientRects().length).map(([q, label]) => ({ cap: svgCapture($(q)), label }));
+      const card = getComputedStyle($('.pv-card')), cv = (n) => card.getPropertyValue(n).trim();
+      const W = 1280, top = 56, lw = 520, rx = 560, rw = W - rx - 20;
+      const leftH = pvs.reduce((a, c) => a + lw * c.aspect + 8, 0);
+      const rightH = strips.reduce((a, c) => a + 20 + rw * c.cap.aspect + 6, 0) + 30;
+      const H = even(top + Math.max(leftH, rightH) + 12);
+      // real playback time of each model sample, including the isovolumic slow-down
+      const n = r.rec.t.length, cum = new Float64Array(n + 1);
+      for (let i = 0; i < n; i++) {
+        const iso = play.dwell && sides.some((sd) => phases[sd][i] === 'ivc' || phases[sd][i] === 'ivr');
+        cum[i + 1] = cum[i] + (r.T / n) / play.speed * (iso ? 5 : 1);
+      }
+      const colors = { text: cv('--mon-text') || '#E6EFEC', muted: cv('--mon-muted') || '#A7B8B2' };
+      return {
+        W, H, duration: cum[n],
+        async frame(g, t) {
+          let lo = 0, hi = n - 1;
+          while (lo < hi) { const m = (lo + hi + 1) >> 1; if (cum[m] <= t) lo = m; else hi = m - 1; }
+          play.t = ((lo + 0.5) / n) * r.T;
+          drawCursor();
+          g.fillStyle = card.backgroundColor; g.fillRect(0, 0, W, H);
+          const ph = sides.map((sd) => `${both ? sd.toUpperCase() + ': ' : ''}${PHASE_LABEL[phases[sd][lo]]}`).join('   ');
+          header(g, W, patient, `${ph}   ·   t ${(r.rec.t[lo] * 1000).toFixed(0)} ms`, colors);
+          let y = top;
+          for (const c of pvs) { const img = await c.image(lw); g.drawImage(img, 20, y, lw, lw * c.aspect); y += lw * c.aspect + 8; }
+          y = top;
+          for (const s2 of strips) {
+            g.fillStyle = colors.muted; g.font = '14px system-ui, sans-serif'; g.fillText(s2.label, rx + 56, y + 14);
+            const img = await s2.cap.image(rw); g.drawImage(img, rx, y + 20, rw, rw * s2.cap.aspect); y += 20 + rw * s2.cap.aspect + 6;
+          }
+          // legend
+          const items = [['Ventricle', [], 2.4, cv('--series-current')], [both ? 'Aorta / PA' : side === 'lv' ? 'Aorta' : 'PA', [6, 4], 2, cv('--series-current')],
+            [both ? 'LA / RA' : side === 'lv' ? 'LA' : 'RA', [2, 3], 2, cv('--series-current')], ['Normal ventricle', [], 1.4, cv('--series-ref')]];
+          let x = rx + 56; y += 14;
+          g.font = '13px system-ui, sans-serif';
+          for (const [lab, dash, lwid, col] of items) {
+            g.strokeStyle = col; g.lineWidth = lwid; g.setLineDash(dash); g.beginPath(); g.moveTo(x, y - 4); g.lineTo(x + 24, y - 4); g.stroke(); g.setLineDash([]);
+            g.fillStyle = colors.muted; g.fillText(lab, x + 30, y); x += 42 + g.measureText(lab).width;
+          }
+        },
+        done() { play.t = saved.t; setPlaying(saved.on); drawCursor(); },
+      };
+    },
+  };
 }
 
 // ---------- PV plot ----------

@@ -2,6 +2,7 @@
 // The learner measures on them the same way as on a scanner; answers come from the model.
 import { simulate } from './engine.js';
 import { presetById } from './presets.js';
+import { addExport, header, even } from './export.js';
 
 const LVOT_D = 2.2;                        // true LVOT diameter in this lab, cm
 const TAPSE_K = 22 / simulate({}).rv.SV;   // mm of annular excursion per mL of RV stroke volume (normal ≈ 22 mm)
@@ -14,11 +15,17 @@ let R = null;               // current simulation
 const st = { ov: { lvot: false, tr: false, tap: false }, angle: 0, dMeas: LVOT_D, trace: [], trCal: null, weak: false, rapEst: 8, tap: [null, null], ed: null, es: null, frame: 0, playing: true };
 
 // ---------- canvas helpers ----------
+let off = null;             // export: { c, w } off-page canvas that stands in for the screen
 function screen(id, aspect = 0.42) {
-  const c = document.getElementById(id);
-  const cs = getComputedStyle(c.parentElement);
-  const w = Math.floor(Math.min(760, c.parentElement.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight)));
-  const h = Math.round(w * (w < 520 ? Math.max(aspect, 0.72) : aspect)), dpr = window.devicePixelRatio || 1;
+  let c, w, dpr = 1;
+  if (off) ({ c, w } = off);
+  else {
+    c = document.getElementById(id);
+    const cs = getComputedStyle(c.parentElement);
+    w = Math.floor(Math.min(760, c.parentElement.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight)));
+    dpr = window.devicePixelRatio || 1;
+  }
+  const h = Math.round(w * (w < 520 ? Math.max(aspect, 0.72) : aspect));
   c.width = w * dpr; c.height = h * dpr; c.style.width = w + 'px'; c.style.height = h + 'px';
   const g = c.getContext('2d');
   g.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -323,6 +330,7 @@ function seg(id, opts, get, set) {
 }
 
 function loadCase(id) {
+  st.caseId = id;
   R = simulate(presetById(id).params);
   Object.assign(st, { trace: [], trCal: null, tap: [null, null], ed: null, es: null, paspEcho: null });
   document.querySelectorAll('#cases button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.id === id)));
@@ -385,9 +393,55 @@ export function initEcho() {
 
   let rt;
   window.addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(drawAll, 150); });
+  for (const id of Object.keys(EXPORTS)) addExport(document.getElementById(id).parentElement, () => echoSpec(id), { still: !EXPORTS[id].animated });
   loadCase('normal');
   if (reduce) st.playing = false;
   requestAnimationFrame(playRV);
+}
+
+// ---------- export for slides ----------
+// Static screens export as one frame; the RV station exports one beat at quarter speed.
+const EXPORTS = {
+  'scr-lvot': { draw: () => drawLVOT(), name: 'lvot', title: 'LVOT pulsed-wave Doppler',
+    caption: () => `Pulsed-wave Doppler in the LVOT, two beats, generated from the model. VTI × LVOT area = stroke volume; Ea ≈ 0.9 × SBP / SV.${st.ov.lvot ? ' Overlay: LV (solid), aortic (dashed) and LA (dotted) pressure, right-hand scale: flow runs only while LV pressure exceeds aortic pressure.' : ''}`,
+    notes: () => `Model SV ${R.lv.SV.toFixed(0)} mL, BP ${R.hemo.SBP.toFixed(0)}/${R.hemo.DBP.toFixed(0)} mmHg, model Ea ${R.lv.Ea.toFixed(2)} mmHg/mL.` },
+  'scr-tr': { draw: () => drawTR(), name: 'tr', title: 'TR continuous-wave Doppler',
+    caption: () => `Continuous-wave Doppler of the tricuspid regurgitant jet, generated from the model. Peak velocity v gives the RV–RA gradient 4v²; PASP ≈ 4v² + RAP.${st.ov.tr ? ' Overlay: RV (solid), PA (dashed) and RA (dotted) pressure: the jet velocity follows the RV–RA difference.' : ''}`,
+    notes: () => `Catheter (model) PASP ${R.hemo.PASP.toFixed(0)} mmHg, RAP ${R.hemo.RAP.toFixed(0)} mmHg.` },
+  'scr-tap': { draw: () => drawTAPSE(), name: 'tapse', title: 'TAPSE M-mode',
+    caption: () => `M-mode through the lateral tricuspid annulus, generated from the model. TAPSE = annular excursion from end-diastole to peak systole; TAPSE/PASP is a coupling surrogate.${st.ov.tap ? ' Overlay: RV volume: the annulus moves toward the apex as the RV empties.' : ''}`,
+    notes: () => `Model TAPSE ${(R.rv.SV * TAPSE_K).toFixed(1)} mm, PASP ${R.hemo.PASP.toFixed(0)} mmHg, RV Ees/Ea ${R.rv.EesEa.toFixed(2)}.` },
+  'scr-rv': { draw: () => drawRV(), name: 'rv', title: 'RV volumes through one beat', animated: true,
+    caption: () => 'RV in an apical four-chamber view, one beat at quarter speed, generated from the model. Right: the RV pressure–volume loop; the white dot is the current frame. SV/ESV approximates Ees/Ea if V₀ ≈ 0.',
+    notes: () => `RV EDV ${R.rv.EDV.toFixed(0)} mL, ESV ${R.rv.ESV.toFixed(0)} mL, SV/ESV ${R.rv.svEsv.toFixed(2)}, true Ees/Ea ${R.rv.EesEa.toFixed(2)} (V₀ = ${R.params.rvV0} mL).` },
+};
+function echoSpec(id) {
+  const x = EXPORTS[id], label = (CASES.find(([k]) => k === st.caseId) || [, ''])[1];
+  return {
+    file: `va-coupling-echo-${x.name}-${st.caseId}`,
+    title: `${x.title} · ${label}`,
+    caption: x.caption(), notes: x.notes(),
+    async prepare() {
+      const saved = { playing: st.playing, frame: st.frame };
+      st.playing = false;
+      const W = 1100, top = 56, cv = document.createElement('canvas');
+      off = { c: cv, w: W };
+      x.draw();
+      const sh = cv.height, H = even(top + sh + 8), n = R.rec.Vrv.length;
+      off = null;
+      return {
+        W, H, duration: x.animated ? 4 * R.T : 1,
+        async frame(g, t) {
+          if (x.animated) st.frame = Math.min(n - 1, Math.floor((t / 4) / R.T * n));
+          off = { c: cv, w: W }; x.draw(); off = null;
+          g.fillStyle = '#05090A'; g.fillRect(0, 0, W, H);
+          header(g, W, `${x.title} · ${label}`, x.animated ? `RV volume ${R.rec.Vrv[st.frame].toFixed(0)} mL` : 'model-generated');
+          g.drawImage(cv, 0, top);
+        },
+        done() { Object.assign(st, saved); drawAll(); },
+      };
+    },
+  };
 }
 
 // For tests: quantities the lab derives from the model.

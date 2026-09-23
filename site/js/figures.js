@@ -1,5 +1,6 @@
 // Static teaching figures generated from the same engine as the simulator.
-import { simulate } from './engine.js';
+import { simulate, cardiacPhases } from './engine.js';
+import { addExport, svgCapture, header, even } from './export.js';
 import { drawPlot, niceMax, svgEl } from './plot.js';
 import { PRESETS, presetById } from './presets.js';
 
@@ -50,10 +51,14 @@ function drawLoopFig() {
   svgEl('circle', { id: 'fig-cursor', r: 5, class: 'beat-cursor', cx: -9, cy: -9 }, svg);
 }
 
-let loopFig = null;
+let loopFig = null, exporting = false;
+function setLoopCursor(i) {
+  const { r, map } = loopFig, c = document.getElementById('fig-cursor');
+  c.setAttribute('cx', map.sx(r.rec.Vlv[i])); c.setAttribute('cy', map.sy(r.rec.Plv[i]));
+}
 function tickLoop(now) {
   const c = document.getElementById('fig-cursor');
-  if (c && loopFig) {
+  if (c && loopFig && !exporting) {
     const { r, map } = loopFig, n = r.rec.t.length, i = Math.floor(((now / 4000) % r.T) / r.T * n);   // quarter speed
     c.setAttribute('cx', map.sx(r.rec.Vlv[i])); c.setAttribute('cy', map.sy(r.rec.Plv[i]));
   }
@@ -111,8 +116,37 @@ function drawSweep() {
   });
 }
 
+// One beat at quarter speed, with the phase in the header.
+const PHASE = { fill: 'Filling', ivc: 'Isovolumic contraction', eject: 'Ejection', ivr: 'Isovolumic relaxation' };
+function loopExportSpec() {
+  return {
+    file: 'va-coupling-pv-loop-normal-lv',
+    title: 'The left ventricular pressure–volume loop',
+    caption: 'Simulated normal LV, one beat at quarter speed. Solid line: ESPVR, slope Ees. Dashed: Ea line, slope −Ea. Dotted: EDPVR. The loop runs counter-clockwise; width = stroke volume, area = stroke work.',
+    notes: `EDV ${loopFig.r.lv.EDV.toFixed(0)} mL, ESV ${loopFig.r.lv.ESV.toFixed(0)} mL, EF ${(loopFig.r.lv.EF * 100).toFixed(0)}%, Ees ${loopFig.r.lv.Ees.toFixed(2)} and Ea ${loopFig.r.lv.Ea.toFixed(2)} mmHg/mL (Ea/Ees ${loopFig.r.lv.EaEes.toFixed(2)}).`,
+    async prepare() {
+      exporting = true;
+      const svg = document.getElementById('fig-loop'), cap = svgCapture(svg), { r } = loopFig, n = r.rec.t.length, ph = cardiacPhases(r).lv.ph;
+      const W = 1100, top = 56, H = even(top + W * cap.aspect + 8), bg = getComputedStyle(svg.closest('.monitor')).backgroundColor;
+      return {
+        W, H, duration: 4 * r.T,
+        async frame(g, t) {
+          const i = Math.min(n - 1, Math.floor((t / 4) / r.T * n));
+          setLoopCursor(i);
+          g.fillStyle = bg; g.fillRect(0, 0, W, H);
+          header(g, W, 'Normal left ventricle (model)', `${PHASE[ph[i]]}   ·   t ${(r.rec.t[i] * 1000).toFixed(0)} ms`);
+          g.drawImage(await cap.image(W), 0, top, W, W * cap.aspect);
+        },
+        done() { exporting = false; },
+      };
+    },
+  };
+}
+
 export function initLearnFigures() {
   drawLoopFig();
+  const fig = document.getElementById('fig-loop');
+  if (fig) addExport(fig.closest('figure'), loopExportSpec);
   drawSweep();
   drawRange();
   requestAnimationFrame(tickLoop);

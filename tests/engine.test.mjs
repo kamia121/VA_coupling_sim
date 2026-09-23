@@ -2,6 +2,7 @@
 import { simulate, NORMAL, WU, cardiacPhases } from '../site/js/engine.js';
 import { _pac } from '../site/js/pacsim.js';
 import { PRESETS, INTERVENTIONS } from '../site/js/presets.js';
+import { buildPalette, makeIndexer, GifWriter } from '../site/js/gif.js';
 
 let failed = 0;
 function check(name, cond, detail = '') {
@@ -115,6 +116,78 @@ _pac.st.damp = 'ok'; _pac.st.level = 1; const sLevel = _pac.stats(baseSig()); _p
 check('overdamped: mean within 1 mmHg, systolic lower', Math.abs(sOver.mean - s0.mean) < 1 && sOver.max < s0.max - 1, `${s0.max.toFixed(1)}→${sOver.max.toFixed(1)}, mean ${s0.mean.toFixed(1)}→${sOver.mean.toFixed(1)}`);
 check('underdamped: systolic overshoot', sUnder.max > s0.max + 1, `${s0.max.toFixed(1)}→${sUnder.max.toFixed(1)}`);
 check('transducer 10 cm low: +7.4 mmHg everywhere', Math.abs(sLevel.mean - s0.mean - 7.4) < 0.05 && Math.abs(sLevel.max - s0.max - 7.4) < 0.05);
+
+// PAC export loops without a seam: the tracing repeats after one breath (a whole number of beats)
+Object.assign(_pac.st, { pos: 'pa', damp: 'under', level: 0, resp: 'ppv' });
+for (const id of ['normal', 'pahDecomp', 'septicCM']) {
+  _pac.st.preset = id; _pac.buildBeat();
+  const t0 = 100 * _pac.breath, a = _pac.signal(t0).out, b = _pac.signal(t0 + _pac.breath).out;
+  const beats = _pac.breath / _pac.tb;
+  check(`${id}: PAC tracing periodic over one breath (${beats.toFixed(0)} beats)`, Math.abs(beats - Math.round(beats)) < 1e-9 && a.every((v, i) => Math.abs(v - b[i]) < 1e-6));
+}
+Object.assign(_pac.st, { preset: 'normal', damp: 'ok', resp: 'none' }); _pac.buildBeat();
+
+// 11. GIF encoder: decode our own output and compare every pixel
+function decodeGif(buf) {
+  const u16 = (i) => buf[i] | (buf[i + 1] << 8), W = u16(6), H = u16(8), pal = buf.subarray(13, 13 + 768);
+  let p = 13 + 768, trans = -1, delay = 0, loop = null;
+  const canvas = new Uint8Array(W * H), frames = [];
+  while (buf[p] !== 0x3b) {
+    if (buf[p] === 0x21) {
+      const label = buf[p + 1]; p += 2;
+      if (label === 0xf9) { trans = buf[p + 1] & 1 ? buf[p + 4] : -1; delay = u16(p + 2); }
+      if (label === 0xff) loop = u16(p + 14);
+      while (buf[p]) p += buf[p] + 1; p++;
+      continue;
+    }
+    const x = u16(p + 1), y = u16(p + 3), w = u16(p + 5), h = u16(p + 7); p += 10;
+    const min = buf[p++], data = [];
+    while (buf[p]) { data.push(...buf.subarray(p + 1, p + 1 + buf[p])); p += buf[p] + 1; } p++;
+    const clear = 1 << min, out = [];
+    let size = min + 1, dict = [], bits = 0, cur = 0, prev = null, k = 0;
+    const reset = () => { dict = Array.from({ length: clear + 2 }, (_, i) => [i]); size = min + 1; prev = null; };
+    reset();
+    for (const byte of data) {
+      cur |= byte << bits; bits += 8;
+      while (bits >= size) {
+        const code = cur & ((1 << size) - 1); cur >>= size; bits -= size;
+        if (code === clear) { reset(); continue; }
+        if (code === clear + 1) { bits = 0; break; }
+        const entry = code < dict.length ? dict[code] : [...prev, prev[0]];
+        out.push(...entry);
+        if (prev) dict.push([...prev, entry[0]]);
+        prev = entry;
+        if (dict.length === 1 << size && size < 12) size++;
+      }
+    }
+    for (let j = 0; j < w * h; j++) { const v = out[j]; if (v !== trans) canvas[(y + Math.floor(j / w)) * W + x + (j % w)] = v; k++; }
+    frames.push({ idx: canvas.slice(), delay });
+  }
+  return { W, H, pal, frames, loop };
+}
+{
+  const W = 97, H = 61, rgba = [];
+  for (let f = 0; f < 6; f++) {
+    const d = new Uint8ClampedArray(W * H * 4);
+    for (let i = 0; i < W * H; i++) {
+      const x = i % W, y = Math.floor(i / W), dot = (x - 10 - f * 15) ** 2 + (y - 30) ** 2 < 30;
+      d.set(dot ? [255, 255, 255, 255] : [(x * 7) & 255, (y * 11) & 255, ((x ^ y) * 3) & 255, 255], i * 4);
+    }
+    rgba.push(d);
+  }
+  rgba[4] = rgba[3];                                     // identical frame: merged into a longer delay
+  const P = buildPalette(rgba), index = makeIndexer(P), gw = new GifWriter(W, H, P), want = [];
+  for (const d of rgba) { const idx = index(d, new Uint8Array(W * H)); want.push(idx); gw.addFrame(idx, 7); }
+  const g = decodeGif(new Uint8Array(await gw.finish().arrayBuffer()));
+  const keep = [0, 1, 2, 3, 5];
+  check('GIF: size, loop forever, identical frame merged', g.W === W && g.H === H && g.loop === 0 && g.frames.length === 5 && g.frames[3].delay === 14);
+  check('GIF: every decoded pixel matches the indexed frame', g.frames.every((fr, i) => fr.idx.every((v, j) => v === want[keep[i]][j])));
+  // an image with ≤ 255 distinct colours (like a plot) must come back exactly
+  const img = new Uint8ClampedArray(W * H * 4);
+  for (let i = 0; i < W * H; i++) { const c = (i * 7919) % 216; img.set([(c % 6) * 51, (Math.floor(c / 6) % 6) * 51, Math.floor(c / 36) * 51, 255], i * 4); }
+  const P2 = buildPalette([img]), idx2 = makeIndexer(P2)(img, new Uint8Array(W * H));
+  check('GIF palette: plot-like image (216 colours) reproduced exactly', Array.from(idx2).every((v, j) => [0, 1, 2].every((c) => P2.pal[v * 3 + c] === img[j * 4 + c])));
+}
 
 console.log(failed ? `\n${failed} test(s) failed` : '\nall tests passed');
 process.exit(failed ? 1 : 0);
