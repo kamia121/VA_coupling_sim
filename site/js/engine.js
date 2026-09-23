@@ -446,8 +446,9 @@ export function simulate(params, opt = {}) {
   const p = { ...NORMAL, ...params };
   const dt = opt.dt ?? 0.0005, maxBeats = opt.maxBeats ?? 400, tol = opt.tol ?? 0.05;
   // a warm start carries the reflex state; ischemia is always recomputed from an unischemic heart,
-  // so the result depends only on the parameters
-  const sl = opt.slow ? { ...opt.slow, ischL: 1, ischR: 1 } : initialSlow();
+  // so the result depends only on the parameters. holdSlow keeps the slow state as given (ischemia
+  // included), for beat-by-beat sequences run with maxBeats 0 from a converged state.
+  const sl = opt.slow ? (opt.holdSlow ? { ...opt.slow } : { ...opt.slow, ischL: 1, ischR: 1 }) : initialSlow();
   let q = effective(p, sl);
   let s = opt.state && opt.state.length === 8 ? opt.state.slice() : initialState(q);
   const ctx = { spt: p.sptV0, vL0: 0, vR0: 0 };
@@ -475,7 +476,7 @@ export function simulate(params, opt = {}) {
   const act = makeActivation(T, q);
   act.a = makeAtrialActivation(T, q);
   const startState = s.slice();
-  const { rec, acc } = simulateBeat(s, q, act, T, dt, true, ctx);
+  const { s: endState, rec, acc } = simulateBeat(s, q, act, T, dt, true, ctx);
   const iEs = Math.round(act.tPeak / dt);
   const lv = ventricleMetrics(rec.Vlv, rec.Plv, rec.Pao, iEs, q.lvEes, q.lvV0, q.hr,
     { out: rec.Qao, outBack: rec.Qar, inBack: rec.Qmr }, dt);
@@ -521,7 +522,7 @@ export function simulate(params, opt = {}) {
   rv.EaClin = hemo.mPAP / rv.SVout;
   rv.pmaxRatio = rv.pIso / rv.Pes - 1;          // single-beat Pmax/Pes − 1 (Brimioulle 2003)
   const eff = { hr: q.hr, svr: q.svr, vStressed: q.vStressed, lvEes: q.lvEes, rvEes: q.rvEes, reflex: q.reflex, ffr: q.ffrFactor };
-  return { params: p, eff, T, dt, tEs: act.tPeak, beats, converged, rec, lv, rv, hemo, state: startState, slow: { ...sl }, acc };
+  return { params: p, eff, T, dt, tEs: act.tPeak, beats, converged, rec, lv, rv, hemo, state: startState, endState, slow: { ...sl }, acc };
 }
 
 // ESPVR / Ea line endpoints for plotting.

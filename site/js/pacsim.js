@@ -40,7 +40,7 @@ const st = {
   win: typeof window !== 'undefined' && window.innerWidth < 600 ? 3 : 6, rate: 0.5, guide: true, tipH: -5, peep: 0, scale: 'auto', challenge: null, t0: 0, last: null, playing: !reduce, tFrozen: 0,
   quiz: { on: false, y: null, revealed: false },
 };
-let R = null, R0 = null, beat = null, ev = null, evs = null, BREATH = 4, TB = 1;   // TB: beat period as sampled
+let R = null, R0 = null, beat = null, ev = null, evs = null, BREATH = 4, TB = 1;   // TB: length of the beat cycle as sampled
 let lastY = null;                                          // screen mapping of the last tip-view frame (for the quiz)
 
 // ---------- atrial waves ----------
@@ -62,14 +62,14 @@ export const ATRIAL = {
 // AV dissociation: atrial contraction starts with the QRS (P wave buried in it), against closing valves.
 const RHYTHM = { af: { aKick: 0 }, junc: { aShift: PR - 0.05 }, mr: { mrEroa: 0.5, laEmin: 0.6, laEmax: 2.0 }, tr: { trEroa: 1.2 } };
 
-function waveTimes(side) {            // side: 'ra' (right heart events) or 'la' (left heart events)
-  const e = evs[side === 'ra' ? 'rv' : 'lv'].events, m = R.rec.t.length, T = R.T;
+function waveTimes(side, Rx = R, ex = evs) {   // side: 'ra' (right heart events) or 'la' (left heart events)
+  const e = ex[side === 'ra' ? 'rv' : 'lv'].events, m = Rx.rec.t.length, T = Rx.T;
   const at = (i) => (i / m) * T;
   const tIn = at(e.inClose), tOpen = at(e.outOpen), tClose = at(e.outClose), tIO = at(e.inOpen);
   // a wave: the pressure peaks about a third of the way into atrial contraction, before activation peaks
   let ia = 0;
-  for (let i = 1; i < m; i++) if (R.rec.aAct[i] > R.rec.aAct[ia]) ia = i;
-  const aT = at(ia) - 0.2 * R.params.aDur;
+  for (let i = 1; i < m; i++) if (Rx.rec.aAct[i] > Rx.rec.aAct[ia]) ia = i;
+  const aT = at(ia) - 0.2 * Rx.params.aDur;
   return { a: aT, c: tIn + 0.02, x: tOpen + 0.35 * (tClose - tOpen), v: tIO - 0.02, y: tIO + 0.09, tIn, tOpen, tClose, tIO };
 }
 
@@ -79,40 +79,80 @@ function params(challenge) {
   const full = simulate(p).params;                      // intrinsic values with defaults filled in
   return { ...p, ...CHALLENGES[challenge].apply(full) };
 }
-// One beat of each site's pressure, resampled to FS. Wedge = LA pressure,
-// smoothed (τ 50 ms) and delayed 60 ms to mimic transmission through the occluded capillary bed.
+// RR intervals in atrial fibrillation, as multiples of the mean: irregularly irregular, 0.7 to 1.35.
+const AF_RR = [0.78, 1.21, 0.92, 1.34, 0.84, 1.07, 0.72, 1.16, 0.95, 1.27, 0.81, 1.02, 0.88, 1.12];
+// In AF, a sequence of beats with those RR intervals, each run from the end of the one before, so a short
+// interval gives a smaller next beat and a long one a larger beat. The sequence (about 8 s) is run twice
+// and the second pass kept, so its end joins its start.
+function afBeats(p, base) {
+  const nb = Math.max(5, Math.min(AF_RR.length, Math.round(8 / base.T)));
+  const mean = AF_RR.slice(0, nb).reduce((a, b) => a + b, 0) / nb, k = AF_RR.slice(0, nb).map((x) => x / mean);
+  const hr = base.params.hr, out = [];
+  let s = base.state;
+  for (let pass = 0; pass < 2; pass++) for (const f of k) {
+    const r = simulate({ ...p, hr: hr / f }, { state: s, slow: base.slow, holdSlow: true, maxBeats: 0 });
+    if (pass) out.push(r);
+    s = r.endState;
+  }
+  return out;
+}
+// The tracing is a cycle of beats, resampled to FS: one beat in regular rhythms, about 8 s of irregular beats
+// in AF. beat.parts holds each beat's offset, length and wave times. Wedge = LA pressure, smoothed (τ 50 ms)
+// and delayed 60 ms to mimic transmission through the occluded capillary bed.
 function buildBeat() {
   R0 = simulate(params(null));
   R = st.challenge ? simulate(params(st.challenge), { state: R0.state, slow: R0.slow }) : R0;
   evs = cardiacPhases(R); ev = evs.rv.events;
-  const n = Math.round(R.T * FS), m = R.rec.t.length;
-  const pick = (arr) => Array.from({ length: n }, (_, k) => arr[Math.min(m - 1, Math.floor((k / n) * m))]);
-  const la = pick(R.rec.Pla), wedge = new Array(n), d = Math.round(0.06 * FS), a = 1 / (1 + 0.05 * FS);
+  const seq = st.atr === 'af' ? afBeats(params(st.challenge), R) : [R];
+  const cat = { ra: [], rv: [], pa: [], la: [] }, parts = [];
+  for (const r of seq) {
+    const n = Math.round(r.T * FS), m = r.rec.t.length, ex = r === R ? evs : cardiacPhases(r);
+    const pick = (arr) => Array.from({ length: n }, (_, k) => arr[Math.min(m - 1, Math.floor((k / n) * m))]);
+    parts.push({ off: cat.ra.length, n, T: n / FS, wr: waveTimes('ra', r, ex), wl: waveTimes('la', r, ex),
+      kEd: Math.round((ex.rv.events.inClose / m) * n) });
+    cat.ra.push(...pick(r.rec.Pra)); cat.rv.push(...pick(r.rec.Prv)); cat.pa.push(...pick(r.rec.Ppa)); cat.la.push(...pick(r.rec.Pla));
+  }
+  const n = cat.ra.length, la = cat.la, wedge = new Array(n), d = Math.round(0.06 * FS), a = 1 / (1 + 0.05 * FS);
   let y = la.reduce((s, v) => s + v, 0) / n;
   for (let pass = 0; pass < 2; pass++) for (let k = 0; k < n; k++) { y += a * (la[(k - d + n) % n] - y); wedge[k] = y; }
-  beat = { n, ra: pick(R.rec.Pra), rv: pick(R.rec.Prv), pa: pick(R.rec.Ppa), wedge, la };
-  TB = n / FS;
+  beat = { n, ra: cat.ra, rv: cat.rv, pa: cat.pa, wedge, la, parts };
+  TB = n / FS;                        // length of the cycle (one beat except in AF)
   setBreath();
+}
+// The beat containing sample k of the cycle.
+function partAt(k) {
+  const ps = beat.parts;
+  for (let i = 0; i < ps.length; i++) if (k < ps[i].off + ps[i].n) return ps[i];
+  return ps[ps.length - 1];
+}
+// Every beat that overlaps [s0 - one cycle, s0 + N], newest first: bs is its QRS as an index into the window.
+function beatStarts(s0, N) {
+  const n = beat.n, list = [];
+  for (let c = Math.floor(s0 / n) - 1; c <= Math.floor((s0 + N) / n); c++) for (const p of beat.parts) list.push({ bs: c * n + p.off - s0, p });
+  return list.filter(({ bs, p }) => bs + p.n > -n && bs < N).sort((x, y) => y.bs - x.bs);
 }
 function setBreath() {
   const b = BREATHING[st.resp];
-  BREATH = Math.max(1, Math.round((b ? b.period : 4) / TB)) * TB;   // whole number of beats, so the pattern repeats exactly
+  const period = b ? b.period : 4;
+  // a whole number of beats, so the pattern repeats exactly; in AF the cycle of beats holds a whole number of breaths
+  BREATH = beat.parts.length > 1 ? TB / Math.max(1, Math.round(TB / period)) : Math.max(1, Math.round(period / TB)) * TB;
 }
 const WEDGE_LAG = 0.06 + 0.05;        // s: transmission delay + filter time constant
 
 // ECG in mV-ish screen units at time t (s); rhythm follows st.atr.
 function ecg(t) {
-  const ph = (((t % TB) + TB) % TB), u = ph / TB;
+  const s = Math.round(t * FS), k = ((s % beat.n) + beat.n) % beat.n, p = partAt(k);
+  const ph = (k - p.off) / FS, u = ph / R.T;          // QRS and T wave shaped on the mean beat
   let d = u < 0.03 ? Math.sin(u / 0.03 * Math.PI) * 12 * (u < 0.015 ? 1 : -0.4) : u > 0.3 && u < 0.45 ? Math.sin((u - 0.3) / 0.15 * Math.PI) * 3.5 : 0;
-  const tp = ph - (TB - PR);                         // P wave: 0–0.09 s after its onset
+  const tp = ph - (p.T - PR);                        // P wave: 0–0.09 s after its onset
   if ((st.atr === 'sinus' || st.atr === 'mr' || st.atr === 'tr') && tp >= 0 && tp < 0.09) d += 2 * Math.sin(tp / 0.09 * Math.PI);
   if (st.atr === 'af') {
-    // fibrillatory baseline, 4.7–8.9 Hz with a slowly varying amplitude. The frequencies fit the breath cycle
-    // (a whole number of beats, about 4 s), so the loop still repeats, but no pattern recurs from beat to
-    // beat, which would read as an organized atrial wave.
-    const fit = (f) => Math.round(f * BREATH) / BREATH, mod = 0.7 + 0.3 * Math.sin(2 * Math.PI * fit(1.3) * t);
-    d += mod * (0.55 * Math.sin(2 * Math.PI * fit(4.7) * t) + 0.45 * Math.sin(2 * Math.PI * fit(6.1) * t + 1.1)
-      + 0.35 * Math.sin(2 * Math.PI * fit(7.3) * t + 2.3) + 0.3 * Math.sin(2 * Math.PI * fit(8.9) * t + 0.4));
+    // fibrillatory baseline: fine, fast (6–10 Hz, 350–600/min) and irregular, with a slowly varying amplitude.
+    // The frequencies fit the cycle of beats, so the loop repeats, but nothing recurs before each QRS.
+    const fit = (f) => Math.round(f * TB) / TB, mod = 0.65 + 0.35 * Math.sin(2 * Math.PI * fit(0.9) * t);
+    d += mod * (0.32 * Math.sin(2 * Math.PI * fit(5.9) * t) + 0.3 * Math.sin(2 * Math.PI * fit(6.8) * t + 1.1)
+      + 0.28 * Math.sin(2 * Math.PI * fit(7.7) * t + 2.3) + 0.25 * Math.sin(2 * Math.PI * fit(8.8) * t + 0.4)
+      + 0.22 * Math.sin(2 * Math.PI * fit(9.9) * t + 3.0));
   }
   return d;
 }
@@ -159,7 +199,7 @@ function westZone() {
 // True tip pressure plus breathing and transducer level, then the catheter–tubing dynamics.
 function signal(tEnd, pos = st.pos) {
   const N = st.win * FS, warm = FS, out = new Array(N), raw = new Array(N), ed = [];
-  const kEd = Math.round((ev.inClose / R.rec.t.length) * beat.n);   // RV end-diastole sample within the beat
+  const edSet = new Set(beat.parts.map((p) => p.off + p.kEd));     // RV end-diastole sample of each beat
   const b = beat[pos];
   const dyn = st.damp === 'over' ? { wn: 2 * Math.PI * 3, z: 1.6 } : st.damp === 'under' ? { wn: 2 * Math.PI * 9, z: 0.08 } : null;
   let x = null, v = 0;
@@ -173,7 +213,7 @@ function signal(tEnd, pos = st.pos) {
     if (x === null) x = u;
     if (dyn) { for (let s = 0; s < 4; s++) { const acc = dyn.wn ** 2 * (u - x) - 2 * dyn.z * dyn.wn * v; v += acc * dt / 4; x += v * dt / 4; } }
     else x = u;
-    if (j >= 0) { out[j] = x; raw[j] = b[k]; if (k === kEd) ed.push(j); }
+    if (j >= 0) { out[j] = x; raw[j] = b[k]; if (edSet.has(k)) ed.push(j); }
   }
   return { out, raw, ed };
 }
@@ -281,13 +321,12 @@ const READ = {
 };
 // Reading point on every complete beat on screen (with its value), newest first.
 function readPoints(pos, out, s0, minJ = 0) {
-  const n = beat.n, N = out.length, A = st.atr;
-  const beats = [];
-  for (let bi = 1; bi <= Math.ceil(N / n) + 1; bi++) beats.push((Math.floor((s0 + N) / n) - bi) * n - s0);
+  const N = out.length, A = st.atr;
+  const beats = beatStarts(s0, N);
   const at = (bs, t) => bs + Math.round(t * FS);
   const argmin = (a, b) => { let k = -1; for (let j = Math.max(0, a); j <= Math.min(N - 1, b); j++) if (k < 0 || out[j] < out[k]) k = j; return k; };
-  const one = (bs) => {
-    const wr = waveTimes('ra'), wl = waveTimes('la');
+  const one = ({ bs, p }) => {
+    const { wr, wl } = p;
     if (pos === 'ra') {
       if (A === 'junc') { const j = at(bs, 0); return { j, band: null, how: 'the onset of the QRS, before the cannon a wave, because atrial and ventricular contraction coincide', ecg: 'QRS onset', ecgLong: 'at the onset of the QRS' }; }
       if (A === 'tr') { const j = at(bs, wr.tIn); return { j, band: null, how: 'the QRS, before the regurgitant cv wave begins, because the c wave merges into it', ecg: 'QRS', ecgLong: 'at the QRS' }; }
@@ -297,7 +336,7 @@ function readPoints(pos, out, s0, minJ = 0) {
     if (pos === 'rv') return { j: at(bs, wr.tIn), band: null };
     if (pos === 'pa') return { j: argmin(at(bs, wr.tIn - 0.01), at(bs, wr.tOpen + 0.01)), band: null };
     if (A === 'junc') return null;                           // cannon a in systole: no end-diastolic a wave
-    const ta = wl.a > TB / 2 ? wl.a - TB : wl.a;
+    const ta = wl.a > p.T / 2 ? wl.a - p.T : wl.a;
     const [t0, t1] = A === 'af' ? [0.13, 0.16] : [ta + WEDGE_LAG - 0.05, ta + WEDGE_LAG + 0.05];
     const band = [at(bs, t0), at(bs, t1)];
     return { j: Math.round((band[0] + band[1]) / 2), band, ...(A === 'af' ? { how: '130–160 ms after QRS onset, at end-expiration, because there is no a wave in AF', ecg: '130–160 ms after QRS', ecgLong: '130–160 ms after the onset of the QRS' } : {}) };
@@ -397,7 +436,8 @@ function drawAll(tEnd, target) {
     g.strokeStyle = '#E8D35F'; g.lineWidth = 1.8; drawTrace(g, (j) => out[j], map, N, x0, pw, Y);
     if (st.labels && (k === 'ra' || (k === 'wedge' && westZone().ee === 3))) labelWaves(g, out, s0, map, Y, k);
     if (st.guide) drawGuide(g, stableReading(k), readPoints(k, out, s0, map.G), map, Y, x0, pw, top, bot, false);
-    read[k] = report(out.slice(-beat.n * 2), k, ed, N - beat.n * 2);
+    const two = Math.min(N, 2 * Math.round(R.T * FS));
+    read[k] = report(out.slice(-two), k, ed, N - two);
     g.textAlign = 'left'; g.font = '600 12px system-ui'; g.fillStyle = '#E6EFEC';
     g.fillText(`${name}  ${read[k]}${k === 'wedge' && la ? '   (lavender: true LA)' : ''}`, x0 + 6, top + 4);
   });
@@ -463,11 +503,12 @@ function draw(tEnd, target) {
   if (st.challenge) { g.fillStyle = '#E8B962'; g.font = '600 12px system-ui'; g.fillText(`after: ${CHALLENGES[st.challenge].name}`, x0 + 60, top + 14); }
   drawEcg(g, s0, map, N, x0, pw, h - 12);
   // readout
-  const lastBeats = out.slice(-beat.n * 2), trueBeats = raw.slice(-beat.n * 2);
+  const two = Math.min(out.length, 2 * Math.round(R.T * FS));   // about the last 2 beats
+  const lastBeats = out.slice(-two), trueBeats = raw.slice(-two);
   const label = POS.find((p) => p[0] === st.pos)[1];
   const off = out.length - lastBeats.length;
   const read = { label, monitor: report(out, st.pos, ed), last: report(lastBeats, st.pos, ed, off), truth: report(trueBeats, st.pos, ed, off), reading: rd };
-  if (laTrue) read.la = `${stats(laTrue.slice(-beat.n * 2)).mean.toFixed(0)} mean`;
+  if (laTrue) read.la = `${stats(laTrue.slice(-two)).mean.toFixed(0)} mean`;
   if (st.pos === 'wedge') read.ed = endDiastolicWedge(out, s0);
   if (target) return read;
   st.lastReading = rd;
@@ -483,11 +524,10 @@ function draw(tEnd, target) {
 // End-diastolic wedge (the LVEDP estimate), read the way Vachiéry 2019 describes: the mean of
 // the a wave in sinus rhythm; 130–160 ms after QRS onset in AF. Averaged over the last 2 beats.
 function endDiastolicWedge(out, s0) {
-  const n = beat.n, N = out.length, w = waveTimes('la');
-  const vals = [];
-  for (let b = 1; b <= 2; b++) {
-    const bs = (Math.floor((s0 + N) / n) - b) * n - s0;          // QRS onset of this beat, as an index into `out`
-    const [t0, t1] = st.atr === 'af' ? [0.13, 0.16] : [w.a - TB + WEDGE_LAG - 0.05, w.a - TB + WEDGE_LAG + 0.05];
+  const N = out.length, vals = [];
+  const last2 = beatStarts(s0, N).filter(({ bs, p }) => bs + p.n <= N).slice(0, 2);   // the last 2 complete beats
+  for (const { bs, p } of last2) {
+    const w = p.wl, [t0, t1] = st.atr === 'af' ? [0.13, 0.16] : [w.a - p.T + WEDGE_LAG - 0.05, w.a - p.T + WEDGE_LAG + 0.05];
     for (let j = bs + Math.round(t0 * FS); j <= bs + Math.round(t1 * FS); j++) if (j >= 0 && j < N) vals.push(out[j]);
   }
   if (st.atr === 'junc' || !vals.length) return null;              // cannon a falls in systole: no end-diastolic a wave to read
@@ -497,10 +537,10 @@ function endDiastolicWedge(out, s0) {
 // Letters on every complete beat on screen, placed on the trace's own peaks and troughs.
 function labelWaves(g, out, s0, map, Y, pos = st.pos) {
   const wedge = pos === 'wedge', side = wedge ? 'la' : 'ra', lag = wedge ? WEDGE_LAG : 0, A = st.atr;
-  const w = waveTimes(side), n = beat.n, N = out.length;
+  const N = out.length;
   g.font = '600 13px system-ui'; g.textAlign = 'center'; g.fillStyle = '#F2C66D';
-  for (let bi = 1; bi <= Math.ceil(N / n) + 1; bi++) {
-    const bs = (Math.floor((s0 + N) / n) - bi) * n - s0;       // index in `out` of this beat's QRS
+  for (const { bs, p } of beatStarts(s0, N)) {               // bs: index in `out` of this beat's QRS
+    const w = side === 'ra' ? p.wr : p.wl;
     const idx = (t) => bs + Math.round((t + lag) * FS);
     const find = (t0, t1, max) => {
       const a = idx(t0), b = idx(t1);
@@ -509,7 +549,7 @@ function labelWaves(g, out, s0, map, Y, pos = st.pos) {
       for (let j = a; j <= b; j++) if (best < 0 || (max ? out[j] > out[best] : out[j] < out[best])) best = j;
       return best;
     };
-    const T = TB, ta = w.a > T / 2 && A !== 'junc' ? w.a - T : w.a;
+    const T = p.T, ta = w.a > T / 2 && A !== 'junc' ? w.a - T : w.a;
     const big = (A === 'mr' && wedge) || (A === 'tr' && !wedge);
     const items = [];
     if (A !== 'af') items.push([A === 'junc' ? 'cannon a' : 'a', find(ta - 0.06, ta + 0.06, true), true]);
@@ -658,7 +698,8 @@ function pacSpec() {
       const W = 1100, h = Math.round(W * (all ? 0.95 : 0.42)), top = 56, band = 44, H = even(top + h + band);
       const c = document.createElement('canvas'); c.width = W; c.height = h;
       const cg = c.getContext('2d'), t0 = 100 * BREATH;          // well past start-up, on a whole breath and beat
-      const duration = st.resp === 'none' ? Math.ceil(3 / TB) * TB : BREATH;
+      // the loop must repeat exactly: whole beats, a whole breath, or in AF the whole cycle of irregular beats
+      const duration = beat.parts.length > 1 ? TB : st.resp === 'none' ? Math.ceil(3 / TB) * TB : BREATH;
       const first = draw(t0 + duration, { g: cg, w: W, h });
       this.notes = all ? `Last 2 beats: RA ${first.ra}, RV ${first.rv}, PA ${first.pa}, PAWP ${first.wedge} mmHg. Artifact: ${fault}.` : `Monitor reads ${first.monitor} (whole screen), last 2 beats ${first.last}; true tip pressure ${first.truth} mmHg.${first.reading ? ` ${first.reading.name} read at ${first.reading.how}: ${first.reading.value.toFixed(0)} mmHg.` : ''} Artifact: ${fault}.`;
       return {

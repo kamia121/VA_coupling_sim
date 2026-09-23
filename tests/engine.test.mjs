@@ -232,10 +232,19 @@ Object.assign(_pac.st, { preset: 'normal', damp: 'ok', resp: 'none' }); _pac.bui
     check('severe TR: systolic RA wave (after the c wave) ≥ 2 mmHg higher than in sinus rhythm without TR', vT - vS >= 2, `${vS.toFixed(1)} → ${vT.toFixed(1)}`); }
   for (const a of ['af', 'junc', 'mr']) {
     setAtr(a); Object.assign(_pac.st, { pos: 'wedge', resp: 'spont' });
-    const t0 = 100 * _pac.breath, s1 = _pac.signal(t0).out, s2 = _pac.signal(t0 + _pac.breath).out;
-    check(`${a}: wedge tracing still periodic over one breath`, s1.every((v, k) => Math.abs(v - s2[k]) < 1e-6));
+    // in AF the tracing repeats once per cycle of irregular beats, which holds a whole number of breaths
+    const per = a === 'af' ? _pac.tb : _pac.breath;
+    const t0 = 100 * per, s1 = _pac.signal(t0).out, s2 = _pac.signal(t0 + per).out;
+    check(`${a}: wedge tracing still periodic over one ${a === 'af' ? 'cycle of beats' : 'breath'}`, s1.every((v, k) => Math.abs(v - s2[k]) < 1e-6));
+    if (a === 'af') {
+      const rr = _pac.beat.parts.map((p) => p.T), lo = Math.min(...rr), hi = Math.max(...rr);
+      check('AF: irregularly irregular RR (≥ 5 beats per cycle, RR range ≥ 0.3 s)', rr.length >= 5 && hi - lo >= 0.3, `${rr.length} beats, RR ${lo.toFixed(2)}–${hi.toFixed(2)} s`);
+      const w = _pac.beat.wedge, n = w.length, jump = Math.max(...w.map((v, k) => Math.abs(v - w[(k + 1) % n])));
+      check('AF: the beat sequence joins without a jump in pressure', jump < 0.5, jump.toFixed(2));
+    }
   }
   Object.assign(_pac.st, { atr: 'sinus', pos: 'ra', resp: 'none' }); _pac.buildBeat();
+check('sinus rhythm: one repeating beat', _pac.beat.parts.length === 1);
 }
 
 // 11. GIF encoder: decode our own output and compare every pixel
