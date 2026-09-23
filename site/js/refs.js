@@ -1,5 +1,5 @@
 // Bibliography. Every entry was checked against its PubMed record (PMID, title, authors,
-// journal, year, pages, DOI) on 2026-09-22 (entries from guarracino2013 onward on 2026-09-23). Page text cites entries by key.
+// journal, year, pages, DOI) on 2026-09-22 (entries from guarracino2013 onward on 2026-09-23; rola2025 onward also on 2026-09-23). Page text cites entries by key.
 export const REFS = [
  {
   "key": "suga1973",
@@ -891,6 +891,213 @@ export const REFS = [
   "pages": "372-92",
   "pmid": "28385280",
   "doi": "10.1016/j.echo.2017.02.009"
+ },
+ {
+  "key": "rola2025",
+  "authors": "Rola P, Kattan E, Siuba MT, et al",
+  "title": "Point of view: a holistic four-interface conceptual model for personalizing shock resuscitation",
+  "journal": "J Pers Med",
+  "year": 2025,
+  "volume": "15",
+  "pages": "207",
+  "pmid": "40423078",
+  "doi": "10.3390/jpm15050207"
+ },
+ {
+  "key": "persichini2012",
+  "authors": "Persichini R, Silva S, Teboul JL, et al",
+  "title": "Effects of norepinephrine on mean systemic pressure and venous return in human septic shock",
+  "journal": "Crit Care Med",
+  "year": 2012,
+  "volume": "40",
+  "pages": "3146-53",
+  "pmid": "22926333",
+  "doi": "10.1097/CCM.0b013e318260c6c3"
+ },
+ {
+  "key": "maas2009",
+  "authors": "Maas JJ, Geerts BF, van den Berg PC, et al",
+  "title": "Assessment of venous return curve and mean systemic filling pressure in postoperative cardiac surgery patients",
+  "journal": "Crit Care Med",
+  "year": 2009,
+  "volume": "37",
+  "pages": "912-8",
+  "pmid": "19237896",
+  "doi": "10.1097/CCM.0b013e3181961481"
+ },
+ {
+  "key": "maas2013",
+  "authors": "Maas JJ, Pinsky MR, de Wilde RB, et al",
+  "title": "Cardiac output response to norepinephrine in postoperative cardiac surgery patients: interpretation with venous return and cardiac function curves",
+  "journal": "Crit Care Med",
+  "year": 2013,
+  "volume": "41",
+  "pages": "143-50",
+  "pmid": "23128382",
+  "doi": "10.1097/CCM.0b013e318265ea64"
+ },
+ {
+  "key": "andrei2023",
+  "authors": "Andrei S, Bar S, Nguyen M, et al",
+  "title": "Effect of norepinephrine on the vascular waterfall and tissue perfusion in vasoplegic hypotensive patients: a prospective, observational, applied physiology study in cardiac surgery",
+  "journal": "Intensive Care Med Exp",
+  "year": 2023,
+  "volume": "11",
+  "pages": "52",
+  "pmid": "37599310",
+  "doi": "10.1186/s40635-023-00539-x"
+ },
+ {
+  "key": "chandrasekhar2023",
+  "authors": "Chandrasekhar A, Padrós-Valls R, Pallarès-López R, et al",
+  "title": "Tissue perfusion pressure enables continuous hemodynamic evaluation and risk prediction in the intensive care unit",
+  "journal": "Nat Med",
+  "year": 2023,
+  "volume": "29",
+  "pages": "1998-2006",
+  "pmid": "37550417",
+  "doi": "10.1038/s41591-023-02474-6"
+ },
+ {
+  "key": "hernandez2019",
+  "authors": "Hernández G, Ospina-Tascón GA, Damiani LP, et al",
+  "title": "Effect of a resuscitation strategy targeting peripheral perfusion status vs serum lactate levels on 28-day mortality among patients with septic shock: the ANDROMEDA-SHOCK randomized clinical trial",
+  "journal": "JAMA",
+  "year": 2019,
+  "volume": "321",
+  "pages": "654-64",
+  "pmid": "30772908",
+  "doi": "10.1001/jama.2019.0071"
+ },
+ {
+  "key": "ronco1993",
+  "authors": "Ronco JJ, Fenwick JC, Tweeddale MG, et al",
+  "title": "Identification of the critical oxygen delivery for anaerobic metabolism in critically ill septic and nonseptic humans",
+  "journal": "JAMA",
+  "year": 1993,
+  "volume": "270",
+  "pages": "1724-30",
+  "pmid": "8411504"
+ },
+ {
+  "key": "beaubien2020",
+  "authors": "Beaubien-Souligny W, Rola P, Haycock K, et al",
+  "title": "Quantifying systemic congestion with point-of-care ultrasound: development of the venous excess ultrasound grading system",
+  "journal": "Ultrasound J",
+  "year": 2020,
+  "volume": "12",
+  "pages": "16",
+  "pmid": "32270297",
+  "doi": "10.1186/s13089-020-00163-w"
+ },
+ {
+  "key": "mallat2016",
+  "authors": "Mallat J, Lemyze M, Tronchon L, et al",
+  "title": "Use of venous-to-arterial carbon dioxide tension difference to guide resuscitation therapy in septic shock",
+  "journal": "World J Crit Care Med",
+  "year": 2016,
+  "volume": "5",
+  "pages": "47-56",
+  "pmid": "26855893",
+  "doi": "10.5492/wjccm.v5.i1.47"
+ },
+ {
+  "key": "ospina2013",
+  "authors": "Ospina-Tascón GA, Bautista-Rincón DF, Umaña M, et al",
+  "title": "Persistently high venous-to-arterial carbon dioxide differences during early resuscitation are associated with poor outcomes in septic shock",
+  "journal": "Crit Care",
+  "year": 2013,
+  "volume": "17",
+  "pages": "R294",
+  "pmid": "24330804",
+  "doi": "10.1186/cc13160"
+ },
+ {
+  "key": "edelson1986",
+  "authors": "Edelson J, Stroshane R, Benziger DP, et al",
+  "title": "Pharmacokinetics of the bipyridines amrinone and milrinone",
+  "journal": "Circulation",
+  "year": 1986,
+  "volume": "73",
+  "pages": "III145-52",
+  "pmid": "3510771"
+ },
+ {
+  "key": "ohba2006",
+  "authors": "Ohba T, Otsuji Y, Shiki E, et al",
+  "title": "Different effects of propranolol, phenylephrine, and saline volume loading on catecholamine-induced left ventricular outflow tract obstruction in acute coronary syndrome",
+  "journal": "Int Heart J",
+  "year": 2006,
+  "volume": "47",
+  "pages": "287-95",
+  "pmid": "16607055",
+  "doi": "10.1536/ihj.47.287"
+ },
+ {
+  "key": "sherrid2021",
+  "authors": "Sherrid MV, Swistel DG, Olivotto I, et al",
+  "title": "Syndrome of reversible cardiogenic shock and left ventricular ballooning in obstructive hypertrophic cardiomyopathy",
+  "journal": "J Am Heart Assoc",
+  "year": 2021,
+  "volume": "10",
+  "pages": "e021141",
+  "pmid": "34634917",
+  "doi": "10.1161/JAHA.121.021141"
+ },
+ {
+  "key": "forrester1976",
+  "authors": "Forrester JS, Diamond G, Chatterjee K, Swan HJ",
+  "title": "Medical therapy of acute myocardial infarction by application of hemodynamic subsets (second of two parts)",
+  "journal": "N Engl J Med",
+  "year": 1976,
+  "volume": "295",
+  "pages": "1404-13",
+  "pmid": "790194",
+  "doi": "10.1056/NEJM197612162952505"
+ },
+ {
+  "key": "hahn2020",
+  "authors": "Hahn RG",
+  "title": "Understanding volume kinetics",
+  "journal": "Acta Anaesthesiol Scand",
+  "year": 2020,
+  "volume": "64",
+  "pages": "570-8",
+  "pmid": "31863457",
+  "doi": "10.1111/aas.13533"
+ },
+ {
+  "key": "annane2007",
+  "authors": "Annane D, Vignon P, Renault A, et al",
+  "title": "Norepinephrine plus dobutamine versus epinephrine alone for management of septic shock: a randomised trial",
+  "journal": "Lancet",
+  "year": 2007,
+  "volume": "370",
+  "pages": "676-84",
+  "pmid": "17720019",
+  "doi": "10.1016/S0140-6736(07)61344-0"
+ },
+ {
+  "key": "russell2008",
+  "authors": "Russell JA, Walley KR, Singer J, et al",
+  "title": "Vasopressin versus norepinephrine infusion in patients with septic shock",
+  "journal": "N Engl J Med",
+  "year": 2008,
+  "volume": "358",
+  "pages": "877-87",
+  "pmid": "18305265",
+  "doi": "10.1056/NEJMoa067373"
+ },
+ {
+  "key": "castro2026",
+  "authors": "Castro R, Retamal J, Hernández G, et al",
+  "title": "Critical closing pressure in the circulation: understanding the vascular waterfall phenomenon",
+  "journal": "J Crit Care",
+  "year": 2026,
+  "volume": "93",
+  "pages": "155485",
+  "pmid": "41747522",
+  "doi": "10.1016/j.jcrc.2026.155485"
  }
 ];
 

@@ -81,7 +81,22 @@ export const NORMAL = Object.freeze({
   corL0: 48.15, corR0: 86.55, pvaL0: 10963, pvaR0: 1572,   // perfusion and PVA of the normal heart
   // Valve lesions: stenotic orifice area (cm², 0 = normal) and regurgitant orifice (EROA, cm²)
   avArea: 0, mrEroa: 0, trEroa: 0, arEroa: 0,
+  // Dynamic LVOT obstruction: the outflow orifice narrows as the LV empties below lvoto mL
+  // during contraction (0 = off). Area runs from lvotAmax to lvotAmin (cm²) over a width lvotW mL.
+  lvoto: 0, lvotW: 5, lvotAmax: 3.5, lvotAmin: 0.2,
 });
+
+// Effective LVOT orifice (cm²) at LV volume V and activation e; 0 means unobstructed.
+function lvotArea(V, e, p) {
+  if (!(p.lvoto > 0)) return 0;
+  const closing = Math.min(1, e / 0.25) / (1 + Math.exp((V - p.lvoto) / p.lvotW));
+  return p.lvotAmax - (p.lvotAmax - p.lvotAmin) * closing;
+}
+// Combine two orifices in series (stenotic valve and dynamic LVOT): 1/A² add.
+function seriesArea(a, b) {
+  if (!(a > 0)) return b; if (!(b > 0)) return a;
+  return 1 / Math.sqrt(1 / (a * a) + 1 / (b * b));
+}
 
 // Double-Hill activation (Stergiopulos et al. 1996), with the time to peak
 // elastance scaled to the cardiac period: Tmax = 0.2 + 0.15·T. With `relax` on, the falling
@@ -197,7 +212,7 @@ function pressures(s, e, ea, p, ctx) {
   }
   const Pra = Era * (VraE - p.raV0) + Ppcd;
   const Pla = Ela * (VlaE - p.laV0) + Ppcd;
-  const Qao = valveFlow(Plv - Psa, p.zcAo, p.avArea);   // aortic valve + Zc (+ stenotic orifice)
+  const Qao = valveFlow(Plv - Psa, p.zcAo, seriesArea(p.avArea, lvotArea(s[0], e, p)));   // aortic valve + Zc (+ stenotic or dynamic LVOT orifice)
   const Qar = leak(Psa - Plv, p.arEroa);                 // aortic regurgitation
   const Qmv = valveFlow(Pla - Plv, p.rMv, 0);            // mitral inflow
   const Qmr = leak(Plv - Pla, p.mrEroa);                 // mitral regurgitation
@@ -385,6 +400,33 @@ function ventricleMetrics(V, P, Part, tIdxEs, Ees, V0, hr, flows, dt) {
   };
 }
 
+// Mean circulatory filling pressure: the common pressure at which, with flow stopped and the heart
+// relaxed, the stressed volume fills every compartment (vessels by compliance, chambers along their
+// diastolic curves, with the pericardium). Septal shift is neglected.
+export function filling(q) {
+  const chamber = (P, A, beta) => (P > -A ? Math.log(1 + P / A) / beta : -50);
+  const heldAt = (P) => {
+    // pericardial pressure solves Ppcd = f(heart volume at transmural P − Ppcd)
+    let lo = 0, hi = q.pericardium ? Math.max(0, P) + 60 : 0, ppcd = 0;
+    const heart = (x) => q.lvV0 + chamber(P - x, q.lvA, q.lvBeta) + q.rvV0 + chamber(P - x, q.rvA, q.rvBeta)
+      + q.laV0 + (P - x) / q.laEmin + q.raV0 + (P - x) / q.raEmin;
+    if (q.pericardium) {
+      for (let i = 0; i < 50; i++) {
+        const m = (lo + hi) / 2;
+        const f = q.pcdP0 * (Math.exp(q.pcdLambda * (heart(m) + q.pcdFluid - q.pcdV0)) - 1);
+        if (f > m) lo = m; else hi = m;
+      }
+      ppcd = (lo + hi) / 2;
+    }
+    const Pt = P - ppcd;
+    return P * (q.cSys + q.cSv + q.cPa + q.cPv) + chamber(Pt, q.lvA, q.lvBeta) + chamber(Pt, q.rvA, q.rvBeta)
+      + Pt / q.laEmin + Pt / q.raEmin;
+  };
+  let lo = -5, hi = 80;
+  for (let i = 0; i < 50; i++) { const m = (lo + hi) / 2; if (heldAt(m) < q.vStressed) lo = m; else hi = m; }
+  return (lo + hi) / 2;
+}
+
 function dist(a, b) { return Math.max(...a.map((x, i) => Math.abs(x - b[i]))); }
 
 /**
@@ -436,9 +478,14 @@ export function simulate(params, opt = {}) {
   // LV filling during atrial systole (mitral flow while the atrium is active), as a share of SV
   let aFill = 0;
   for (let i = 0; i < rec.t.length; i++) if (rec.aAct[i] > 0.02) aFill += rec.Qmv[i] * dt;
-  // Aortic valve gradient during ejection
+  // Outflow gradient (aortic valve and LVOT) during ejection
   let gSum = 0, gN = 0, gMax = 0;
   for (let i = 0; i < rec.t.length; i++) if (rec.Qao[i] > 1) { const g = rec.Plv[i] - rec.Pao[i]; gSum += g; gN++; if (g > gMax) gMax = g; }
+  // Mean systemic filling pressure (Guyton): the pressure the systemic arteries and veins would share
+  // if their stressed volume were redistributed with flow stopped, averaged over the beat
+  let vSys = 0;
+  for (let i = 0; i < rec.t.length; i++) vSys += (rec.Pao[i] - rec.Qao[i] * q.zcAo) * q.cSys + rec.Psv[i] * q.cSv;
+  const Pmsf = vSys / rec.t.length / (q.cSys + q.cSv);
   const coLmin = lv.CO;
   const hemo = {
     SBP: lv.artMax, DBP: lv.artMin, MAP: lv.artMean,
@@ -452,6 +499,8 @@ export function simulate(params, opt = {}) {
     Ppcd: mean(rec.Ppcd),
     VsptED: rec.Vspt[rec.Vlv.indexOf(lv.EDV)],
     avMeanGrad: gN ? gSum / gN : 0, avPeakGrad: gMax,
+    // venous return: Pmsf − RAP drives it against the resistance to venous return
+    Pmsf, Pmcf: filling(q), vrGrad: Pmsf - RAP, Rvr: (Pmsf - RAP) / (coLmin * 1000 / 60),
     ischL: sl.ischL, ischR: sl.ischR,
     supplyL: sl.supplyL, supplyR: sl.supplyR,
   };

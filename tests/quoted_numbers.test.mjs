@@ -2,6 +2,9 @@
 // sentence that has to change with it. Run with: node tests/quoted_numbers.test.mjs
 import { simulate, NORMAL, cardiacPhases } from '../site/js/engine.js';
 import { PRESETS, INTERVENTIONS, presetById } from '../site/js/presets.js';
+import { createPatient, advance, setDrug, give } from '../site/js/shockcore.js';
+import { oxygen } from '../site/js/oxygen.js';
+import { guyton } from '../site/js/interfaces.js';
 
 let failed = 0;
 function q(where, value, target, tol) {
@@ -150,6 +153,35 @@ q('TR: RV RF %', tr.rv.RF * 100, 46, 0.6); q('TR: regurgitant volume', tr.rv.RVo
 q('TR: RA peak', Math.max(...tr.rec.Pra), 20, 0.6); q('TR: RV EDV', tr.rv.EDV, 230, 0.6); q('TR: septal shift', -tr.hemo.VsptED, 12, 0.6);
 q('TR: diuresis RAP', trR.hemo.RAP, 10.1, 0.06); q('TR: CO', tr.hemo.CO, 5.2, 0.06); q('TR: diuresis CO', trR.hemo.CO, 5.0, 0.06);
 q('Index tour: PE ischemia norepi CO', pIN.hemo.CO, 3.5, 0.06);
+
+// Interfaces page and Shock lab cases
+const shock = (id, plan, minutes, step = 1) => { const pt = createPatient(id); plan(pt); for (let t = 0; t < minutes; t += step) advance(pt, step); return pt; };
+const cs0 = createPatient('cardiogenic').out;
+q('Interfaces: cardiogenic Ea/Ees', cs0.lvEaEes, 4.2, 0.06); q('Interfaces: cardiogenic VTI', cs0.vti, 8, 0.5); q('Interfaces: cardiogenic LAP', cs0.lap, 22, 0.5);
+q('Interfaces: dobutamine 10 min Ea/Ees', shock('cardiogenic', (p) => setDrug(p, 'dobutamine', 5), 10).out.lvEaEes, 2.9, 0.06);
+q('Interfaces: norepinephrine Ea/Ees', shock('cardiogenic', (p) => setDrug(p, 'norepinephrine', 0.1), 15).out.lvEaEes, 4.9, 0.06);
+const oN = oxygen(5.56), o3 = oxygen(3);
+q('Interfaces: critical DO2', oN.do2crit, 350, 0.6); q('Interfaces: critical DO2 per kg', oN.do2crit / 70, 5.0, 0.06);
+q('Interfaces: normal DO2', oN.do2, 882, 0.6); q('Interfaces: normal ScvO2', oN.svo2 * 100, 74, 0.6); q('Interfaces: normal gap', oN.gap, 4, 0.06);
+q('Interfaces: DO2 at 3 L/min', o3.do2, 476, 0.6); q('Interfaces: ScvO2 at 3 L/min', o3.svo2 * 100, 53, 0.6); q('Interfaces: gap at 3 L/min', o3.gap, 7.4, 0.06);
+const vp = createPatient('vasoplegia').out;
+q('Interfaces/Shock: vasoplegia MAP', vp.map, 64, 0.6); q('Interfaces/Shock: vasoplegia CO', vp.co, 8.2, 0.06); q('Interfaces: vasoplegia ScvO2', vp.svo2 * 100, 76, 0.6);
+const G = guyton();
+q('Interfaces: normal Pmsf', G.pts[1].pmsf, 7.8, 0.06); q('Interfaces: normal RAP', G.pts[1].rap, 4.1, 0.06); q('Interfaces: Rvr mmHg·s/L', G.pts[1].rvr * 1000, 40, 0.5);
+q('Interfaces: +300 Pmsf', G.pts[2].pmsf, 12.0, 0.06); q('Interfaces: +300 RAP', G.pts[2].rap, 8.0, 0.06); q('Interfaces: +300 CO', G.pts[2].co, 6.0, 0.06);
+q('Interfaces: −200 Pmsf', G.pts[0].pmsf, 5.4, 0.06); q('Interfaces: −200 RAP', G.pts[0].rap, 2.2, 0.06); q('Interfaces: −200 CO', G.pts[0].co, 4.8, 0.06);
+q('Interfaces: failing heart Pmsf', G.fail.pmsf, 4.6, 0.06); q('Interfaces: failing heart CO', G.fail.co, 2.8, 0.06); q('Interfaces: failing heart RAP', G.fail.rap, 2.7, 0.06);
+const ne10 = shock('vasoplegia', (p) => setDrug(p, 'norepinephrine', 0.1), 10).out;
+q('Shock: vasoplegia norepinephrine MAP at 10 min', ne10.map, 81, 0.6); q('Shock: vasoplegia Pmsf', vp.pmsf, 8.2, 0.06); q('Shock: norepinephrine Pmsf', ne10.pmsf, 9.1, 0.06);
+const fl = createPatient('vasoplegia'); give(fl, 'crystalloid'); give(fl, 'crystalloid'); let flPeak = 0;
+for (let t = 0; t < 15; t++) { advance(fl, 1); flPeak = Math.max(flPeak, fl.out.co); }
+for (let t = 0; t < 15; t++) advance(fl, 1);
+q('Shock: two boluses peak CO', flPeak, 9.3, 0.06); q('Shock: CO 15 min after the boluses', fl.out.co, 8.6, 0.06);
+const h0 = createPatient('hemorrhage'), hb0 = h0.out, hs = {};
+for (let t = 1; t <= 45; t++) { advance(h0, 1); if ([15, 30, 45].includes(t)) hs[t] = { ...h0.out }; }
+q('Shock: hemorrhage 15 min Pmsf fall %', -pct(hb0.pmsf, hs[15].pmsf), 22, 0.6); q('Shock: 15 min CO fall %', -pct(hb0.co, hs[15].co), 6, 0.6);
+q('Shock: 15 min MAP fall %', -pct(hb0.map, hs[15].map), 4, 0.6); q('Shock: 15 min loss', hs[15].bled, 450, 1);
+q('Shock: 30 min MAP', hs[30].map, 85, 0.6); q('Shock: 30 min loss % of blood volume', hs[30].bled / 4900 * 100, 18, 0.6); q('Shock: 45 min MAP', hs[45].map, 74, 0.6);
 
 console.log(failed ? `\n${failed} quoted number(s) out of date` : '\nall quoted numbers match the model');
 process.exit(failed ? 1 : 0);
