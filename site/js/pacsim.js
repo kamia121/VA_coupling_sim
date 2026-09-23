@@ -125,8 +125,11 @@ function draw(tEnd, target) {
     const c = $('#pac-scr'), cs = getComputedStyle(c.parentElement);
     w = Math.floor(Math.min(800, c.parentElement.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight))); h = Math.round(w * (w < 520 ? 0.75 : 0.42));
     const dpr = window.devicePixelRatio || 1;
-    if (c.width !== w * dpr || c.height !== h * dpr) { c.width = w * dpr; c.height = h * dpr; c.style.width = w + 'px'; c.style.height = h + 'px'; }
-    g = c.getContext('2d'); g.setTransform(dpr, 0, 0, dpr, 0, 0);
+    // whole-pixel backing store: with a fractional devicePixelRatio (125%, 150%) w·dpr is not an integer,
+    // so comparing it with c.width never matched and the canvas was cleared and resized on every frame
+    const bw = Math.round(w * dpr), bh = Math.round(h * dpr);
+    if (c.width !== bw || c.height !== bh) { c.width = bw; c.height = bh; c.style.width = w + 'px'; c.style.height = h + 'px'; }
+    g = c.getContext('2d'); g.setTransform(bw / w, 0, 0, bh / h, 0, 0);
   }
   g.fillStyle = '#05090A'; g.fillRect(0, 0, w, h);
   const { out, raw, ed } = signal(tEnd);
