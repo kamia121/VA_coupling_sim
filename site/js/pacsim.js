@@ -4,6 +4,7 @@ import { simulate, cardiacPhases } from './engine.js';
 import { PRESETS, presetById } from './presets.js';
 import { combine, FLUIDS } from './pharm.js';
 import { addExport, header, even } from './export.js';
+import { ecgWave } from './ecgwave.js';
 
 const FS = 250;                       // display sample rate, Hz
 const MMHG_PER_10CM = 7.4;            // 10 cmH2O × 0.735 mmHg/cmH2O
@@ -142,10 +143,8 @@ const WEDGE_LAG = 0.06 + 0.05;        // s: transmission delay + filter time con
 // ECG in mV-ish screen units at time t (s); rhythm follows st.atr.
 function ecg(t) {
   const s = Math.round(t * FS), k = ((s % beat.n) + beat.n) % beat.n, p = partAt(k);
-  const ph = (k - p.off) / FS, u = ph / R.T;          // QRS and T wave shaped on the mean beat
-  let d = u < 0.03 ? Math.sin(u / 0.03 * Math.PI) * 12 * (u < 0.015 ? 1 : -0.4) : u > 0.3 && u < 0.45 ? Math.sin((u - 0.3) / 0.15 * Math.PI) * 3.5 : 0;
-  const tp = ph - (p.T - PR);                        // P wave: 0–0.09 s after its onset
-  if ((st.atr === 'sinus' || st.atr === 'mr' || st.atr === 'tr') && tp >= 0 && tp < 0.09) d += 2 * Math.sin(tp / 0.09 * Math.PI);
+  const withP = st.atr === 'sinus' || st.atr === 'mr' || st.atr === 'tr';
+  let d = ecgWave((k - p.off) / FS, p.T, withP ? PR : 0);
   if (st.atr === 'af') {
     // fibrillatory baseline: fine, fast (6–10 Hz, 350–600/min) and irregular, with a slowly varying amplitude.
     // The frequencies fit the cycle of beats, so the loop repeats, but nothing recurs before each QRS.
