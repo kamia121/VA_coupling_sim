@@ -400,3 +400,52 @@ body[data-view="both"] .pv-card { position: static; }
 .ratio-read b { color: var(--mon-current); }
 .rq-sv { fill: var(--mon-current); opacity: 0.85; }
 .rq-kept { fill: var(--mon-ref); opacity: 0.9; }
+
+/* Simulator: physiology switches and valve lesions */
+.mech { display: flex; flex-direction: column; gap: 4px; margin: 6px 0 10px; }
+.mech .k a { font-weight: 400; margin-left: 6px; }
+.mech-sw { display: flex; align-items: center; gap: 8px; font-size: 0.9rem; cursor: pointer; }
+.mech-sw input { accent-color: var(--mcw-green); width: 16px; height: 16px; }
+.valve-seg .k { margin: 4px 0 2px; }
+.fig .legend { color: var(--mon-axis); margin: 2px 0 6px; }
+.mech-sec .table-wrap { margin-top: 10px; }
+.try { font-size: 0.92rem; }
+.grid.cols-2.valves .monitor { padding: 8px; }
+.grid.valves { grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); }
+
+/* ---------- shock lab ---------- */
+.clock { font-family: "Source Code Pro", ui-monospace, monospace; font-size: 0.95rem; }
+.seg.speed { margin: 0; }
+.mon-bed canvas { display: block; border-radius: 4px; max-width: 100%; }
+.mon-opt { color: var(--mon-axis); display: flex; gap: 4px; align-items: center; }
+.ifaces { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 10px; }
+.iface { border: 1px solid var(--border); border-left: 4px solid var(--mcw-green); border-radius: 6px; padding: 6px 10px; }
+.iface.bad { border-left-color: var(--flag); }
+.iface h3 { font-size: 0.95rem; margin: 0 0 4px; display: flex; align-items: baseline; gap: 6px; }
+.iface-n { font-family: "Source Serif 4", Georgia, serif; color: var(--text-muted); }
+.iface-s { margin-left: auto; font-size: 0.75rem; font-weight: 400; color: var(--mcw-green); }
+.iface.bad .iface-s { color: var(--flag); font-weight: 600; }
+.iface table { width: 100%; }
+.iface td { padding: 3px 4px; }
+.drug-grp { border: 1px solid var(--border); border-radius: 6px; margin: 0 0 8px; padding: 2px 10px 6px; }
+.drug-grp legend { font-weight: 600; font-size: 0.85rem; padding: 0 4px; }
+.drug { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 8px; align-items: center; padding: 5px 0 4px; border-bottom: 1px solid var(--border); font-size: 0.9rem; }
+.drug:last-child { border-bottom: 0; }
+.drug label { font-weight: 600; }
+.drug.on label { color: var(--mcw-green); }
+.drug-in { display: flex; align-items: center; gap: 4px; grid-column: 1; }
+.drug-in input { font: inherit; width: 5.5em; color: var(--text); background: var(--surface); border: 1px solid var(--border); border-radius: 4px; padding: 3px 6px; }
+.drug-in .unit { font-size: 0.75rem; color: var(--text-muted); white-space: nowrap; }
+.drug-btns { grid-column: 2; grid-row: 1 / span 2; display: flex; gap: 4px; }
+.drug .pb-btn { font: inherit; font-size: 0.78rem; padding: 3px 8px; border-radius: 99px; border: 1px solid var(--border); background: var(--surface-2); color: var(--text); cursor: pointer; }
+.lvl { grid-column: 1 / -1; height: 4px; background: var(--surface-2); border-radius: 2px; overflow: hidden; }
+.lvl span { display: block; height: 100%; width: 0; background: var(--mcw-green); transition: width 0.4s; }
+.vol-rates { margin: 10px 0; }
+.log { margin: 0; padding-left: 0; list-style: none; font-size: 0.88rem; max-height: 14em; overflow-y: auto; }
+.log li { padding: 2px 0; border-bottom: 1px solid var(--border); }
+.log-t { font-family: "Source Code Pro", ui-monospace, monospace; color: var(--text-muted); margin-right: 8px; }
+.trends { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 8px 14px; }
+.trends svg { width: 100%; height: auto; display: block; }
+@media (prefers-reduced-motion: reduce) { .lvl span { transition: none; } }
+.calc-out .metrics { margin-top: 6px; }
+.side-col.shock-side .panel:first-child { display: block; }   /* the simulator hides its first side panel on phones; the shock lab does not */

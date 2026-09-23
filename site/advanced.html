@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script>try{var t=localStorage.getItem('vac-theme');if(t==='light'||t==='dark')document.documentElement.setAttribute('data-theme',t)}catch(e){}</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Code+Pro:wght@400;500&family=Source+Sans+3:ital,wght@0,400;0,600;1,400&family=Source+Serif+4:wght@600&display=swap">
+<link rel="stylesheet" href="css/tokens.css">
+<link rel="stylesheet" href="css/site.css">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='5' fill='%232F6E66'/%3E%3Cpath d='M8 24 V10 L24 8 V22 Z' fill='none' stroke='white' stroke-width='2.5' stroke-linejoin='round'/%3E%3C/svg%3E">
+<title>Advanced Physiology</title>
+<meta name="description" content="Pericardium, septal interdependence, atrial waves, relaxation, force–frequency, baroreflex, coronary perfusion, and valve lesions in the ventricular–arterial coupling model.">
+</head>
+<body>
+<main>
+<article class="prose">
+  <h1>Advanced physiology</h1>
+  <p class="lede">Seven mechanisms extend the eight-compartment model of the Concepts page, and four valve lesions can be added to it. Each mechanism is on by default and can be switched off in the Physiology panel of the simulator. Each figure below draws the same heart with the mechanism on (green) and off (gray), and the table beneath it gives the values from the model.</p>
+
+  <section class="mech-sec">
+  <h2 id="pericardium">Pericardium</h2>
+  <p>The pericardium is represented as a single elastic sac around both ventricles and both atria. Its pressure rises exponentially with the total heart volume plus any pericardial fluid, P<sub>pcd</sub> = P₀·(e<sup>λ(V<sub>heart</sub> + V<sub>fluid</sub> − V₀)</sup> − 1), and it adds to the pressure in every chamber. At normal volumes it varies between about −0.4 and 1.5 mmHg over the cycle. Chronic dilation enlarges the pericardial sac without changing the stiffness of its tissue <cite data-ref="freeman1984"></cite>, and the dilated scenarios represent this with a larger V₀.</p>
+  <p>Because the constraint acts on the whole heart, filling of one chamber raises the pressure in all of them, and diastolic pressures converge toward the pericardial pressure. With 230 mL of pericardial fluid, the pericardial pressure is 9 mmHg, RAP is 11 mmHg and LAP 12 mmHg, both ventricles fill to about 70 mL, and cardiac output falls from 5.6 to 3.1 L/min despite a reflex tachycardia of 88/min. The same fluid has no effect with the pericardium switched off. Equalization of diastolic pressures, small ventricles, and a low stroke volume are the hemodynamic signature of tamponade <cite data-ref="spodick2003"></cite>; pulsus paradoxus requires breathing, which the model does not include.</p>
+  <figure class="monitor fig">
+    <svg id="mf-pericardium"></svg>
+    <div class="legend" id="ml-pericardium"></div>
+    <figcaption>Cardiac tamponade (230 mL of pericardial fluid). LV pressure–volume loop with the pericardium on and off.</figcaption>
+  </figure>
+  <div class="table-wrap" id="mt-pericardium"></div>
+  <p class="try"><a href="simulator.html#preset=tamponade&amp;side=lv">Open in the simulator</a>, then move the pericardial fluid slider in the Physiology panel. The relation is flat at first and then steep: 100 mL raises the pericardial pressure to 3 mmHg, and 230 mL to 9 mmHg.</p>
+  </section>
+
+  <section class="mech-sec">
+  <h2 id="septum">Septal interdependence</h2>
+  <p>The septum is a third elastic wall between the ventricles, with its own time-varying elastance, after the formulation of Smith and colleagues <cite data-ref="smith2004"></cite>. At every step its displacement is solved so that the septal pressure balances the transseptal pressure difference; the LV free wall then holds the LV volume minus the septal shift, and the RV free wall holds the RV volume plus it. The passive septum is stiffer toward the RV than toward the LV, so a raised RV diastolic pressure flattens and then inverts it.</p>
+  <p>In the acute PE scenario the septum shifts 13 mL toward the LV at end-diastole. LVEDP is 5.5 mmHg at an EDV of 100 mL, compared with 3.9 mmHg at the same volume with the septum switched off, so the LV EDPVR moves upward and the LV fills less for a given LA pressure. In systole the septum transmits part of LV contraction to the RV; experimentally, 20% to 40% of RV systolic pressure and volume outflow resulted from LV contraction <cite data-ref="santamore1998"></cite>. In the model, the RV chamber ESPVR measured in a preload sweep is correspondingly steeper than the RV free-wall Ees, and RV output is slightly higher with the septum on (4.3 against 4.25 L/min in acute PE). A flattened septum on echo is the visible sign of the diastolic shift.</p>
+  <figure class="monitor fig">
+    <svg id="mf-septum"></svg>
+    <div class="legend" id="ml-septum"></div>
+    <figcaption>Acute PE (PVR 7.7 WU). LV loop with septal interdependence on and off; the LV end-diastolic point rises at the same volume.</figcaption>
+  </figure>
+  <div class="table-wrap" id="mt-septum"></div>
+  <p class="try"><a href="simulator.html#preset=acutePE&amp;side=rv">Open in the simulator</a>; switch septal interdependence off in the Physiology panel and compare LVEDP and the septal shift in the table of values.</p>
+  </section>
+
+  <section class="mech-sec">
+  <h2 id="atrial">c wave and base descent</h2>
+  <p>Two effects change the effective volume of each atrium. While the AV valve is closed and ventricular pressure exceeds atrial pressure, the leaflets bulge back into the atrium by up to 4 mL, which contributes to the c wave at the start of systole. During ventricular activation the AV plane moves toward the apex and enlarges the atrium by 0.4 mL for each milliliter the ventricle empties, which deepens the x descent; this gain follows the ventricular activation, so the AV plane returns as the ventricle relaxes.</p>
+  <p>In the normal heart the RA pressure rises by about 0.6 mmHg at the start of systole, the c wave. Most of that rise comes from venous inflow into an atrium whose outlet has just closed; leaflet bulging adds about 0.1 mmHg, because RV isovolumic contraction lasts only about 17 ms. Base descent lowers the x trough from 3.9 to 3.4 mmHg, and the return of the AV plane during isovolumic relaxation raises the v wave from 5.3 to 6.1 mmHg. The RA fills from the venae cavae during the x descent, so the pressure changes are smaller than the volume changes. Every wave on the PA catheter page now comes from the model, the a wave from atrial contraction, the c wave from filling and leaflet bulging against the closed valve, the x descent from atrial relaxation and base descent, the v wave from atrial filling against the closed valve, and the y descent from atrial emptying after the valve opens.</p>
+  <figure class="monitor fig">
+    <svg id="mf-base"></svg>
+    <div class="legend" id="ml-base"></div>
+    <figcaption>Right atrial pressure over one normal beat, from the QRS, with the c wave and base descent on and off.</figcaption>
+  </figure>
+  <div class="table-wrap" id="mt-base"></div>
+  <p class="try"><a href="pac.html">Open the PA catheter page</a> and select the RA position with wave labels on.</p>
+  </section>
+
+  <section class="mech-sec">
+  <h2 id="relax">Relaxation time constant</h2>
+  <p>After end-systole the ventricular activation decays exponentially with a time constant τ, and activation that has not decayed by the next beat carries into it. The reported τ is fitted to the isovolumic pressure decline, as it would be from a high-fidelity catheter, so it is an output of the model. The normal heart has a τ of 36 ms and the HFpEF scenario 59 ms, matching the 35 ± 10 ms and 59 ± 14 ms measured in controls and in patients with HFpEF <cite data-ref="zile2004"></cite>.</p>
+  <p>Relaxation takes three to four time constants, about 200 ms at a τ of 59 ms. A resting cycle provides that time, so at 70/min shortening τ from 59 to 35 ms changes LAP in the HFpEF scenario by only 0.3 mmHg. At 102/min, relaxation is incomplete when the next filling period begins, so the lowest diastolic LV pressure rises from 10 to 14 mmHg, EDV falls from 115 to 97 mL, stroke volume falls from 66 to 54 mL, and LAP rises from 13.8 to 16.8 mmHg.</p>
+  <figure class="monitor fig">
+    <svg id="mf-relax"></svg>
+    <div class="legend" id="ml-relax"></div>
+    <figcaption>HFpEF at 102/min. LV loop with τ of 59 ms (green) and 35 ms (gray); the slow-relaxing ventricle never falls below 14 mmHg in diastole.</figcaption>
+  </figure>
+  <div class="table-wrap" id="mt-relax"></div>
+  <p class="try"><a href="simulator.html#preset=hfpefTachy&amp;side=lv">Open in the simulator</a>; the relaxation slider sets τ, and the intrinsic heart rate slider shows the effect disappearing as the rate falls.</p>
+  </section>
+
+  <section class="mech-sec">
+  <h2 id="ffr">Force–frequency relation</h2>
+  <p>Ees rises with heart rate as Ees × [1 + k<sub>FFR</sub>·(HR − 70)/70], bounded between 0.7 and 1.4 times its intrinsic value. k<sub>FFR</sub> is 0.3 in the normal heart and 0 in the HFrEF scenario. In isolated strips of nonfailing human myocardium, twitch tension was 76% higher at 120/min than at 30/min, whereas failing myocardium showed no increase above 30/min <cite data-ref="hasenfuss1994"></cite>; the slope in the model is smaller than the in vitro one.</p>
+  <p>At 130/min with the baroreflex switched off, the normal LV Ees rises from 2.30 to 2.89 mmHg/mL, and cardiac output is 6.2 L/min against 5.8 L/min without the relation. In the HFrEF scenario Ees stays at 0.80 mmHg/mL, and raising the rate from 70 to 130/min increases cardiac output only from 4.1 to 4.4 L/min while LAP rises.</p>
+  <figure class="monitor fig">
+    <svg id="mf-ffr"></svg>
+    <div class="legend" id="ml-ffr"></div>
+    <figcaption>Normal heart at 130/min, baroreflex off. LV loop with the force–frequency relation on and off.</figcaption>
+  </figure>
+  <div class="table-wrap" id="mt-ffr"></div>
+  <p class="try"><a href="simulator.html#preset=hfref&amp;side=lv">Open in the simulator</a> and raise the intrinsic heart rate; then repeat in the normal heart.</p>
+  </section>
+
+  <section class="mech-sec">
+  <h2 id="baro">Baroreflex</h2>
+  <p>A sigmoid function of MAP, filtered over a few beats, drives four effectors, after the model of Ursino <cite data-ref="ursino1998"></cite>: heart rate by up to ±35%, SVR by ±20%, LV and RV Ees by ±15%, and the stressed blood volume, through venous tone, by ±200 mL. The set point is the normal MAP of 96 mmHg, at which every effector is neutral. In the chronic hypertensive scenarios, HFpEF and combined post- and pre-capillary PH, the set point is moved to the prevailing pressure, a simplification of the partial resetting seen in chronic hypertension <cite data-ref="lohmeier2015"></cite>. The scenario parameters are intrinsic values; the simulator reports the heart rate, SVR, and Ees actually used, and the Physiology panel states what the reflex is doing.</p>
+  <p>A 30% fall in SVR lowers MAP by 21 mmHg without the reflex and by 8 mmHg with it, as heart rate rises from 70 to 77/min and venous volume and Ees increase. The reflex raises MAP from 46 to 64 mmHg in the vasoplegia scenario and from 68 to 84 mmHg in acute PE. In vasoplegia it operates at 81% of its range, so a further fall in SVR lowers MAP by 12 mmHg against 8 mmHg in the normal heart. Norepinephrine withdraws part of the reflex, and the heart rate falls as pressure rises.</p>
+  <figure class="monitor fig">
+    <svg id="mf-baro"></svg>
+    <div class="legend" id="ml-baro"></div>
+    <figcaption>Normal heart after a 30% fall in SVR. LV loop with the baroreflex on and off.</figcaption>
+  </figure>
+  <div class="table-wrap" id="mt-baro"></div>
+  <p class="try"><a href="simulator.html#preset=vasoplegia&amp;side=lv&amp;p=%7B%22baro%22%3A0%7D">Open vasoplegia with the reflex off</a>, then switch it back on.</p>
+  </section>
+
+  <section class="mech-sec">
+  <h2 id="coronary">Coronary perfusion</h2>
+  <p>Each ventricle has a coronary supply index, the time-averaged perfusion pressure multiplied by a coronary flow reserve of 5, and a demand index proportional to oxygen consumption per minute, (0.6·PVA/PVA₀ + 0.4) × HR/70, from the linear relation between pressure–volume area and myocardial oxygen consumption <cite data-ref="suga1979"></cite>. The LV is perfused while it is relaxed, by aortic pressure minus LV pressure; the RV is perfused through the whole cycle, by aortic pressure minus RV pressure. Demand is divided by the relative muscle mass, so a hypertrophied ventricle carries a proportionally larger vascular bed. When demand exceeds supply, Ees falls until the two match.</p>
+  <p>In the normal heart, supply exceeds demand fivefold. In acute PE at 7.7 WU the RV supply is 1.5 times its demand. At about 12 WU supply falls below demand; the ischemic RV loses contractility, which lowers aortic pressure and RV perfusion further, and RV Ees falls from 0.45 to 0.17 mmHg/mL, with a cardiac output of 2.0 L/min against 3.8 L/min with the mechanism switched off. In dogs with pulmonary artery constriction, RV failure coincided with exhausted right coronary reserve and biochemical ischemia of the RV free wall, and raising aortic pressure with phenylephrine reversed both <cite data-ref="vlahakes1981"></cite>. In the simulator, norepinephrine reverses the ischemia in the same way, and the arterial vasodilator applied to the acute PE scenario lowers MAP to 49 mmHg and precipitates it.</p>
+  <figure class="monitor fig">
+    <svg id="mf-coronary"></svg>
+    <div class="legend" id="ml-coronary"></div>
+    <figcaption>Acute PE at about 12 WU. RV loop with coronary perfusion on (ischemic) and off.</figcaption>
+  </figure>
+  <div class="table-wrap" id="mt-coronary"></div>
+  <p class="try"><a href="simulator.html#preset=peIschemia&amp;side=rv">Open in the simulator</a> and give norepinephrine; then load acute PE and give the arterial vasodilator.</p>
+  </section>
+
+  <section class="mech-sec">
+  <h2 id="valves">Valve lesions</h2>
+  <p>Each valve is an ideal inlet or outlet with a small resistance, to which a stenotic or a regurgitant orifice can be added. Flow through an orifice follows ΔP = 4v², so Q = 50·A·√ΔP, with Q in mL/s, A in cm², and ΔP in mmHg. A stenotic aortic orifice sits in series with the valve; a regurgitant orifice opens whenever the pressure gradient across the closed valve reverses. The severities offered in the simulator follow the echocardiographic grading <cite data-ref="baumgartner2017,zoghbi2017"></cite>.</p>
+  <p>Regurgitation gives the ventricle a second, low-impedance outlet. Ea measured from the loop falls, EF rises, and forward flow falls; in the acute MR scenario EF is 79% while forward stroke volume is 57 of 124 mL. Stenosis raises LV end-systolic pressure by the transvalvular gradient, so Ea measured from the loop includes the valve, the combined load that Briand and colleagues expressed as valvulo-arterial impedance <cite data-ref="briand2005"></cite>.</p>
+  <div class="grid valves">
+    <figure class="monitor fig"><svg id="v-as"></svg><figcaption>Severe AS, 0.7 cm²: mean gradient 55 mmHg, LVEDP 20 mmHg.</figcaption></figure>
+    <figure class="monitor fig"><svg id="v-mr"></svg><figcaption>Acute severe MR, EROA 0.5 cm²: no true isovolumic contraction, regurgitant fraction 54%.</figcaption></figure>
+    <figure class="monitor fig"><svg id="v-ar"></svg><figcaption>Chronic severe AR, EROA 0.3 cm²: no true isovolumic relaxation, BP 132/46 mmHg.</figcaption></figure>
+    <figure class="monitor fig"><svg id="v-tr"></svg><figcaption>Severe TR, EROA 0.9 cm²: RV regurgitant fraction 46%, RAP 12 mmHg.</figcaption></figure>
+  </div>
+  <p class="try">The severity buttons in the Physiology panel add any lesion to any scenario.</p>
+  </section>
+
+  <h2 id="scenarios">Advanced scenarios</h2>
+  <p>Each card combines a lesion or a mechanism with the loop of the normal heart in gray. The Details panel gives the mechanism, the echo and catheter findings, and the management evidence.</p>
+</article>
+<div class="grid cols-3" id="adv-list" style="margin-top:16px"></div>
+<article class="prose">
+  <h2 id="limits">What the model still leaves out</h2>
+  <p>The model has no breathing, so it cannot show pulsus paradoxus or respiratory variation in stroke volume. Coronary flow has a ceiling but no autoregulation below it, no collateral flow, and no infarction. The pulmonary circulation has no hypoxic vasoconstriction or other vasoreactivity, and the only neurohormonal response is the baroreflex.</p>
+  <div id="page-refs"></div>
+</article>
+</main>
+<script type="module">
+  import { initLayout } from './js/layout.js';
+  import { initAdvanced } from './js/advanced.js';
+  initAdvanced();   // before initLayout, so citations inside the cards are numbered
+  initLayout();
+</script>
+</body>
+</html>

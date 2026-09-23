@@ -1,6 +1,6 @@
 // Simulator page controller: drag handles on the PV loop, intervention buttons,
 // animated transitions, a beat cursor, and a step-by-step replay of each change.
-import { simulate, NORMAL, WU, DYN, cardiacPhases } from './engine.js';
+import { simulate, NORMAL, WU, DYN, MECHANISMS, cardiacPhases } from './engine.js';
 import { PRESETS, INTERVENTIONS, presetById } from './presets.js';
 import { addExport, svgCapture, header, even } from './export.js';
 import { drawPlot, niceMax, swatch, svgPoint, svgEl } from './plot.js';
@@ -11,7 +11,8 @@ const C = { cur: 'var(--series-current)', ref: 'var(--series-ref)', snap: 'var(-
 // ---------- slider definitions (display units ↔ model units) ----------
 const S = (o) => ({ step: 0.01, digits: 2, to: (v) => v, from: (p) => p[o.key], ...o });
 const SLIDERS = [
-  S({ group: 'global', key: 'hr', label: 'Heart rate', unit: '/min', min: 40, max: 160, step: 1, digits: 0, range: [60, 100] }),
+  S({ group: 'global', key: 'hr', label: 'Intrinsic heart rate', unit: '/min', min: 40, max: 160, step: 1, digits: 0, range: [60, 100],
+    hint: 'The baroreflex adjusts the rate, and the heart rate actually used is in the table of values.' }),
   S({ group: 'global', key: 'aKick', label: 'Atrial contraction', unit: '× normal', min: 0, max: 1.5, step: 0.05,
     hint: 'A value of zero removes atrial contraction, as in atrial fibrillation, together with the a wave and late-diastolic filling.' }),
   S({ group: 'global', key: 'vStressed', label: 'Stressed blood volume (preload)', unit: 'mL', min: 450, max: 1400, step: 10, digits: 0,
@@ -43,24 +44,46 @@ const SLIDERS = [
   S({ group: 'pul', key: 'cPa', label: 'Pulmonary arterial compliance', unit: 'mL/mmHg', min: 0.3, max: 6, step: 0.05,
     hint: 'In the pulmonary circulation, compliance falls as resistance rises (Lankhaar 2008).' }),
   S({ group: 'pul', key: 'zcPa', label: 'Pulmonary characteristic impedance', unit: 'mmHg·s/mL', min: 0.005, max: 0.08, step: 0.001, digits: 3, advanced: true }),
+
+  S({ group: 'phys', key: 'tau', label: 'Relaxation time constant τ', unit: 'ms', min: 20, max: 90, step: 1, digits: 0,
+    to: (v) => v / 1000, from: (p) => p.tau * 1000,
+    hint: 'τ was 35 ± 10 ms in controls and 59 ± 14 ms in HFpEF (Zile 2004).' }),
+  S({ group: 'phys', key: 'pcdFluid', label: 'Pericardial fluid', unit: 'mL', min: 0, max: 300, step: 5, digits: 0,
+    hint: 'Fluid inside a pericardium that has not stretched to accommodate it compresses all four chambers.' }),
+];
+
+// Valve lesions: severity segments. Orifice areas follow the ASE and EACVI grading
+// (severe AS < 1.0 cm²; severe MR and TR EROA ≥ 0.40 cm²; severe AR EROA ≥ 0.30 cm²).
+const VALVES = [
+  ['avArea', 'Aortic stenosis', [['None', 0], ['Moderate, 1.2 cm²', 1.2], ['Severe, 0.7 cm²', 0.7]]],
+  ['mrEroa', 'Mitral regurgitation', [['None', 0], ['Moderate, EROA 0.25', 0.25], ['Severe, EROA 0.5', 0.5]]],
+  ['arEroa', 'Aortic regurgitation', [['None', 0], ['Moderate, EROA 0.2', 0.2], ['Severe, EROA 0.35', 0.35]]],
+  ['trEroa', 'Tricuspid regurgitation', [['None', 0], ['Moderate, EROA 0.3', 0.3], ['Severe, EROA 0.9', 0.9]]],
 ];
 
 const GROUPS = [
   ['lv', 'Left ventricle'], ['sys', 'Systemic arteries (LV afterload)'],
   ['rv', 'Right ventricle'], ['pul', 'Pulmonary arteries (RV afterload)'], ['global', 'Heart rate and volume'],
+  ['phys', 'Physiology'],
 ];
 
 // ---------- metric rows ----------
 const f = (d) => (v) => (Number.isFinite(v) ? v.toFixed(d) : '–');
 const METRICS = {
   lv: [
+    ['Heart rate', '/min', (r) => r.eff.hr, [60, 100], 0],
     ['Blood pressure', 'mmHg', (r) => `${r.hemo.SBP.toFixed(0)}/${r.hemo.DBP.toFixed(0)}`, null],
     ['Mean arterial pressure', 'mmHg', (r) => r.hemo.MAP, [65, 105], 0],
     ['Stroke volume', 'mL', (r) => r.lv.SV, [55, 100], 0],
+    ['Forward stroke volume', 'mL', (r) => (r.lv.RF > 0.005 ? r.lv.fwdSV : null), [55, 100], 0],
+    ['Regurgitant fraction (MR + AR)', '%', (r) => (r.lv.RF > 0.005 ? r.lv.RF * 100 : null), [0, 20], 0],
+    ['Aortic valve mean / peak gradient', 'mmHg', (r) => (r.hemo.avMeanGrad > 1 ? `${r.hemo.avMeanGrad.toFixed(0)} / ${r.hemo.avPeakGrad.toFixed(0)}` : null), null],
     ['Cardiac output', 'L/min', (r) => r.hemo.CO, [4, 8], 1],
     ['EDV / ESV', 'mL', (r) => `${r.lv.EDV.toFixed(0)} / ${r.lv.ESV.toFixed(0)}`, null],
     ['Ejection fraction', '%', (r) => r.lv.EF * 100, [50, 75], 0],
     ['Left atrial pressure (≈ PAWP)', 'mmHg', (r) => r.hemo.LAP, [4, 15], 1],
+    ['LV end-diastolic pressure', 'mmHg', (r) => r.lv.EDP, [4, 14], 0],
+    ['Relaxation τ (fitted)', 'ms', (r) => r.lv.tau * 1000, [20, 48], 0],
     ['Ees (ESPVR slope)', 'mmHg/mL', (r) => r.lv.Ees, null, 2, true],
     ['Ea = Pes / SV', 'mmHg/mL', (r) => r.lv.Ea, null, 2, true],
     ['Ea/Ees', '', (r) => r.lv.EaEes, [0.3, 1.3], 2, true],
@@ -72,8 +95,11 @@ const METRICS = {
   rv: [
     ['PA pressure', 'mmHg', (r) => `${r.hemo.PASP.toFixed(0)}/${r.hemo.PADP.toFixed(0)}`, null],
     ['Mean PA pressure', 'mmHg', (r) => r.hemo.mPAP, [0, 20], 0],
+    ['Heart rate', '/min', (r) => r.eff.hr, [60, 100], 0],
     ['Right atrial pressure', 'mmHg', (r) => r.hemo.RAP, [0, 8], 1],
     ['Stroke volume', 'mL', (r) => r.rv.SV, [55, 100], 0],
+    ['Regurgitant fraction (TR)', '%', (r) => (r.rv.RF > 0.005 ? r.rv.RF * 100 : null), [0, 20], 0],
+    ['Septal shift at end-diastole', 'mL', (r) => r.hemo.VsptED, [-5, 99], 1],
     ['Cardiac output', 'L/min', (r) => r.hemo.CO, [4, 8], 1],
     ['RV EDV / ESV', 'mL', (r) => `${r.rv.EDV.toFixed(0)} / ${r.rv.ESV.toFixed(0)}`, null],
     ['RV ejection fraction', '%', (r) => r.rv.EF * 100, [45, 75], 0],
@@ -123,11 +149,11 @@ const V0of = (p, s = side) => (s === 'lv' ? p.lvV0 : p.rvV0);
 // ---------- simulation ----------
 function sim() {
   const t0 = performance.now();
-  result = simulate(params, warm ? { state: warm } : {});
-  warm = result.state;
+  result = simulate(params, warm ? { state: warm.state, slow: warm.slow } : {});
+  warm = { state: result.state, slow: result.slow };
   $('#status').textContent = result.converged
     ? `Steady state reached (${result.beats + 1} beat${result.beats ? 's' : ''}) · ${(performance.now() - t0).toFixed(0)} ms`
-    : 'No steady state within 200 beats; values approximate.';
+    : 'No steady state within 300 beats; values approximate.';
   buildPhases(result);
 }
 
@@ -298,7 +324,7 @@ function exportSpec() {
   const ev = sides.map((sd) => EVENT_LABELS[sd].join(', ')).join('; ');
   const speed = { 1: 'real time', 0.5: '½ speed', 0.25: '¼ speed', 0.1: '⅒ speed' }[play.speed] || `${play.speed}× speed`;
   const r = result, h = r.hemo, f1 = (v) => v.toFixed(1), f2 = (v) => v.toFixed(2), f0 = (v) => v.toFixed(0);
-  const notes = [`Patient: ${patient}. HR ${f0(r.params.hr)}/min, CO ${f1(h.CO)} L/min.`,
+  const notes = [`Patient: ${patient}. HR ${f0(r.eff.hr)}/min, CO ${f1(h.CO)} L/min.`,
     sides.includes('lv') ? `LV: EDV ${f0(r.lv.EDV)} mL, ESV ${f0(r.lv.ESV)} mL, EF ${f0(r.lv.EF * 100)}%, Ees ${f2(r.lv.Ees)} and Ea ${f2(r.lv.Ea)} mmHg/mL, Ea/Ees ${f2(r.lv.EaEes)}. BP ${f0(h.SBP)}/${f0(h.DBP)} (MAP ${f0(h.MAP)}) mmHg, LAP ${f0(h.LAP)} mmHg.` : '',
     sides.includes('rv') ? `RV: EDV ${f0(r.rv.EDV)} mL, ESV ${f0(r.rv.ESV)} mL, EF ${f0(r.rv.EF * 100)}%, Ees ${f2(r.rv.Ees)} and Ea ${f2(r.rv.Ea)} mmHg/mL, Ees/Ea ${f2(r.rv.EesEa)}. PA ${f0(h.PASP)}/${f0(h.PADP)} (mean ${f0(h.mPAP)}) mmHg, RAP ${f0(h.RAP)} mmHg, PVR ${f1(h.PVR_WU)} WU.` : '',
     'Valve events: MVC and TVC are closure of the mitral and tricuspid valves, AVO and PVO are opening of the aortic and pulmonic valves, AVC and PVC are their closure, and MVO and TVO are opening of the mitral and tricuspid valves.'].filter(Boolean).join('\n');
@@ -474,7 +500,8 @@ function applyHandle(id, V, P) {
   if (id === 'ees' && V > V0 + 3 && P > 0) {
     const k = side === 'lv' ? 'lvEes' : 'rvEes';
     const sl = SLIDERS.find((s) => s.key === k);
-    params[k] = clamp(P / (V - V0), sl.min, sl.max);
+    const gain = m.Ees / params[k];      // reflex, force–frequency and ischemia act on top of the intrinsic Ees
+    params[k] = clamp(P / (V - V0) / gain, sl.min, sl.max);
   } else if (id === 'ea' && V < m.EDV - 3 && P > 0) {
     const f = clamp((P / (m.EDV - V)) / m.Ea, 0.8, 1.25);   // limited step per move keeps the solver stable
     if (side === 'lv') params.svr = clamp(params.svr * f, 250 * DYN, 3000 * DYN);
@@ -747,7 +774,7 @@ function renderPT() {
     <span>${swatch(C.cur, '2 3')}${both ? 'LA / RA' : sd === 'lv' ? 'LA' : 'RA'}</span>
     <span>${swatch(C.ref, '', 1.4)}Normal ventricle</span><span class="iso-key"></span>Isovolumic`;
   $('#atr-title').textContent = sd === 'lv' ? 'Left atrial pressure' : 'Right atrial pressure';
-  $('#atr-note').textContent = `${sd === 'lv' ? 'LA' : 'RA'} ${ (sd === 'lv' ? result.hemo.LAP : result.hemo.RAP).toFixed(0)} mmHg mean. The a wave is atrial contraction at the end of diastole, and the x descent follows as the atrium relaxes. The v wave is atrial filling while the ${sd === 'lv' ? 'mitral' : 'tricuspid'} valve is closed, and the y descent is atrial emptying after the valve opens. The model has no c wave, because it does not represent the valve bulging into the atrium. ${sd === 'lv' ? `Mitral flow during atrial systole supplies ${(result.hemo.atrialFill * 100).toFixed(0)}% of the stroke volume in this beat${result.params.hr >= 100 ? '. At this heart rate early and late filling overlap, so the share includes passive filling' : ''}.` : ''}`;
+  $('#atr-note').textContent = `${sd === 'lv' ? 'LA' : 'RA'} ${ (sd === 'lv' ? result.hemo.LAP : result.hemo.RAP).toFixed(0)} mmHg mean. The a wave is atrial contraction at the end of diastole, and the x descent follows as the atrium relaxes. The v wave is atrial filling while the ${sd === 'lv' ? 'mitral' : 'tricuspid'} valve is closed, and the y descent is atrial emptying after the valve opens. The c wave, at the start of systole, is the rise in atrial pressure against the closed valve. ${sd === 'lv' ? `Mitral flow during atrial systole supplies ${(result.hemo.atrialFill * 100).toFixed(0)}% of the stroke volume in this beat${result.eff.hr >= 100 ? '. At this heart rate early and late filling overlap, so the share includes passive filling' : ''}.` : ''}`;
 }
 
 function renderLegend() {
@@ -762,8 +789,9 @@ function renderMetrics() {
   const list = view === 'both' ? [...METRICS.lv.map((m) => ['LV · ' + m[0], ...m.slice(1)]), ...METRICS.rv.map((m) => ['RV · ' + m[0], ...m.slice(1)])] : METRICS[side];
   const rows = list.map(([label, unit, fn, range, d, key]) => {
     const cur = fn(result), ref = fn(REF), snap = snapshot ? fn(snapshot) : null;
+    if (cur == null && (snap == null)) return '';   // rows that apply only to some lesions
     const flag = typeof cur === 'number' && range && (cur < range[0] || cur > range[1]);
-    const show = (v) => (typeof v === 'number' ? f(d ?? 1)(v) : v);
+    const show = (v) => (v == null ? '–' : typeof v === 'number' ? f(d ?? 1)(v) : v);
     return `<tr class="${flag ? 'flag' : ''}${key ? ' key' : ''}"><td>${label}${unit ? ` <span class="status">(${unit})</span>` : ''}</td>
       <td class="num cur">${show(cur)}${flag ? ' *' : ''}</td><td class="num">${show(ref)}</td>${snapshot ? `<td class="num">${show(snap)}</td>` : ''}</tr>`;
   }).join('');
@@ -777,6 +805,7 @@ function render(light = false) {
   renderTiles(); renderChips();
   if (light) return;
   renderLegend(); renderGauge(); renderPT(); renderMetrics();
+  const pn = $('#phys-note'); if (pn) pn.textContent = physNote(result);
   document.querySelectorAll('.tabs button').forEach((b) => b.setAttribute('aria-selected', b.dataset.side === view));
   $('#pv-title').textContent = view === 'both' ? 'Pressure–volume loops: LV and RV' : `${side === 'lv' ? 'Left' : 'Right'} ventricular pressure–volume loop`;
   $('#clear').disabled = !snapshot;
@@ -789,7 +818,7 @@ function buildControls() {
   box.innerHTML = '';
   for (const [g, title] of GROUPS) {
     const d = document.createElement('fieldset');
-    d.innerHTML = `<legend>${title}</legend>`;
+    d.innerHTML = g === 'phys' ? '' : `<legend>${title}</legend>`;
     for (const sl of SLIDERS.filter((s) => s.group === g)) {
       const id = 'sl-' + sl.key;
       const w = document.createElement('div');
@@ -809,12 +838,69 @@ function buildControls() {
         schedule();
       });
     }
-    box.appendChild(d);
+    if (g === 'phys') { buildPhysiology(d); $('#phys').innerHTML = ''; $('#phys').appendChild(d); }
+    else box.appendChild(d);
   }
   syncSliders();
 }
 
+// Mechanism switches and valve lesions. Changes apply at once (a switch is not animated).
+function buildPhysiology(d) {
+  const sw = document.createElement('div');
+  sw.className = 'mech';
+  sw.innerHTML = `<p class="k">Mechanisms <a class="status" href="advanced.html">what each one does</a></p>` +
+    MECHANISMS.map(([k, label]) => `<label class="mech-sw"><input type="checkbox" data-mech="${k}"> ${label}</label>`).join('');
+  d.appendChild(sw);
+  for (const [k, label, opts] of VALVES) {
+    const w = document.createElement('div');
+    w.className = 'valve-seg';
+    w.innerHTML = `<p class="k">${label}</p><div class="seg" role="group" aria-label="${label}">${opts.map(([t, v]) =>
+      `<button type="button" data-valve="${k}" data-v="${v}">${t}</button>`).join('')}</div>`;
+    d.appendChild(w);
+  }
+  const note = document.createElement('p');
+  note.className = 'status'; note.id = 'phys-note';
+  d.appendChild(note);
+  d.addEventListener('change', (e) => {
+    const c = e.target.closest('[data-mech]');
+    if (!c) return;
+    cancelReplay(); markChange();
+    params[c.dataset.mech] = c.checked ? 1 : 0;
+    $('#preset').value = '';
+    schedule();
+  });
+  d.addEventListener('click', (e) => {
+    const b = e.target.closest('[data-valve]');
+    if (!b) return;
+    cancelReplay(); markChange();
+    params[b.dataset.valve] = +b.dataset.v;
+    $('#preset').value = '';
+    schedule();
+  });
+}
+
+// One line on what the reflex, ischemia, pericardium and septum are doing in this beat.
+function physNote(r) {
+  const e = r.eff, p = r.params, h = r.hemo, bits = [];
+  if (p.baro) {
+    const pc = (a, b) => `${a > b ? '+' : '−'}${Math.abs((a / b - 1) * 100).toFixed(0)}%`;
+    bits.push(Math.abs(e.reflex) < 0.02 ? 'Baroreflex at its set point.'
+      : `Baroreflex ${e.reflex > 0 ? 'activated by a low' : 'withdrawn by a high'} MAP: heart rate ${p.hr.toFixed(0)} → ${e.hr.toFixed(0)}/min, SVR ${pc(e.svr, p.svr)}, venous volume ${e.vStressed >= p.vStressed ? '+' : '−'}${Math.abs(e.vStressed - p.vStressed).toFixed(0)} mL.`);
+  }
+  if (p.ffr && Math.abs(e.ffr - 1) > 0.01) bits.push(`Force–frequency relation: Ees ×${e.ffr.toFixed(2)}.`);
+  if (p.coronary) {
+    const low = [['LV', h.ischL, h.supplyL], ['RV', h.ischR, h.supplyR]].filter(([, i]) => i < 0.99);
+    bits.push(low.length ? low.map(([s, i]) => `${s} ischemia: supply below demand, Ees reduced to ${(i * 100).toFixed(0)}%.`).join(' ')
+      : `Coronary supply ${h.supplyL.toFixed(1)}× LV and ${h.supplyR.toFixed(1)}× RV demand.`);
+  }
+  if (p.pericardium && h.Ppcd > 3) bits.push(`Pericardial pressure ${h.Ppcd.toFixed(0)} mmHg.`);
+  if (p.septum && h.VsptED < -5) bits.push(`The septum is displaced ${Math.abs(h.VsptED).toFixed(0)} mL toward the LV at end-diastole.`);
+  return bits.join(' ');
+}
+
 function syncSliders() {
+  document.querySelectorAll('[data-mech]').forEach((c) => { c.checked = !!params[c.dataset.mech]; });
+  document.querySelectorAll('[data-valve]').forEach((b) => b.setAttribute('aria-pressed', String(Math.abs(params[b.dataset.valve] - +b.dataset.v) < 1e-9)));
   for (const sl of SLIDERS) {
     const inp = document.getElementById('sl-' + sl.key);
     if (!inp) continue;
@@ -852,22 +938,32 @@ function writeHash() {
 function readHash() {
   const h = new URLSearchParams(location.hash.slice(1));
   if (h.get('side')) { view = ['lv', 'rv', 'both'].includes(h.get('side')) ? h.get('side') : 'lv'; side = view === 'rv' ? 'rv' : 'lv'; }
-  if (h.get('preset') && presetById(h.get('preset'))) { loadPreset(h.get('preset'), !!h.get('side')); prev = null; render(); return true; }
-  if (h.get('p')) {
+  const over = () => {
+    if (!h.get('p')) return false;
     try {
       const d = JSON.parse(decodeURIComponent(h.get('p')));
       for (const k of Object.keys(d)) if (k in NORMAL && Number.isFinite(d[k])) params[k] = d[k];
     } catch { /* ignore malformed links */ }
+    return true;
+  };
+  if (h.get('preset') && presetById(h.get('preset'))) {
+    loadPreset(h.get('preset'), !!h.get('side'));
+    if (over()) { $('#preset').value = ''; commit(); syncSliders(); }   // a preset with changes, e.g. one mechanism switched off
+    prev = null; render(); return true;
   }
+  over();
   return false;
 }
 
 export function initSimulator() {
   for (const [id] of [...HIDDEN.lv, ...HIDDEN.rv]) hiddenRes[id] = simulate(presetById(id).params);
   const sel = $('#preset');
+  const opt = (list) => list.map((p) => `<option value="${p.id}">${p.label}</option>`).join('');
+  const basic = PRESETS.filter((p) => p.group !== 'advanced');
   sel.innerHTML = '<option value="">Custom</option>' +
-    `<optgroup label="Left heart">${PRESETS.filter((p) => p.side !== 'rv').map((p) => `<option value="${p.id}">${p.label}</option>`).join('')}</optgroup>` +
-    `<optgroup label="Right heart / pulmonary">${PRESETS.filter((p) => p.side === 'rv').map((p) => `<option value="${p.id}">${p.label}</option>`).join('')}</optgroup>`;
+    `<optgroup label="Left heart">${opt(basic.filter((p) => p.side !== 'rv'))}</optgroup>` +
+    `<optgroup label="Right heart / pulmonary">${opt(basic.filter((p) => p.side === 'rv'))}</optgroup>` +
+    `<optgroup label="Advanced">${opt(PRESETS.filter((p) => p.group === 'advanced'))}</optgroup>`;
   sel.addEventListener('change', () => { cancelReplay(); if (sel.value) loadPreset(sel.value); });
   $('#give').innerHTML = INTERVENTIONS.map((x) => `<button type="button" class="give" data-x="${x.id}" title="${x.note}">${x.label}<small>${x.note}</small></button>`).join('');
   $('#give-m').innerHTML = INTERVENTIONS.map((x) => `<button type="button" class="give" data-x="${x.id}" title="${x.note}">${x.label}</button>`).join('');

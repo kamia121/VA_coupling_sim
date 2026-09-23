@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script>try{var t=localStorage.getItem('vac-theme');if(t==='light'||t==='dark')document.documentElement.setAttribute('data-theme',t)}catch(e){}</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Code+Pro:wght@400;500&family=Source+Sans+3:ital,wght@0,400;0,600;1,400&family=Source+Serif+4:wght@600&display=swap">
+<link rel="stylesheet" href="css/tokens.css">
+<link rel="stylesheet" href="css/site.css">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='5' fill='%232F6E66'/%3E%3Cpath d='M8 24 V10 L24 8 V22 Z' fill='none' stroke='white' stroke-width='2.5' stroke-linejoin='round'/%3E%3C/svg%3E">
+<title>Shock Lab</title>
+<meta name="description" content="Time-based shock simulator: give vasopressors, inotropes, vasodilators, fluids and blood, and follow the monitor, the four hemodynamic interfaces, oxygen transport and the pressure–volume loops.">
+</head>
+<body>
+<main>
+  <div class="sim-head">
+    <h1>Shock lab</h1>
+    <div class="toolbar">
+      <label for="scn">Patient</label>
+      <select id="scn"></select>
+      <button class="btn primary" id="play" type="button" aria-pressed="false">▶ Run</button>
+      <button class="btn" id="step" type="button">+5 min</button>
+      <span class="seg speed" id="speed" role="group" aria-label="Clock speed"><button type="button" data-v="1" aria-pressed="true">1×</button><button type="button" data-v="2" aria-pressed="false">2×</button><button type="button" data-v="5" aria-pressed="false">5×</button></span>
+      <button class="btn" id="reset" type="button">Restart</button>
+      <span class="clock" aria-live="off">t = <b id="clock">0:00</b> <span class="status">h:min</span></span>
+    </div>
+  </div>
+  <div id="scn-text" class="prose preset-text"></div>
+  <p class="status">At 1× one second of real time is one minute of simulated time. The circulation is solved again at every half-second tick, while drug levels, fluid distribution, bleeding and lactate change over minutes. Drug effect sizes are illustrative and are not dosing guidance.</p>
+
+  <div class="sim2">
+    <div>
+      <div class="monitor mon-bed">
+        <div class="mon-head"><h2>Bedside monitor</h2><label class="status mon-opt"><input type="checkbox" id="pa-toggle"> PA catheter</label></div>
+        <canvas id="mon" role="img" aria-label="Bedside monitor with ECG, arterial and central venous pressure traces and numerics"></canvas>
+      </div>
+      <section class="panel">
+        <h2>Four interfaces</h2>
+        <div class="ifaces" id="ifaces" aria-live="polite"></div>
+        <p class="status">* Beyond the threshold cited on the <a href="interfaces.html">Interfaces</a> page. A value without a star has no threshold there. The flags are teaching aids and not treatment targets.</p>
+      </section>
+    </div>
+    <div class="side-col shock-side">
+      <section class="panel">
+        <h2>Infusions</h2>
+        <div id="drugs"></div>
+        <p class="status">Type a rate, or press the number to start at a usual dose. The bar under each drug is its effect-site level, which rises and falls with the drug's half-life.</p>
+      </section>
+      <section class="panel">
+        <h2>Volume</h2>
+        <div class="give-row" id="fluids"></div>
+        <div class="num-grid vol-rates">
+          <label class="num-in" for="bleed">Bleeding (mL/min)<input type="number" id="bleed" min="0" max="200" step="10" value="0" inputmode="decimal"></label>
+          <label class="num-in" for="uf">Diuresis or ultrafiltration (mL/h)<input type="number" id="uf" min="0" max="1000" step="50" value="0" inputmode="decimal"></label>
+        </div>
+        <div class="give-row" id="acts" hidden></div>
+      </section>
+      <section class="panel">
+        <h2>Treatment log</h2>
+        <ol class="log" id="log"></ol>
+      </section>
+    </div>
+  </div>
+
+  <div class="two-col">
+    <figure class="monitor fig">
+      <svg id="pv-lv"></svg>
+      <figcaption>LV loop now (green), at the start of the case (dashed navy) and in the normal heart (gray). The thin lines are the ESPVR and the Ea line.</figcaption>
+    </figure>
+    <figure class="monitor fig">
+      <svg id="pv-rv"></svg>
+      <figcaption>RV loop, drawn the same way.</figcaption>
+    </figure>
+  </div>
+
+  <div class="two-col">
+    <section class="panel">
+      <h2>Oxygen transport and venous return</h2>
+      <div id="nums"></div>
+    </section>
+    <figure class="monitor fig">
+      <svg id="fk"></svg>
+      <figcaption>Forward flow (LVOT VTI) against venous congestion (CVP), with the path of the patient since the start (navy dot). The dashed lines are VTI 18 cm and CVP 12 mmHg.</figcaption>
+    </figure>
+  </div>
+
+  <section class="panel">
+    <h2>Trends</h2>
+    <div class="trends">
+      <svg id="tr-map"></svg><svg id="tr-hr"></svg><svg id="tr-co"></svg>
+      <svg id="tr-cvp"></svg><svg id="tr-svo2"></svg><svg id="tr-lac"></svg>
+    </div>
+  </section>
+
+  <article class="prose">
+    <h2 id="cases">Cases to work through</h2>
+    <p><b>Vasoplegia.</b> Start norepinephrine at 0.1 µg/kg/min and watch MAP rise from 64 to 81 mmHg within ten minutes, while cardiac output barely changes and the LV Ea line steepens on the loop. Pmsf rises as well, from 8.2 to 9.1 mmHg, because norepinephrine constricts the capacitance veins and moves unstressed volume into the stressed pool <cite data-ref="persichini2012"></cite>. Two crystalloid boluses given together raise cardiac output from 8.2 to 9.3 L/min, and within 15 minutes of the end of the infusions it has fallen back to 8.6 L/min, as the capillary leak moves the fluid out of the vessels.</p>
+    <p><b>Septic shock with depressed Ees.</b> Norepinephrine alone restores MAP but lowers cardiac output and ScvO₂, because the weak ventricle ejects against the higher Ea. Adding dobutamine raises Ees, lowers Ea/Ees and narrows the PCO₂ gap. Epinephrine alone raises MAP and Ees together, and the lactate keeps rising for a reason unrelated to perfusion, the β₂-adrenergic stimulation of aerobic glycolysis. In the CATS trial, epinephrine alone and norepinephrine plus dobutamine gave the same 28-day mortality, 40% and 34% (P = 0.31) <cite data-ref="annane2007"></cite>.</p>
+    <p><b>Cardiogenic shock.</b> The LV loop is wide and flat, LA pressure is high while CVP is normal, and the patient sits in the cold quadrant of the flow–congestion diagram. Dobutamine moves the loop to the left and raises the VTI within minutes. Milrinone takes hours, because its half-life is about 2 h <cite data-ref="edelson1986"></cite>. Norepinephrine raises MAP at the cost of stroke volume and a higher LA pressure, and nitroglycerin lowers LA pressure with little change in cardiac output.</p>
+    <p><b>Hemorrhagic shock.</b> Press Run and watch the first 45 minutes. Pmsf falls first and fastest: after 15 minutes and 450 mL, Pmsf is 22% lower, cardiac output 6% lower and MAP 4% lower. With 900 mL lost at 30 minutes, 18% of the blood volume, MAP is 85 mmHg; with 1,350 mL lost at 45 minutes, it is 74 mmHg. Hemoglobin hardly moves while the patient bleeds, because whole blood is lost; it falls later, as refill from the interstitium and crystalloid dilute the remaining red cells. Control the bleeding, then compare two units of red cells with a crystalloid bolus.</p>
+    <p><b>Acute PE with RV ischemia.</b> Fluid raises CVP and does little for cardiac output. Norepinephrine raises aortic pressure, restores RV coronary perfusion and lifts RV Ees, which reverses the ischemic spiral <cite data-ref="vlahakes1981"></cite>. Inhaled NO lowers the RV Ea directly.</p>
+    <p><b>Tamponade.</b> A crystalloid bolus raises every diastolic pressure and adds little flow. Draining 200 mL of pericardial fluid restores the loops within a tick.</p>
+    <p><b>Dynamic LVOT obstruction.</b> Raise dobutamine to 10 µg/kg/min and watch the LVOT gradient rise and MAP fall. Then stop it and start phenylephrine, or give esmolol with fluid. In a canine model, propranolol, phenylephrine and saline each reduced a dobutamine-induced gradient, from about 60 mmHg to 12 to 22 mmHg; phenylephrine raised aortic pressure most, and saline raised cardiac output most <cite data-ref="ohba2006"></cite>. Phenylephrine and β-blockers are used for the same obstruction in patients with shock <cite data-ref="sherrid2021"></cite>.</p>
+
+    <h2 id="limits">What the lab leaves out</h2>
+    <p>The circulation has no breathing, so there is no pulse pressure variation or passive leg raise. The baroreflex can raise heart rate by only 35% above the intrinsic rate, so the tachycardia of hemorrhage is smaller than in patients. There is no renin–angiotensin or vasopressin response, no kidney, and no coagulation. An intravascular volume change alters the stressed volume by 0.4 mL per mL, the remainder filling or emptying the unstressed veins. Lactate, capillary refill time and critical closing pressure are illustrative functions with the right direction of change, and their numbers are not calibrated to patients. Every drug acts through the same few targets (SVR, Ees, heart rate, venous tone, PVR, relaxation and critical closing pressure), with effect sizes chosen to give changes of the usual clinical order.</p>
+    <div id="page-refs"></div>
+  </article>
+</main>
+<script type="module">
+  import { initLayout } from './js/layout.js';
+  import { initShock } from './js/shocksim.js';
+  initLayout();
+  initShock();
+</script>
+</body>
+</html>

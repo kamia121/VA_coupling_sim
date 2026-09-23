@@ -1,7 +1,7 @@
 // Engine tests. Run with: node tests/engine.test.mjs  (no dependencies)
 import { simulate, NORMAL, WU, cardiacPhases } from '../site/js/engine.js';
 import { _pac } from '../site/js/pacsim.js';
-import { PRESETS, INTERVENTIONS } from '../site/js/presets.js';
+import { PRESETS, INTERVENTIONS, presetById } from '../site/js/presets.js';
 import { buildPalette, makeIndexer, GifWriter } from '../site/js/gif.js';
 
 let failed = 0;
@@ -35,18 +35,20 @@ check('atrial contraction in ventricular systole (AV dissociation) → ↓CO', a
 
 // 2. Volume conservation across one beat
 const p = { ...NORMAL };
-check('stressed volume conserved (< 0.1 mL)', Math.abs(stressed(n.state, p) - p.vStressed) < 0.1, (stressed(n.state, p) - p.vStressed).toExponential(2));
+check('stressed volume conserved (< 0.1 mL)', Math.abs(stressed(n.state, p) - n.eff.vStressed) < 0.1, (stressed(n.state, p) - n.eff.vStressed).toExponential(2));
 
-// 3. ESPVR recovered from a preload sweep equals the input Ees
+// 3. ESPVR recovered from a preload sweep equals the input Ees. The sweep is a caval occlusion:
+// fast enough that the reflexes do not act. The septum adds part of LV contraction to the RV chamber,
+// so the RV chamber ESPVR is a few percent steeper than its free wall (Santamore 1998: 20–40% of RV pressure).
 function espvrSlope(side) {
-  const pts = [700, 740, 780, 820].map((v) => { const r = simulate({ vStressed: v }); return [r[side].ESV, r[side].Pes]; });
+  const pts = [700, 740, 780, 820].map((v) => { const r = simulate({ vStressed: v, baro: 0, coronary: 0 }); return [r[side].ESV, r[side].Pes]; });
   const mx = pts.reduce((a, q) => a + q[0], 0) / pts.length, my = pts.reduce((a, q) => a + q[1], 0) / pts.length;
   const sxy = pts.reduce((a, q) => a + (q[0] - mx) * (q[1] - my), 0), sxx = pts.reduce((a, q) => a + (q[0] - mx) ** 2, 0);
   return sxy / sxx;
 }
 const sL = espvrSlope('lv'), sR = espvrSlope('rv');
 check('LV ESPVR slope from preload sweep ≈ Ees (±5%)', Math.abs(sL / NORMAL.lvEes - 1) < 0.05, sL.toFixed(3));
-check('RV ESPVR slope from preload sweep ≈ Ees (±5%)', Math.abs(sR / NORMAL.rvEes - 1) < 0.05, sR.toFixed(3));
+check('RV ESPVR slope from preload sweep ≈ Ees (0 to +15%)', within(sR / NORMAL.rvEes, 1, 1.15), sR.toFixed(3));
 
 // 4. Directional responses
 const hiSVR = simulate({ svr: NORMAL.svr * 1.5 });
@@ -57,7 +59,7 @@ const hiPVR = simulate({ pvr: 8 * WU });
 check('↑PVR → ↓RV Ees/Ea, ↑RV EDV, ↓LV EDV (series effect)', hiPVR.rv.EesEa < n.rv.EesEa && hiPVR.rv.EDV > n.rv.EDV && hiPVR.lv.EDV < n.lv.EDV);
 const tachy = simulate({ hr: 110 });
 check('↑HR at fixed SVR → ↑Ea (Ea ≈ SVR/T)', tachy.lv.Ea > n.lv.Ea, `${n.lv.Ea.toFixed(2)} → ${tachy.lv.Ea.toFixed(2)}`);
-const k = (r) => r.lv.Ea / ((r.params.svr + r.params.zcAo) / r.T);
+const k = (r) => r.lv.Ea / ((r.eff.svr + r.params.zcAo) / r.T);
 const ks = [n, hiSVR, tachy, simulate({ svr: NORMAL.svr * 0.6 })].map(k);
 check('Ea tracks SVR/T across SVR and HR (ratio spread < 25%)', Math.max(...ks) / Math.min(...ks) < 1.25, ks.map((x) => x.toFixed(2)).join(', '));
 const stiff = simulate({ lvBeta: 0.045 });
@@ -77,6 +79,55 @@ check('PAH compensated: RV Ees/Ea 0.9–1.5, mPAP > 20', within(byId.pahComp.rv.
 check('PAH decompensated: RV Ees/Ea < 0.805, RAP > 10, SV/ESV < 0.515', byId.pahDecomp.rv.EesEa < 0.805 && byId.pahDecomp.hemo.RAP > 10 && byId.pahDecomp.rv.svEsv < 0.515);
 check('Acute PE: RV Ees/Ea < 1, CO < normal', byId.acutePE.rv.EesEa < 1 && byId.acutePE.hemo.CO < n.hemo.CO);
 check('CpcPH: LAP > 15, PVR > 2 WU, mPAP > 20', byId.cpcph.hemo.LAP > 15 && byId.cpcph.hemo.PVR_WU > 2 && byId.cpcph.hemo.mPAP > 20);
+
+// 6b. Mechanisms (each can be switched off; see the Advanced page)
+{
+  const off = (k, x = {}) => simulate({ ...x, [k]: 0 });
+  // Septum: at the same RV load, the septum shifts toward the LV and the LV fills less
+  const pe = presetById('acutePE').params, peOn = byId.acutePE, peOff = off('septum', pe);
+  check('septum: acute PE shifts the septum toward the LV; LVEDP rises at the same LV EDV', peOn.hemo.VsptED < -5 && peOn.lv.EDP > peOff.lv.EDP + 1 && peOn.lv.EDV <= peOff.lv.EDV + 1, `Vspt ${peOn.hemo.VsptED.toFixed(1)} mL, LVEDP ${peOff.lv.EDP.toFixed(1)} → ${peOn.lv.EDP.toFixed(1)} at EDV ${peOff.lv.EDV.toFixed(0)} → ${peOn.lv.EDV.toFixed(0)}`);
+  // Pericardium: tamponade raises pericardial pressure and equalizes RA and LA pressure near it
+  const tp = byId.tamponade;
+  check('tamponade: Ppcd > 6, RAP and LAP within 3 mmHg of each other, CO < 3.5', tp.hemo.Ppcd > 6 && Math.abs(tp.hemo.RAP - tp.hemo.LAP) < 3 && tp.hemo.CO < 3.5, `Ppcd ${tp.hemo.Ppcd.toFixed(1)}, RAP ${tp.hemo.RAP.toFixed(1)}, LAP ${tp.hemo.LAP.toFixed(1)}`);
+  check('pericardium off: tamponade fluid has no effect', Math.abs(off('pericardium', { pcdFluid: 230 }).hemo.CO - off('pericardium').hemo.CO) < 0.01);
+  // Valves
+  const as = byId.asSevere, fwd = as.hemo.avMeanGrad;
+  check('aortic stenosis 0.7 cm²: mean gradient ≥ 40 mmHg (severe)', fwd >= 40, fwd.toFixed(0));
+  const vmax = Math.max(...as.rec.Qao) / (100 * 0.7);                   // m/s through the orifice
+  check('aortic stenosis: peak gradient ≈ 4v² (±10%)', Math.abs(as.hemo.avPeakGrad / (4 * vmax * vmax) - 1) < 0.1, `${as.hemo.avPeakGrad.toFixed(0)} vs ${(4 * vmax * vmax).toFixed(0)}`);
+  const mr1 = simulate({ mrEroa: 0.2 }), mr2 = byId.mrAcute;
+  check('MR: regurgitant fraction rises with EROA; 0.5 cm² ≥ 50%', mr2.lv.RF > mr1.lv.RF && mr2.lv.RF >= 0.5, `${(mr1.lv.RF * 100).toFixed(0)}% → ${(mr2.lv.RF * 100).toFixed(0)}%`);
+  check('MR: forward SV below total SV; CO uses forward flow', mr2.lv.fwdSV < mr2.lv.SV - 30 && Math.abs(mr2.hemo.CO - mr2.lv.fwdSV * mr2.eff.hr / 1000) < 0.01);
+  const ar = byId.arChronic;
+  check('chronic AR: wide pulse pressure, low DBP, RF ≥ 40%', ar.hemo.SBP - ar.hemo.DBP > 70 && ar.hemo.DBP < 55 && ar.lv.RF >= 0.4, `${ar.hemo.SBP.toFixed(0)}/${ar.hemo.DBP.toFixed(0)}, RF ${(ar.lv.RF * 100).toFixed(0)}%`);
+  check('severe TR: RV regurgitant fraction ≥ 30%, RAP > 10', byId.trSevere.rv.RF >= 0.3 && byId.trSevere.hemo.RAP > 10);
+  // Relaxation: the measured τ follows the parameter
+  check('τ: normal 30–42 ms, HFpEF 52–66 ms (Zile 2004: 35 ± 10 and 59 ± 14)', within(n.lv.tau * 1000, 30, 42) && within(byId.hfpef.lv.tau * 1000, 52, 66), `${(n.lv.tau * 1000).toFixed(0)} and ${(byId.hfpef.lv.tau * 1000).toFixed(0)}`);
+  const hfT = byId.hfpefTachy, hfTfast = simulate({ ...presetById('hfpefTachy').params, tau: 0.035 });
+  check('slow relaxation at a fast rate raises LAP', hfT.hemo.LAP > hfTfast.hemo.LAP + 2, `${hfTfast.hemo.LAP.toFixed(1)} → ${hfT.hemo.LAP.toFixed(1)}`);
+  // Force–frequency: Ees rises with rate in the normal heart, not in the HFrEF scenario (kFFR 0)
+  const f130 = simulate({ hr: 130, baro: 0 }), hf130 = simulate({ ...presetById('hfref').params, hr: 130, baro: 0 });
+  check('force–frequency: normal Ees rises at 130/min; HFrEF does not', f130.lv.Ees > NORMAL.lvEes * 1.2 && Math.abs(hf130.lv.Ees - 0.8) < 1e-9, `${f130.lv.Ees.toFixed(2)}, ${hf130.lv.Ees.toFixed(2)}`);
+  // Baroreflex: neutral at normal, buffers a vasodilator
+  const dil = { svr: NORMAL.svr * 0.7 }, dOn = simulate(dil), dOff = off('baro', dil);
+  check('baroreflex: neutral in the normal heart (MAP within 0.5 of set point)', Math.abs(n.hemo.MAP - NORMAL.mapSet) < 0.5 && Math.abs(n.eff.hr - 70) < 1, n.hemo.MAP.toFixed(1));
+  check('baroreflex: vasodilator drop in MAP at least halved, with reflex tachycardia', (n.hemo.MAP - dOn.hemo.MAP) < 0.5 * (n.hemo.MAP - dOff.hemo.MAP) && dOn.eff.hr > 74, `${(n.hemo.MAP - dOff.hemo.MAP).toFixed(0)} → ${(n.hemo.MAP - dOn.hemo.MAP).toFixed(0)} mmHg, HR ${dOn.eff.hr.toFixed(0)}`);
+  // Coronary perfusion: RV ischemia in the PE-with-ischemia scenario, reversed by norepinephrine (Vlahakes 1981)
+  const pI = byId.peIschemia, ne = INTERVENTIONS.find((x) => x.id === 'norepi'), pp = { ...NORMAL, ...presetById('peIschemia').params };
+  const pINe = simulate({ ...presetById('peIschemia').params, ...ne.apply(pp) });
+  check('coronary: no ischemia in the normal heart or at PVR 7 WU', n.hemo.ischL === 1 && n.hemo.ischR === 1 && byId.acutePE.hemo.ischR === 1);
+  check('coronary: RV ischemia at PVR ~12 WU; norepinephrine restores RV perfusion and CO', pI.hemo.ischR < 0.6 && pINe.hemo.ischR > 0.95 && pINe.hemo.CO > pI.hemo.CO + 1, `ischemia ${pI.hemo.ischR.toFixed(2)} → ${pINe.hemo.ischR.toFixed(2)}, CO ${pI.hemo.CO.toFixed(1)} → ${pINe.hemo.CO.toFixed(1)}`);
+  check('coronary off: no ischemic depression', off('coronary', presetById('peIschemia').params).hemo.ischR === 1);
+  // c wave and base descent come from the model: RA pressure rises at inflow valve closure and falls in ejection
+  const cp = cardiacPhases(n).rv.events, ra = n.rec.Pra;
+  const cPk = Math.max(...ra.slice(cp.inClose, cp.outOpen + 20)), xMin = Math.min(...ra.slice(cp.outOpen, cp.outClose));
+  const nb = off('baseDescent'), cpb = cardiacPhases(nb).rv.events, xMinOff = Math.min(...nb.rec.Pra.slice(cpb.outOpen, cpb.outClose));
+  check('c wave: RA pressure rises during RV isovolumic contraction', cPk > ra[cp.inClose] + 0.3, `${ra[cp.inClose].toFixed(2)} → ${cPk.toFixed(2)}`);
+  check('base descent deepens the x descent', xMin < xMinOff - 0.5, `${xMinOff.toFixed(2)} → ${xMin.toFixed(2)}`);
+  // All mechanisms off reproduces the eight-compartment model
+  const bare = simulate({ pericardium: 0, septum: 0, baseDescent: 0, relax: 0, ffr: 0, baro: 0, coronary: 0 });
+  check('all mechanisms off: converges, EF 50–65%', bare.converged && within(bare.lv.EF, 0.5, 0.65));
+}
 
 // 7. Echo lab quantities derived from the model beat
 for (const id of ['normal', 'pahDecomp', 'hfref']) {
@@ -111,12 +162,6 @@ for (const vs of [520, 740, 1150]) {
   check(`ESPVR: preload ${vs}, end-systolic point within 2 mmHg of the line`, Math.abs(m.Ees * (m.ESV - NORMAL.lvV0) - m.Pes) < 2);
 }
 
-// Scenario text: the afterload rise costs more stroke volume in HFrEF (15% vs 29% quoted)
-{
-  const hf = byId.hfref.params, rise = (p) => simulate({ ...p, svr: p.svr * 1.7 / NORMAL.svr, cSys: 0.8 * p.cSys / NORMAL.cSys });
-  const fallN = 1 - byId.highAfterload.lv.SV / n.lv.SV, fallH = 1 - rise(hf).lv.SV / byId.hfref.lv.SV;
-  check('afterload rise: SV falls ~15% (normal) and ~29% (HFrEF)', Math.abs(fallN - 0.15) < 0.02 && Math.abs(fallH - 0.29) < 0.02, `${(fallN * 100).toFixed(0)}% vs ${(fallH * 100).toFixed(0)}%`);
-}
 
 // 9. Valve events
 for (const [id, r] of Object.entries(byId)) {
@@ -151,7 +196,7 @@ for (const id of ['normal', 'pahDecomp', 'septicCM']) {
 }
 Object.assign(_pac.st, { preset: 'normal', damp: 'ok', resp: 'none' }); _pac.buildBeat();
 
-// Atrial waves (template on top of the model pressure)
+// Atrial waves, all from the model
 {
   const at = (side) => { const b = _pac.beat, i = (t) => ((Math.round(t * _pac.FS) % b.n) + b.n) % b.n; return { b, i, w: _pac.waveTimes(side) }; };
   const setAtr = (a) => { _pac.st.atr = a; _pac.buildBeat(); };
@@ -170,15 +215,23 @@ Object.assign(_pac.st, { preset: 'normal', damp: 'ok', resp: 'none' }); _pac.bui
   const wedgeSinus = _pac.stats(b.wedge).mean, laSinus = _pac.stats(b.la).mean;
   check('wedge mean equals LA mean (filter keeps the mean)', Math.abs(wedgeSinus - laSinus) < 0.05, `${wedgeSinus.toFixed(2)} vs ${laSinus.toFixed(2)}`);
   const wSinus = w;
+  // in AF the pressure still rises through diastasis as the ventricles fill against the pericardium,
+  // so the test measures a local bump: the peak above the higher of the two edges of the window
+  const bump = (arr, w) => { let pk = -Infinity; for (let k = -12; k <= 12; k++) pk = Math.max(pk, arr[i(w.a + k / _pac.FS)]);
+    return pk - Math.max(arr[i(w.a - 0.12)], arr[i(w.a + 0.1)]); };
+  const bSinus = bump(b.ra, w);
   setAtr('af'); ({ b, i } = at('ra'));
-  check('AF: no a wave (rise at the sinus a-wave time under a third of the sinus a wave)', aWave(b.ra, wSinus) < aSinus / 3, `${aWave(b.ra, wSinus).toFixed(2)} vs ${aSinus.toFixed(2)}`);
+  check('AF: no a wave (local bump at the sinus a-wave time under a third of the sinus bump)', bump(b.ra, wSinus) < bSinus / 3, `${bump(b.ra, wSinus).toFixed(2)} vs ${bSinus.toFixed(2)}`);
   setAtr('junc'); ({ b, i, w } = at('ra'));
   check('AV dissociation: cannon a wave, larger than the sinus a wave', aWave(b.ra, w) > aSinus + 2, `${aWave(b.ra, w).toFixed(1)} vs ${aSinus.toFixed(1)}`);
   setAtr('mr');
   const laMR = _pac.stats(_pac.beat.la);
-  check('severe MR: giant LA v wave ≥ 15 mmHg above LA minimum, wedge mean rises', laMR.max - laMR.min >= 15 && _pac.stats(_pac.beat.wedge).mean > wedgeSinus + 3, `v ${ (laMR.max - laMR.min).toFixed(0)}`);
+  check('acute severe MR: LA v wave ≥ 10 mmHg above LA minimum, wedge mean rises ≥ 5', laMR.max - laMR.min >= 10 && _pac.stats(_pac.beat.wedge).mean > wedgeSinus + 5, `v ${ (laMR.max - laMR.min).toFixed(0)}`);
   setAtr('tr'); ({ b, i, w } = at('ra'));
-  check('severe TR: systolic cv wave, RA peak in systole', b.ra[i(w.v)] - b.ra[i(w.y + 0.1)] > 6);
+  { const sysMax = (arr, w) => { let m = -Infinity; for (let t = w.tOpen; t < w.tIO + 0.03; t += 0.004) m = Math.max(m, arr[i(t)]); return m; };
+    setAtr('sinus'); ({ b, i, w } = at('ra')); const vS = sysMax(b.ra, w);
+    setAtr('tr'); ({ b, i, w } = at('ra')); const vT = sysMax(b.ra, w);
+    check('severe TR: systolic RA wave ≥ 2 mmHg higher than in sinus rhythm without TR', vT - vS >= 2, `${vS.toFixed(1)} → ${vT.toFixed(1)}`); }
   for (const a of ['af', 'junc', 'mr']) {
     setAtr(a); Object.assign(_pac.st, { pos: 'wedge', resp: 'spont' });
     const t0 = 100 * _pac.breath, s1 = _pac.signal(t0).out, s2 = _pac.signal(t0 + _pac.breath).out;

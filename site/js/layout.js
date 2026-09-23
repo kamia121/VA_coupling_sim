@@ -4,7 +4,10 @@ import { REF_INDEX, REFS } from './refs.js';
 const PAGES = [
   ['index.html', 'Overview'],
   ['learn.html', 'Concepts'],
+  ['advanced.html', 'Advanced'],
+  ['interfaces.html', 'Interfaces'],
   ['simulator.html', 'Simulator'],
+  ['shock.html', 'Shock lab'],
   ['scenarios.html', 'Scenarios'],
   ['echo.html', 'Echo lab'],
   ['pac.html', 'PA catheter'],

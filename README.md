@@ -10,7 +10,10 @@ The site is static HTML and JavaScript, so there is no server to maintain. It wo
 |---|---|
 | `index.html` | Overview and a suggested learning path |
 | `learn.html` | Concepts: the PV loop, Ees, Ea, Ea/Ees, stroke work and efficiency, RV vs LV, and how the model works |
+| `advanced.html` | Advanced: pericardium, septal interdependence, c wave and base descent, relaxation τ, force–frequency, baroreflex, coronary perfusion, and valve lesions, each drawn on and off; seven advanced scenarios |
+| `interfaces.html` | Shock as four interfaces (LV–arterial, arteriole–capillary, capillary–venular, RV–PA; Rola et al. 2025): critical closing pressure and tissue perfusion pressure, capillary refill, PCO₂ gap and the DO₂–VO₂ relation, Pmsf and venous return (Guyton figure from the model), congestion, and bedside calculators |
 | `simulator.html` | LV, RV and side-by-side LV + RV simulator: valve-event marks (MVC/AVO/AVC/MVO, TVC/PVO/PVC/TVO) on loops and pressure strips, isovolumic phases slowed ×5, LA pressure strip (v wave, y descent), drag handles on the loop (Ees, afterload, preload), intervention buttons, animated transitions, beat cursor with valve/phase strip, step-by-step "why did it move?" replay, normal-reference overlay, in-range-disease overlay, snapshot comparison, shareable URLs |
+| `shock.html` | Shock lab: an accelerated clock (1 simulated minute per second, ×2, ×5) on which vasopressors, inotropes, vasodilators, pulmonary vasodilators and esmolol are infused with first-order kinetics, and crystalloid, red cells, bleeding and fluid removal change blood volume; bedside monitor, four-interface panel, live LV and RV loops, oxygen transport, trends and a flow–congestion (VTI–CVP) diagram, for nine patients including hemorrhagic, cardiogenic and obstructive shock and dynamic LVOT obstruction |
 | `scenarios.html` | HFpEF, HFrEF, septic vasoplegia, septic cardiomyopathy, acute afterload rise, compensated and decompensated PAH, acute PE and CpcPH |
 | `echo.html` | Echo lab: model-generated PW Doppler (trace LVOT VTI), CW Doppler (TR peak velocity → PASP), M-mode (TAPSE) and RV volume frames (SV/ESV), with acquisition steps and pitfall toggles (Doppler angle, LVOT diameter, weak signal, IVC-based RAP); pressure overlays on each echo screen and an overview of what each station contributes |
 | `pac.html` | Float-the-catheter tracing (RA → RV → PA → wedge, every scenario) with artifacts: over/underdamping, transducer height, spontaneous and positive-pressure breathing; PA catheter indices (TPG, DPG, PVR, PAC, RC time, PAPi, single-beat Ees/Ea), with a hemodynamic calculator |
@@ -34,39 +37,47 @@ The model is a closed-loop lumped circulation with eight compartments, including
 P(V,t) = e(t)·Ees·(V − V0) + [1 − e(t)]·A·(exp(β(V − V0)) − 1)
 ```
 
-Activation e(t) is a normalized double-Hill function, and time to peak is 0.2 + 0.15·T s. The systemic and pulmonary arterial beds are three-element Windkessels (Zc, C, R). Each atrium is a time-varying elastance whose contraction starts at the P wave, 160 ms before ventricular activation, and lasts 140 ms. Atrial contraction can be switched off, as in atrial fibrillation, or moved into ventricular systole, as in AV dissociation. The venous compartments are passive compliances, and the valves are ideal diodes. The equations are integrated with fixed-step RK4 (0.5 ms) until the state changes by less than 0.05 mL per beat. Ea is measured from the simulated beat as Pes/SV, with Pes taken at peak elastance. It is not an input.
+Activation e(t) rises as a normalized double-Hill function, with time to peak 0.2 + 0.15·T s, and falls as a monoexponential with the relaxation time constant τ. The systemic and pulmonary arterial beds are three-element Windkessels (Zc, C, R). Each atrium is a time-varying elastance whose contraction starts at the P wave, 160 ms before ventricular activation, and lasts 140 ms. The venous compartments are passive compliances. The equations are integrated with fixed-step RK4 until the state changes by less than 0.05 mL per beat, and the recorded beat uses 0.5 ms steps. Ea is measured from the simulated beat as Pes/SV, with Pes taken at peak elastance. It is not an input.
 
-The model deliberately leaves out ventricular interdependence and the pericardium, valve disease, baroreflexes, the force–frequency relation and coronary perfusion.
+Seven mechanisms are on by default and each can be switched off (`site/advanced.html` explains each):
 
-### Normal calibration (tests/engine.test.mjs checks each)
+| Mechanism | Representation |
+|---|---|
+| Pericardium | Exponential pressure–volume relation of the whole heart, added to all four chambers; pericardial fluid for tamponade |
+| Septal interdependence | Time-varying septal elastance between the ventricles, solved by Newton iteration at every step (after Smith et al. 2004) |
+| c wave and base descent | Effective atrial volume changes with leaflet bulging and with AV-plane descent during ventricular activation |
+| Relaxation time constant | Monoexponential fall of activation with τ; the reported τ is fitted to the isovolumic pressure decline |
+| Force–frequency relation | Ees × (1 + kFFR·(HR − 70)/70), flat in the HFrEF scenario |
+| Baroreflex | Sigmoid on MAP acting on HR, Ees, SVR and venous tone (after Ursino 1998); set point is the normal MAP, reset in chronic hypertension |
+| Coronary perfusion | Supply (perfusion-pressure integral × flow reserve) against demand (Suga's PVA); a deficit depresses Ees |
+
+Valve lesions (aortic stenosis, and mitral, aortic and tricuspid regurgitation) are orifice flows from ΔP = 4v². Dynamic LVOT obstruction (`lvoto`) narrows the outflow orifice as the contracting LV empties below a critical volume. The engine also reports the mean systemic filling pressure (the pressure of the systemic stressed volume with flow stopped), the venous return gradient Pmsf − RAP and the resistance to venous return, and the whole-circulation stop-flow pressure (Pmcf).
+
+The Shock lab adds three modules on top of the engine. `pharm.js` gives each drug a half-life and Emax effects on SVR, Ees, heart rate, venous tone, PVR, τ and critical closing pressure; the sizes are illustrative. `oxygen.js` holds the Fick relations (DO₂, supply-dependent VO₂ with a critical extraction of 0.6, ScvO₂, PCO₂ gap) and illustrative lactate, capillary refill and critical closing pressure functions. `shockcore.js` holds the patients, fluid kinetics (crystalloid: 18% retained, the rest leaving with τ 10 min, faster with a capillary leak), bleeding with transcapillary refill, and re-solves the circulation from a warm start at every tick.
+
+### Normal calibration (tests/engine.test.mjs checks each; tests/quoted_numbers.test.mjs checks every number quoted in the text)
 
 | Quantity | Model | Target / source |
 |---|---|---|
-| LV EF | 58% | 50–65% |
-| BP | 119/73 mmHg | resting adult |
-| CO | 5.7 L/min | resting adult |
+| LV EF | 57% | 50–65% |
+| BP | 117/71 mmHg | resting adult |
+| CO | 5.6 L/min | resting adult |
 | LAP | 7 mmHg | resting adult |
 | LV Ea/Ees | 0.62 | Ees/Ea 1.62 in normal human hearts (Starling 1993) |
-| mPAP | 14 mmHg | 14.0 ± 3.3 mmHg (Kovacs 2009) |
+| mPAP | 13 mmHg | 14.0 ± 3.3 mmHg (Kovacs 2009) |
 | PVR | 1.2 WU | < 2 WU (ESC/ERS 2022) |
 | RV Ees/Ea | 2.0 | 1.5–2 (Tello 2019) |
+| τ | 36 ms | 35 ± 10 ms in controls (Zile 2004) |
+| Baroreflex | neutral at MAP 96 mmHg | set point |
+| Coronary supply / demand | 5 | flow reserve |
 
 Scenario parameter sets are synthetic. They were chosen to reproduce the direction and approximate size of the changes reported in the cited studies. They are not patient data or treatment targets.
 
 ## Verifying the numbers
 
 ```sh
-node tests/engine.test.mjs          # calibration, conservation, ESPVR recovery, directional and scenario checks
-node tests/export_presets.mjs       # writes tests/presets_js.csv
-Rscript R/validate.R                # runs the same model in base R and compares (agreement < 1%)
-```
-
-`R/va_model.R` is a base-R implementation of the same equations (`va_simulate()`, `va_presets()`). You can use it to audit the model or to make figures in R, for example:
-
-```r
-source("R/va_model.R")
-r <- va_simulate(va_presets()$pahDecomp)
-plot(r$rec$Vrv, r$rec$Prv, type = "l", xlab = "RV volume (mL)", ylab = "RV pressure (mmHg)")
+node tests/engine.test.mjs          # calibration, conservation, ESPVR recovery, mechanisms, scenario and quoted-number checks
+node tests/shock.test.mjs           # drug directions and kinetics, Fick identities, venous return, LVOT obstruction, course of each shock case
 ```
 
 ## Evidence
