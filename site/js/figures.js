@@ -85,6 +85,80 @@ function drawRange() {
   });
 }
 
+// Ees: loops at three preloads; the end-systolic corners line up on the ESPVR.
+function drawEesFig() {
+  const svg = document.getElementById('fig-ees');
+  if (!svg) return;
+  const rs = [520, 740, 1150].map((vStressed) => simulate({ vStressed }));
+  const p = rs[1].params, m = rs[1].lv, W = Math.max(340, Math.min(720, svg.parentElement.clientWidth || 640));
+  const shades = [C.ref, C.cur, C.ref];
+  drawPlot(svg, {
+    width: W, height: Math.round(W * 0.58), title: 'Loops at three preloads share one ESPVR',
+    x: { min: 0, max: 200, label: 'LV volume (mL)' }, y: { min: 0, max: 160, label: 'LV pressure (mmHg)' },
+    series: [
+      { points: [[p.lvV0, 0], [p.lvV0 + 160 / m.Ees, 160]], color: C.cur, width: 1.6 },
+      ...rs.map((r, k) => ({ points: loop(r, 'lv'), color: shades[k], width: k === 1 ? 2.6 : 1.8 })),
+      ...rs.map((r) => ({ points: [[r.lv.ESV, r.lv.Pes]], color: 'var(--flag)', marker: 5 })),
+    ],
+    annotations: [
+      { x: p.lvV0 + 150 / m.Ees, y: 150, text: `ESPVR: slope Ees = ${m.Ees.toFixed(1)} mmHg/mL`, dx: 8 },
+      { x: p.lvV0, y: 0, text: 'V₀', dx: -4, dy: -8, anchor: 'end' },
+    ],
+  });
+}
+
+// Ea: loops at three afterloads; Ea lines steepen, the corner slides up the same ESPVR.
+function drawEaFig() {
+  const svg = document.getElementById('fig-ea');
+  if (!svg) return;
+  const base = simulate({}), rs = [0.6, 1, 1.6].map((f) => simulate({ svr: base.params.svr * f }));
+  const p = base.params, W = Math.max(340, Math.min(720, svg.parentElement.clientWidth || 640));
+  const shades = [C.ref, C.cur, C.ref];
+  drawPlot(svg, {
+    width: W, height: Math.round(W * 0.58), title: 'Loops at three afterloads',
+    x: { min: 0, max: 200, label: 'LV volume (mL)' }, y: { min: 0, max: 160, label: 'LV pressure (mmHg)' },
+    series: [
+      { points: [[p.lvV0, 0], [p.lvV0 + 160 / p.lvEes, 160]], color: C.cur, width: 1.4 },
+      ...rs.map((r, k) => ({ points: loop(r, 'lv'), color: shades[k], width: k === 1 ? 2.6 : 1.8 })),
+      ...rs.map((r, k) => ({ points: [[r.lv.ESV, r.lv.Pes], [r.lv.EDV, 0]], color: shades[k], width: 1.6, dash: '6 4' })),
+      ...rs.map((r) => ({ points: [[r.lv.ESV, r.lv.Pes]], color: 'var(--flag)', marker: 5 })),
+    ],
+    annotations: rs.map((r, k) => ({ x: r.lv.ESV, y: r.lv.Pes, text: `Ea ${r.lv.Ea.toFixed(2)} · SV ${r.lv.SV.toFixed(0)} mL`, dx: -10, dy: k === 2 ? -8 : 4, anchor: 'end' })),
+  });
+}
+
+// The ratio: two lines, EDV and V0 fixed; sliders move Ees and Ea.
+const RQ = { EDV: 138, V0: 10 };
+function drawRatioFig() {
+  const svg = document.getElementById('fig-ratio');
+  if (!svg) return;
+  const ees = +document.getElementById('rq-ees').value, ea = +document.getElementById('rq-ea').value;
+  const { EDV, V0 } = RQ, esv = (ea * EDV + ees * V0) / (ees + ea), pes = ees * (esv - V0), sv = EDV - esv;
+  const W = Math.max(340, Math.min(720, svg.parentElement.clientWidth || 640)), ymax = 200;
+  const m = drawPlot(svg, {
+    width: W, height: Math.round(W * 0.58), title: 'ESPVR and Ea line: the crossing sets stroke volume',
+    x: { min: 0, max: 160, label: 'LV volume (mL)' }, y: { min: 0, max: ymax, label: 'LV pressure (mmHg)' },
+    series: [
+      { points: [[V0, 0], [Math.min(160, V0 + ymax / ees), Math.min(ymax, ees * (160 - V0))]], color: C.cur, width: 2.2 },
+      { points: [[EDV, 0], [Math.max(0, EDV - ymax / ea), Math.min(ymax, ea * EDV)]], color: C.snap, width: 2.2, dash: '6 4' },
+      { points: [[esv, pes]], color: 'var(--flag)', marker: 6 },
+      { points: [[esv, 0], [esv, pes]], color: 'var(--flag)', width: 1, dash: '2 3' },
+    ],
+    annotations: [
+      { x: V0 + Math.min(ymax * 0.25, pes * 0.4) / ees, y: Math.min(ymax * 0.25, pes * 0.4), text: 'ESPVR', dx: 8 },
+      { x: EDV - Math.min(ymax * 0.25, pes * 0.4) / ea, y: Math.min(ymax * 0.25, pes * 0.4), text: 'Ea line', dx: -8, anchor: 'end', color: C.snap },
+      { x: esv, y: pes, text: `ESV ${esv.toFixed(0)}, Pes ${pes.toFixed(0)}`, dx: esv > 80 ? -10 : 10, dy: -10, anchor: esv > 80 ? 'end' : 'start' },
+    ],
+  });
+  // bars under the volume axis: V0 | kept (ESV − V0) | ejected (SV)
+  const y = m.sy(0) - 14, bar = (x0, x1, cls) => svgEl('rect', { x: m.sx(x0), y, width: Math.max(0, m.sx(x1) - m.sx(x0)), height: 10, class: cls }, m.svg);
+  bar(V0, esv, 'rq-kept'); bar(esv, EDV, 'rq-sv');
+  document.getElementById('rq-ees-v').textContent = ees.toFixed(2);
+  document.getElementById('rq-ea-v').textContent = ea.toFixed(2);
+  const share = ees / (ees + ea);
+  document.getElementById('rq-read').innerHTML = `Ea/Ees <b>${(ea / ees).toFixed(2)}</b> · ejected share Ees/(Ees + Ea) = <b>${(share * 100).toFixed(0)}%</b> of EDV − V₀ (${EDV - V0} mL) · SV <b>${sv.toFixed(0)} mL</b> · EF <b>${(sv / EDV * 100).toFixed(0)}%</b>`;
+}
+
 function drawSweep() {
   const svg = document.getElementById('fig-sweep');
   if (!svg) return;
@@ -147,11 +221,13 @@ export function initLearnFigures() {
   drawLoopFig();
   const fig = document.getElementById('fig-loop');
   if (fig) addExport(fig.closest('figure'), loopExportSpec);
+  drawEesFig(); drawEaFig(); drawRatioFig();
+  for (const id of ['rq-ees', 'rq-ea']) document.getElementById(id)?.addEventListener('input', drawRatioFig);
   drawSweep();
   drawRange();
   requestAnimationFrame(tickLoop);
   let t;
-  window.addEventListener('resize', () => { clearTimeout(t); t = setTimeout(() => { drawLoopFig(); drawSweep(); drawRange(); }, 200); });
+  window.addEventListener('resize', () => { clearTimeout(t); t = setTimeout(() => { drawLoopFig(); drawEesFig(); drawEaFig(); drawRatioFig(); drawSweep(); drawRange(); }, 200); });
   document.addEventListener('themechange', () => {});
 }
 

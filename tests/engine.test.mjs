@@ -94,6 +94,17 @@ check('inotrope → ↓ESV, ↓Ea/Ees', I.dobut.lv.ESV < n.lv.ESV && I.dobut.lv.
 const pah = simulate(byId.pahDecomp.params), pahV = simulate({ ...pah.params, ...INTERVENTIONS.find((x) => x.id === 'pvd').apply(pah.params) });
 check('pulmonary vasodilator in PAH → ↑RV Ees/Ea, ↑CO', pahV.rv.EesEa > pah.rv.EesEa && pahV.hemo.CO > pah.hemo.CO);
 
+// Concepts page: SV = (EDV − V0)·Ees/(Ees + Ea) predicts the model's SV within ~1 mL,
+// and end-systolic points at different preloads lie on the ESPVR.
+for (const f of [0.6, 1, 1.6]) {
+  const r = simulate({ svr: NORMAL.svr * f }), m = r.lv, pred = m.Ees * (m.EDV - NORMAL.lvV0) / (m.Ees + m.Ea);
+  check(`two-line formula: SVR ×${f} predicted SV within 1.5 mL`, Math.abs(pred - m.SV) < 1.5, `${pred.toFixed(1)} vs ${m.SV.toFixed(1)}`);
+}
+for (const vs of [520, 740, 1150]) {
+  const m = simulate({ vStressed: vs }).lv;
+  check(`ESPVR: preload ${vs}, end-systolic point within 2 mmHg of the line`, Math.abs(m.Ees * (m.ESV - NORMAL.lvV0) - m.Pes) < 2);
+}
+
 // 9. Valve events
 for (const [id, r] of Object.entries(byId)) {
   const cp = cardiacPhases(r);
