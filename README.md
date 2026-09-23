@@ -97,7 +97,7 @@ node tests/diastolic.test.mjs       # echo pattern of each grade, reversibility,
 
 ## Evidence
 
-Every reference was checked against its PubMed record: PMID, title, authors, journal, year, pages and DOI. Every number quoted from a source was checked against its abstract or PMC full text. A few statements could only be checked against the bibliographic record, because the source has no open abstract or text. These are the ESC/ERS 2022 hemodynamic definitions and TAPSE/sPAP risk thresholds, the ASE recommendations, the ASE/EACVI 2016 diastolic cutoffs, the four-grade scheme with a fixed restrictive grade IV (Nishimura 1997, whose abstract does not list the grades) and the ESC 2019 PE guideline. They are flagged on `references.html`.
+Every reference was checked against its PubMed record: PMID, title, authors, journal, year, pages and DOI. Every number quoted from a source was checked against its abstract or PMC full text. A few statements could only be checked against the bibliographic record, because the source has no open abstract or text. These are the ESC/ERS 2022 hemodynamic definitions and TAPSE/sPAP risk thresholds, the ASE recommendations, the ASE/EACVI 2016 diastolic cutoffs, the four-grade scheme with a fixed restrictive grade IV (Nishimura 1997, whose abstract does not list the grades), Guyton and Lindsey 1959 (no abstract; cited only for the dependence of the edema threshold on plasma protein, which its title states) and the ESC 2019 PE guideline. They are flagged on `references.html`.
 
 ## Running locally
 

@@ -13,21 +13,73 @@
 <title>Diastolic Lab</title>
 <meta name="description" content="Grades 0 to IV of LV diastolic dysfunction on the circulation model: the Doppler echo of each grade, and a virtual cohort that shows how each grade tolerates fluid, diuresis, afterload and atrial fibrillation.">
 </head>
-<body>
+<body class="dia-page">
 <main>
-  <div class="sim-head">
+  <div class="prose">
     <h1>Diastolic lab</h1>
-    <div class="toolbar">
-      <span class="k">Grade</span>
-      <span class="seg speed" id="grades" role="group" aria-label="Grade of diastolic dysfunction"></span>
-    </div>
+    <p class="lede">Diastolic dysfunction from normal to grade IV on the same circulation model as the rest of the site: first the physiology and how the echo reads it, then questions to predict, then the simulator to test the prediction, and finally a virtual cohort that shows how each grade tolerates fluid, diuresis, afterload and atrial fibrillation, and what that means at the bedside.</p>
+    <p class="status">Contents: <a href="#concepts">1 Concepts</a> · <a href="#quiz">2 Predict, then test</a> · <a href="#sim">3 Simulator</a> · <a href="#cohort">4 Virtual cohort</a> · <a href="#course">5 Fluid, then diuresis</a> · <a href="#limits">Limits</a></p>
+  </div>
+
+  <article class="prose" id="concepts">
+    <h2>1. Concepts</h2>
+    <h3>Two lesions: relaxation and stiffness</h3>
+    <p>Diastole has an active and a passive part. Early diastole is active: the myocardium relaxes, LV pressure falls with a time constant τ, and the falling pressure draws blood in from the LA. Late diastole is passive: once relaxation is complete, LV pressure depends only on LV volume and chamber stiffness, the end-diastolic pressure–volume relation (EDPVR). Diastolic dysfunction begins with slow relaxation and progresses to a stiff chamber. The two are separate lesions, read by separate echo indices, and they have different consequences <cite data-ref="zile2004"></cite>.</p>
+  </article>
+  <figure class="plot-card concept-fig"><h3>EDPVR of each grade, and where each patient sits on it</h3><div class="legend g-legend"></div><svg id="c-edpvr"></svg>
+    <figcaption>Each curve is traced by the grade's reference patient as volume is removed or given (from 2 L removed to 2 L given), so it is the working EDPVR, including the pericardium and the septum. The filled dot is the end-diastolic volume and pressure of the patient as found; the open dot is the same patient after 1 L of fluid. On a flat curve a liter moves the pressure a little and the volume a lot. On a steep curve it moves the pressure a lot and the volume, and so the stroke volume, very little. That is fluid tolerance in one picture.</figcaption></figure>
+  <article class="prose">
+    <h3>LA pressure drives filling, and the Doppler reads it</h3>
+    <p>The LV fills from the LA, so LA pressure is the driving pressure of diastole, and it rises as the ventricle worsens, through volume retention and LA remodeling. Early filling, the E wave, depends on the LA–LV gradient at mitral opening. It falls when relaxation is slow and rises again when LA pressure rises. Late filling, the A wave, depends on atrial contraction and on how much the LV resists it. The mitral pattern therefore reflects relaxation and filling pressure together, and the same E/A ratio can come from a normal heart or from a slowly relaxing ventricle filled at a high LA pressure: the patterns form one continuum <cite data-ref="appleton1988,nishimura1997"></cite>.</p>
+    <p>To separate relaxation from pressure, the echo adds indices that respond differently. The lateral e′, the early lengthening velocity of the mitral annulus, follows relaxation and changes little with preload, so E/e′ rises with LA pressure <cite data-ref="sohn1997,nagueh1997"></cite>. The deceleration time of E shortens as the chamber stiffens, because pressure rises quickly as volume enters. IVRT lengthens with slow relaxation and shortens again when a high LA pressure opens the mitral valve early. The pulmonary veins fill the LA mostly in systole (S) while LA pressure is normal and mostly in diastole (D) when it is high, and the atrial reversal (Ar) grows when the atrium contracts against a stiff LV. A large LA volume records chronic pressure load, and a high TR velocity records the pulmonary pressure that load has caused. The ASE/EACVI 2016 algorithm reads E/A and E first, then E/e′, TR velocity and LA volume index as supporting criteria <cite data-ref="nagueh2016"></cite>.</p>
+  </article>
+  <figure class="monitor fig concept-fig"><div class="minis" id="minis"></div>
+    <figcaption>Mitral inflow of each grade, one beat, generated from the model at the same scale (0–140 cm/s).</figcaption></figure>
+  <section class="panel"><h2>The five grades at a glance</h2><div class="table-wrap" id="grade-table"></div>
+    <p class="status">Reference patient of each grade, as found. * Beyond the ASE/EACVI 2016 cutoff <cite data-ref="nagueh2016"></cite>. The volume window is from the virtual cohort below.</p></section>
+  <article class="prose">
+    <h3 id="grades-h">The grades, one by one</h3>
+    <div id="prose-grades">
+    <p>Diastolic dysfunction is graded by the pattern of LV filling, which is set by two things that change at different rates: how fast the LV relaxes and how high the LA pressure has to be to fill it <cite data-ref="appleton1988,nishimura1997"></cite>. In the normal heart of the model, most filling occurs early, driven by relaxation. E is 90 cm/s, A is 77 cm/s (E/A 1.17), the deceleration time is 226 ms, the lateral e′ is 11.8 cm/s and E/e′ is 7.6, with a mean LA pressure of 7 mmHg.</p>
+    <p>In grade I, relaxation is slow (fitted τ 68 ms against 36 ms), so the early gradient is small and the atrium does more of the work. E falls to 72 cm/s, A rises to 104 cm/s (E/A 0.69), IVRT lengthens from 92 to 173 ms and e′ falls to 6.4 cm/s. The LA pressure is still normal, at 8 mmHg. The E of this patient is above the 50 cm/s that the ASE/EACVI algorithm uses to call grade I without supporting criteria, and the algorithm reaches grade I here only because E/e′, TR velocity and LA volume are normal <cite data-ref="nagueh2016"></cite>.</p>
+    <p>In grade II, relaxation is still slow but the LA pressure has risen to 16 mmHg, which restores the early gradient, so E/A returns to 1.39 and looks normal. The clues are those that do not depend on the gradient: e′ stays low at 5.9 cm/s, so E/e′ rises to 14.0, and the LA has enlarged (LA volume index 38 mL/m²). When 1.5 L is removed, LA pressure falls to 7 mmHg and E/A falls to 0.76, the impaired-relaxation pattern that the higher pressure had masked <cite data-ref="appleton1988"></cite>.</p>
+    <p>In grade III, the LV is stiff and fills from a stiff, high-pressure LA. E/A is 2.26 and the deceleration time is 141 ms, because LV pressure rises steeply after a small volume enters. LA pressure is 21 mmHg. Removing 1.5 L lowers E/A to 1.45, so the pattern is reversible. In grade IV, E/A is 5.35, the deceleration time is 125 ms, the pulmonary vein S/D ratio is below 1 (0.93), the TR velocity is 3.13 m/s, mean PA pressure is 39 mmHg and LA pressure is 29 mmHg. After 1.5 L is removed, E/A is still 2.10, which makes this the fixed restrictive pattern that the older four-grade scheme called grade IV <cite data-ref="nishimura1997"></cite>. The 2016 algorithm has no grade IV and grades both patients as grade III <cite data-ref="nagueh2016"></cite>.</p>
+
+    <p>E/e′ tracks LA pressure only loosely. With the regression of Nagueh and colleagues (PAWP = 1.24 × E/e′ + 1.9) <cite data-ref="nagueh1997"></cite>, the estimate is 19 mmHg in grade III, where the model LA pressure is 21 mmHg, and 20 mmHg in grade IV, where it is 29 mmHg. Part of the gap in grade IV is the model's (see below), but the direction is the one to teach: once E is limited by a stiff ventricle, E/e′ stops rising with pressure.</p>
+  </div>
+    <h3>Why the grade predicts tolerance</h3>
+    <p><b>Fluid.</b> Fluid raises the volume of every chamber, and the EDPVR turns that volume into pressure. Where the curve is flat, the volume stays in the LV and raises stroke volume. Where it is steep, the pressure rises and the stroke volume barely changes, so from grade II onward fluid mainly adds congestion.</p>
+    <p><b>Diuresis.</b> Diuresis runs the same curve in reverse. A stiff, congested ventricle gives up a lot of pressure for little output, so diuresis relieves congestion almost for free. Grade I sits on the flat part with a normal pressure and depends on preload and on its atrial kick, so it loses output quickly.</p>
+    <p><b>Afterload.</b> A higher afterload leaves more volume in the LV at end-systole, and a stiff chamber turns that volume into a higher end-diastolic pressure. Afterload alone moves the pressure little. The larger effect comes when sympathetic venoconstriction moves blood into the central circulation at the same time.</p>
+    <p><b>Atrial fibrillation.</b> AF removes the atrial kick and, at fast rates, cuts diastole short. It hurts most where filling depends on both: a slowly relaxing ventricle that relies on its atrium.</p>
+    <p><b>Clinical consequences.</b> The simulator translates the numbers into the bedside picture with published thresholds. A PAWP above 18 mmHg means pulmonary congestion, and a cardiac index below 2.2 L/min/m² means low output <cite data-ref="forrester1976"></cite>. The LA pressure at which alveolar edema develops depends on plasma protein <cite data-ref="guyton1959"></cite>; 25 mmHg is used here, a round figure close to the normal plasma oncotic pressure. A MAP below 65 mmHg is hypotension <cite data-ref="evans2021"></cite>, a CVP above 12 mmHg is systemic venous congestion <cite data-ref="rola2025"></cite>, and a mean PA pressure above 20 mmHg is pulmonary hypertension, post-capillary when PAWP is above 15 mmHg <cite data-ref="humbert2022"></cite>. These are thresholds applied to the model's pressures, not simulated lung water, kidneys or symptoms.</p>
+  </article>
+
+  <section class="panel quiz" id="quiz">
+    <h2>2. Predict, then test</h2>
+    <p class="status">Commit to an answer first. The answer and its explanation come from running the model, and “Show it in the simulator” sets the simulator below to the same patient and intervention.</p>
+    <div class="seg quiz-nav" id="quiz-nav" role="group" aria-label="Question"></div>
+    <div id="quiz-card" aria-live="polite"></div>
+  </section>
+
+  <div class="sim-head" id="sim">
+    <h2 class="sim-h">3. Simulator</h2>
   </div>
   <div id="grade-text" class="prose preset-text"></div>
-  <p class="status">The same circulation model as the rest of the site, with slower relaxation, a stiffer LV, atrial remodeling and volume retention added grade by grade. The screens and numbers below are solved again every time a control moves. The grades are synthetic teaching cases, not patient data.</p>
+  <p class="status">The same circulation model as the rest of the site, with slower relaxation, a stiffer LV, atrial remodeling and volume retention added grade by grade. The screens and numbers are solved again every time a control moves. The grades are synthetic teaching cases, not patient data.</p>
+
+  <div class="dia-bar" id="dia-bar">
+    <div class="dia-bar-row">
+      <span class="k">Grade</span>
+      <span class="seg speed" id="grades" role="group" aria-label="Grade of diastolic dysfunction"></span>
+      <span class="dia-cond" id="cond-sum" aria-live="polite"></span>
+    </div>
+    <div class="tiles dia-tiles" id="tiles" aria-live="polite"></div>
+    <div class="dia-conseq" id="conseq" aria-live="polite"></div>
+  </div>
 
   <div class="sim2">
     <div>
-      <div class="tiles" id="tiles" aria-live="polite"></div>
       <section class="monitor" id="echo-panel">
         <div class="mon-head"><h2>Doppler echocardiogram</h2><span class="status" id="live-status" aria-live="polite"></span></div>
         <div class="dia-screens">
@@ -76,17 +128,9 @@
   </div>
 
   <article class="prose">
-    <h2 id="grades-h">The grades on echo</h2>
-    <div id="prose-grades">
-    <p>Diastolic dysfunction is graded by the pattern of LV filling, which is set by two things that change at different rates: how fast the LV relaxes and how high the LA pressure has to be to fill it <cite data-ref="appleton1988,nishimura1997"></cite>. In the normal heart of the model, most filling occurs early, driven by relaxation. E is 90 cm/s, A is 77 cm/s (E/A 1.17), the deceleration time is 226 ms, the lateral e′ is 11.8 cm/s and E/e′ is 7.6, with a mean LA pressure of 7 mmHg.</p>
-    <p>In grade I, relaxation is slow (fitted τ 68 ms against 36 ms), so the early gradient is small and the atrium does more of the work. E falls to 72 cm/s, A rises to 104 cm/s (E/A 0.69), IVRT lengthens from 92 to 173 ms and e′ falls to 6.4 cm/s. The LA pressure is still normal, at 8 mmHg. The E of this patient is above the 50 cm/s that the ASE/EACVI algorithm uses to call grade I without supporting criteria, and the algorithm reaches grade I here only because E/e′, TR velocity and LA volume are normal <cite data-ref="nagueh2016"></cite>.</p>
-    <p>In grade II, relaxation is still slow but the LA pressure has risen to 16 mmHg, which restores the early gradient, so E/A returns to 1.39 and looks normal. The clues are those that do not depend on the gradient: e′ stays low at 5.9 cm/s, so E/e′ rises to 14.0, and the LA has enlarged (LA volume index 38 mL/m²). When 1.5 L is removed, LA pressure falls to 7 mmHg and E/A falls to 0.76, the impaired-relaxation pattern that the higher pressure had masked <cite data-ref="appleton1988"></cite>.</p>
-    <p>In grade III, the LV is stiff and fills from a stiff, high-pressure LA. E/A is 2.26 and the deceleration time is 141 ms, because LV pressure rises steeply after a small volume enters. LA pressure is 21 mmHg. Removing 1.5 L lowers E/A to 1.45, so the pattern is reversible. In grade IV, E/A is 5.35, the deceleration time is 125 ms, the pulmonary vein S/D ratio is below 1 (0.93), the TR velocity is 3.13 m/s, mean PA pressure is 39 mmHg and LA pressure is 29 mmHg. After 1.5 L is removed, E/A is still 2.10, which makes this the fixed restrictive pattern that the older four-grade scheme called grade IV <cite data-ref="nishimura1997"></cite>. The 2016 algorithm has no grade IV and grades both patients as grade III <cite data-ref="nagueh2016"></cite>.</p>
-    <p>The virtual cohort shows how well the algorithm separates the grades once patients vary. As found, it grades 32 of the 40 grade II patients as grade II and 8 as grade I. It grades 22 of the 40 grade III patients as grade III and 17 as grade II, because many of them sit near the E/A cutoff of 2. After 1.5 L is removed, 28 of the 40 grade III patients leave the restrictive pattern and 12 do not, and 19 of the 40 grade IV patients leave it and 21 do not. Reversibility is a continuum across patients, not a property of a grade <cite data-ref="appleton1988"></cite>.</p>
-    <p>E/e′ tracks LA pressure only loosely. With the regression of Nagueh and colleagues (PAWP = 1.24 × E/e′ + 1.9) <cite data-ref="nagueh1997"></cite>, the estimate is 19 mmHg in grade III, where the model LA pressure is 21 mmHg, and 20 mmHg in grade IV, where it is 29 mmHg. Part of the gap in grade IV is the model's (see below), but the direction is the one to teach: once E is limited by a stiff ventricle, E/e′ stops rising with pressure.</p>
-  </div>
 
-    <h2 id="cohort">Virtual cohort: fluid, afterload and AF tolerance</h2>
+
+    <h2 id="cohort">4. Virtual cohort: fluid, afterload and AF tolerance</h2>
     <p>Each grade holds <span id="c-n"></span> virtual patients. Each patient has the grade's parameters, each multiplied by its own log-normal factor (τ, EDPVR, Ees, atrial function and size, blood volume, SVR, arterial compliance, PVR and heart rate, with coefficients of variation of 6% to 20%). Every patient then goes through the same protocols: volume from 2 L removed to 2 L given, SVR from 0.7 to 1.75 times baseline, a sympathetic surge, and AF at mean ventricular rates of 70 to 150/min. The lines are medians and the bands are interquartile ranges. Hover over a chart to read the values.</p>
   </article>
 
@@ -112,13 +156,20 @@
     <p class="status">The same data, with each patient's parameters, are in <code>R/diastolic_cohort_long.csv</code>, <code>R/diastolic_cohort_summary.csv</code> and <code>R/diastolic_course.csv</code> in the repository, and <code>R/diastolic_microsim.R</code> draws the figures and tables in R.</p>
   </section>
   <section class="panel">
+    <h2>Clinical consequences across the cohort <span class="status">% of the 40 patients of each grade</span></h2>
+    <div class="seg" id="cq-pick" role="group" aria-label="Consequence"></div>
+    <div class="table-wrap" id="cq-table"></div>
+    <p class="status">Thresholds as in the simulator. Volume is intravascular volume given (+) or removed (−); the surge is SVR × 1.5 with 200 mL of venous recruitment. A dash means the patients could not spare that much volume in the model.</p>
+  </section>
+  <section class="panel">
     <h2>How the echo algorithm grades the virtual patients</h2>
     <div class="dia-grid" id="c-conf"></div>
+    <p class="conf-note">The virtual cohort shows how well the algorithm separates the grades once patients vary. As found, it grades 32 of the 40 grade II patients as grade II and 8 as grade I. It grades 22 of the 40 grade III patients as grade III and 17 as grade II, because many of them sit near the E/A cutoff of 2. After 1.5 L is removed, 28 of the 40 grade III patients leave the restrictive pattern and 12 do not, and 19 of the 40 grade IV patients leave it and 21 do not. Reversibility is a continuum across patients, not a property of a grade <cite data-ref="appleton1988"></cite>.</p>
     <p class="status">Each row is the grade the patients were built as; each column is the grade that the ASE/EACVI 2016 algorithm assigns from the patient's model echo <cite data-ref="nagueh2016"></cite>. The algorithm has no grade IV, which is grade III that stays restrictive after preload reduction <cite data-ref="nishimura1997"></cite>.</p>
   </section>
 
   <article class="prose">
-    <h2 id="course">Give fluid, then diurese</h2>
+    <h2 id="course">5. Give fluid, then diurese</h2>
     <p>The reference patient of each grade receives two 500-mL crystalloid boluses over 30 minutes. From the first hour, diuresis removes 500 mL/h of intravascular volume for three hours. Crystalloid follows the Shock lab kinetics, in which 18% of the fluid stays in the vessels and the rest moves to the interstitium with a time constant of 10 minutes <cite data-ref="hahn2020"></cite>.</p>
   </article>
   <div class="dia-grid">
@@ -129,7 +180,7 @@
   </div>
 
   <article class="prose">
-    <h2 id="teaching">Teaching points</h2>
+    <h2 id="teaching">What the cohort shows</h2>
     <div id="prose-teach">
     <p><b>Fluid.</b> In every grade, a liter of fluid raises LA pressure. The rise is 5.3 mmHg in the normal heart and 7.9 mmHg in grade IV. What changes across the grades is what the liter buys. Five hundred milliliters raise cardiac output by 0.11 L/min in the normal heart and 0.17 L/min in grade I. They raise it by 0.01 L/min in grade II, and in grades III and IV by nothing at all. From grade II onward, the ventricle is on the flat part of its output curve and the steep part of its pressure curve, so fluid adds congestion without flow. The normal rise matches the saline-loading study of Fujimoto and colleagues, in which wedge pressure rose from 10 to 16 mmHg after about 1 L in healthy adults. In the same study the rise in HFpEF was 25 mmHg per L/m², about 13 mmHg per liter at a body surface area of 1.9 m² <cite data-ref="fujimoto2013"></cite>. The model's late grades rise about half as steeply, so they understate the problem.</p>
     <p><b>Diuresis.</b> The mirror image holds. Removing 1 L lowers LA pressure by 7.7 mmHg in grade III and 9.5 mmHg in grade IV while cardiac output falls by only 0.1 L/min, so diuresis is the treatment that works for the late grades. Grade I is the exception worth remembering: it starts with a normal LA pressure, and the same liter removed lowers cardiac output by 1.27 L/min, more than in the normal heart (1.01 L/min), because a slowly relaxing ventricle depends on its filling pressure and its atrial kick.</p>
@@ -142,7 +193,7 @@
     <div id="prose-limits">
     <p>The model has no long axis, so e′ is not simulated. It is scaled from the fitted τ (e′ = 12 × 36/τ cm/s), because e′ tracks relaxation and changes little with preload <cite data-ref="sohn1997,nagueh1997"></cite>. In reality, e′ also depends on restoring forces and on the LV pressure at mitral opening <cite data-ref="opdahl2009"></cite>, and the model ignores both. The tissue Doppler display draws the timing of the waves from the model and sizes e′ and a′ this way.</p>
     <p>The mitral E wave responds less to LA pressure in the model than in patients. The model has a mitral orifice but no inertance, so a rise in LA pressure shifts E/A only modestly, and a restrictive E stays near 80 cm/s instead of the 100 cm/s or more seen at the bedside. For the same reason, the reversibility test in the model needs 1.5 L removed, much more than a Valsalva maneuver removes. The grades are set mainly by the disease parameters, not by preload alone.</p>
-    <p>The late grades rise in LA pressure about half as steeply with fluid as patients with HFpEF do <cite data-ref="fujimoto2013"></cite>, so the model understates how poorly they tolerate volume. Crystalloid that leaves the vessels simply disappears: there is no lung water, no oxygenation, no kidney and no natriuresis, and diuresis is entered as net intravascular removal, with refill already subtracted. An afterload rise is run with the baroreflex open. The surge's 200 mL of venous recruitment is an illustrative size. AF is modeled as the loss of atrial contraction with a fixed, irregular ventricular rate. There is no atrial remodeling, no tachycardia-mediated dysfunction and no rate-dependent change in relaxation beyond what the elastance model gives. The LA volume index is the model's LA volume scaled by 0.6, so that the normal heart reads 25 mL/m². Every patient is synthetic, and none of the numbers here is a treatment threshold.</p>
+    <p>The late grades rise in LA pressure about half as steeply with fluid as patients with HFpEF do <cite data-ref="fujimoto2013"></cite>, so the model understates how poorly they tolerate volume. Crystalloid that leaves the vessels simply disappears: there is no lung water, no oxygenation, no kidney and no natriuresis, and diuresis is entered as net intravascular removal, with refill already subtracted. An afterload rise is run with the baroreflex open. The surge's 200 mL of venous recruitment is an illustrative size. AF is modeled as the loss of atrial contraction with a fixed, irregular ventricular rate. When a beat follows a short one, the model's AV-plane term gives a brief jump in mitral flow at the QRS, and the Doppler display holds the first 40 ms of such a beat to the flow before it. There is no atrial remodeling, no tachycardia-mediated dysfunction and no rate-dependent change in relaxation beyond what the elastance model gives. The bedside consequences use a body surface area of 1.9 m². With it, the grade III and IV patients have a cardiac index of about 1.8 L/min/m² at rest, which puts them in the cold, wet subset before any intervention; many patients with restrictive filling have a higher index at rest, so the model probably overstates low output in the late grades. The LA volume index is the model's LA volume scaled by 0.6, so that the normal heart reads 25 mL/m². Every patient is synthetic, and none of the numbers here is a treatment threshold.</p>
   </div>
     <div id="page-refs"></div>
   </article>
