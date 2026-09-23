@@ -26,16 +26,45 @@
   </figure>
   <p>Counter-clockwise: filling along the bottom, isovolumic contraction up the right side, ejection across the top, isovolumic relaxation down the left side. Width = stroke volume. Area = stroke work.</p>
 
-  <h2 id="ees">Ees: the ventricle</h2>
-  <p>Pressure/(volume − V₀) rises through systole to a maximum that is nearly independent of load <cite data-ref="suga1973,suga1974"></cite>. End-systolic points from beats at different preloads fall on one line, the ESPVR; its slope is Ees. The same holds for the RV <cite data-ref="maughan1979"></cite>. Ees rises with inotropy and with concentric remodelling (systolic stiffening) <cite data-ref="kawaguchi2003,borlaug2008"></cite>. Diastolic stiffness is a separate curve, the exponential EDPVR.</p>
+  <h2 id="ees">Ees: how hard the ventricle can squeeze</h2>
+  <p>Think of the ventricle in systole as a spring that stiffens as it contracts. At every instant, the pressure it generates is its stiffness at that moment times the volume it holds above an unstressed volume, V₀: P(t) = E(t) × (V − V₀). The stiffness E(t), called elastance (mmHg/mL), rises through systole and peaks at end-systole. That peak is <b>Ees</b>, the end-systolic elastance <cite data-ref="suga1973,suga1974"></cite>.</p>
+  <p>Ees has a practical meaning: it tells you how much pressure the ventricle can hold at the end of systole for each millilitre left inside it. A ventricle with a high Ees can finish ejection at a small volume even against a high pressure. A ventricle with a low Ees stops ejecting while it is still large. You can see this at the bedside by changing the load. If you change preload or afterload for a few beats, the end-systolic corners of the loops fall on one straight line, the <b>end-systolic pressure–volume relation (ESPVR)</b>. Its slope is Ees and it crosses the volume axis at V₀. The RV behaves the same way <cite data-ref="maughan1979"></cite>.</p>
+  <figure class="monitor fig">
+    <svg id="fig-ees"></svg>
+    <figcaption>Model LV at normal preload (green) and at low and high preload (grey), with contractility unchanged. The end-systolic corners (dots) sit on one line: the ESPVR, whose slope is Ees. A larger preload moves the corner up the same line; it does not change the line.</figcaption>
+  </figure>
+  <p>Because the line barely moves when the load changes, Ees measures contractility in a way EF does not: EF falls when afterload rises even if the muscle is unchanged. Ees rises with inotropes and sympathetic drive <cite data-ref="guarracino2013"></cite> and falls with ischaemia, cardiomyopathy or septic myocardial depression <cite data-ref="guarracino2014"></cite>. Concentric hypertrophy also raises it: a thick, stiff ventricle has a steep ESPVR <cite data-ref="kawaguchi2003,borlaug2008"></cite>, so a high Ees is not always a sign of a healthy heart. A dilated failing ventricle often has both a flatter line and a line shifted to the right (a larger V₀). Filling is described by a separate, curved relation, the end-diastolic pressure–volume relation (EDPVR), which is diastolic stiffness and has nothing to do with Ees.</p>
 
-  <h2 id="ea">Ea: the load</h2>
-  <div class="eq">Ea = Pes / SV ≈ SVR / T</div>
-  <p>Defined by Sunagawa <cite data-ref="sunagawa1983"></cite>; in humans, PV-loop Ea agreed with a three-element Windkessel estimate from aortic impedance and compliance <cite data-ref="kelly1992"></cite>. Ea tracks SVR divided by heart period (r 0.97–0.99) and is insensitive to pulsatile load <cite data-ref="chirinos2014"></cite>. At fixed SVR, tachycardia raises Ea.</p>
+  <h2 id="ea">Ea: how hard the arteries push back</h2>
+  <p><b>Ea</b>, the effective arterial elastance, describes the load the ventricle ejects into, in the same units as Ees. It answers the question: for each millilitre the ventricle ejects, how much does end-systolic pressure rise? Ea = Pes / SV <cite data-ref="sunagawa1983"></cite>. It is not the stiffness of any single vessel. It folds the whole arterial tree (resistance, compliance and the reflections in large arteries) into one number, and in patients it matched an estimate built from a detailed model of the arterial load <cite data-ref="kelly1992"></cite>.</p>
+  <p>On the pressure–volume loop, Ea is a line that starts at end-diastolic volume on the volume axis (zero pressure) and rises to the end-systolic corner. Its slope is −Ea. A steep line means a heavy load. The largest single influence is resistance divided by heart period, Ea ≈ SVR / T. Ea tracked SVR/T closely (r 0.97–0.99), while pulsatile load mattered less <cite data-ref="chirinos2014"></cite>. Heart rate appears because at a fast rate the arteries have less time to empty between beats, so each millilitre ejected leaves pressure higher. Ea therefore rises with vasoconstriction, hypertension and tachycardia, and falls with vasodilation and vasoplegia. At the bedside, Ea ≈ 0.9 × systolic pressure / stroke volume <cite data-ref="kelly1992,guarracino2014"></cite>.</p>
+  <figure class="monitor fig">
+    <svg id="fig-ea"></svg>
+    <figcaption>Model LV at three afterloads (SVR × 0.6, × 1, × 1.6), with contractility unchanged. A heavier load makes the Ea line (dashed) steeper. The end-systolic corner slides up the same ESPVR, so ESV rises and stroke volume falls.</figcaption>
+  </figure>
 
-  <h2 id="ratio">The ratio</h2>
-  <div class="eq">SV = (EDV − V₀) · Ees / (Ees + Ea) &nbsp;⇒&nbsp; EF ≈ 1 / (1 + Ea/Ees)</div>
-  <p>Stroke work peaks at Ea = Ees; efficiency peaks at lower Ea <cite data-ref="burkhoff1986"></cite>. Isolated canine hearts: work peaked at Ea/Ees 0.80, efficiency at 0.70, both ≥ 90% of optimum from 0.3 to 1.3 <cite data-ref="detombe1993"></cite>. Normal human hearts: Ees/Ea 1.62 (Ea/Ees ≈ 0.62) <cite data-ref="starling1993"></cite>.</p>
+  <h2 id="ratio">The ratio: where the two lines meet</h2>
+  <p>At the end of systole, the ventricle and its load must agree. The end-systolic point has to lie on the ventricle's line (the ESPVR: the pressure it can hold at that volume) and on the artery's line (the Ea line: the pressure the arteries generate for that stroke volume). The only point on both lines is where they cross. That crossing sets end-systolic volume and pressure, and therefore stroke volume. Ees and Ea together decide how far the ventricle empties.</p>
+  <div class="eq">SV = (EDV − V₀) × Ees / (Ees + Ea) &nbsp;⇒&nbsp; EF ≈ 1 / (1 + Ea/Ees)</div>
+  <p>Read the formula as a split. EDV − V₀ is the volume the ventricle could possibly eject. The ventricle ejects the share Ees/(Ees + Ea) and keeps the rest. When Ees equals Ea, it ejects half of that volume. When Ees is twice Ea, it ejects two thirds. When Ea is twice Ees, it ejects only one third. EF follows almost directly, which is why EF behaves like a coupling index rather than a measure of contractility. At the normal Ea/Ees of about 0.6, EF is about 60%.</p>
+  <p>The same share explains why a weak ventricle is so sensitive to afterload. A 50% rise in Ea cuts the ejected share by about 16% when Ees is 2.3 mmHg/mL (normal), but by about 24% when Ees is 0.8 (a failing heart). Afterload reduction helps a weak ventricle more for the same reason. In the simulator the formula predicts the model's stroke volume within about 1 mL.</p>
+  <figure class="monitor fig">
+    <svg id="fig-ratio"></svg>
+    <div class="ratio-ctl">
+      <label>Ees <input type="range" id="rq-ees" min="0.4" max="4" step="0.05" value="2.3"><output id="rq-ees-v"></output></label>
+      <label>Ea <input type="range" id="rq-ea" min="0.4" max="4" step="0.05" value="1.43"><output id="rq-ea-v"></output></label>
+    </div>
+    <p class="ratio-read" id="rq-read" aria-live="polite"></p>
+    <figcaption>The two-line picture with EDV fixed at 138 mL and V₀ at 10 mL. Solid: ESPVR (slope Ees). Dashed: Ea line (slope −Ea). Move the sliders: the crossing sets ESV and end-systolic pressure (mL, mmHg), the green bar is stroke volume, and the grey bar is what stays in the ventricle. In a real circulation EDV also shifts, which the simulator handles.</figcaption>
+  </figure>
+  <details class="panel">
+    <summary>Derivation, and what it assumes</summary>
+    <p>End-systole lies on the ESPVR, so Pes = Ees × (ESV − V₀). By definition of Ea it also satisfies Pes = Ea × SV = Ea × (EDV − ESV). Setting the two equal gives Ees × (ESV − V₀) = Ea × (EDV − ESV). Solving for ESV gives ESV = (Ea × EDV + Ees × V₀) / (Ees + Ea). Then SV = EDV − ESV = Ees × (EDV − V₀) / (Ees + Ea), and Pes = Ea × SV = [Ees × Ea / (Ees + Ea)] × (EDV − V₀).</p>
+    <p>Dividing SV by EDV gives EF = [Ees / (Ees + Ea)] × (1 − V₀/EDV). When V₀ is small relative to EDV, EF ≈ 1/(1 + Ea/Ees). The same algebra also gives SV/(ESV − V₀) = Ees/Ea, which is the idea behind SV/ESV as a volume estimate of Ees/Ea when V₀ ≈ 0.</p>
+    <p>Why Ea ≈ SVR/T: over one beat, mean flow is SV/T. If the load were purely resistive, mean pressure would be SVR × SV/T. Taking end-systolic pressure as close to mean pressure gives Pes/SV ≈ SVR/T. Compliance and wave reflection add to this, but only modestly <cite data-ref="chirinos2014"></cite>.</p>
+    <p>Assumptions: the ESPVR is linear over the working range, Ea is constant from beat to beat, and EDV is treated as given. In the body, EDV depends on venous return and on the other ventricle, so a change in Ea also shifts EDV. The simulator includes that, the formula does not.</p>
+  </details>
+  <p>Energy has its own optimum. Stroke work peaks at Ea = Ees, while efficiency peaks at a lower Ea <cite data-ref="burkhoff1986"></cite>. In isolated canine hearts, work peaked at Ea/Ees 0.80 and efficiency at 0.70, and both stayed ≥ 90% of optimum from 0.3 to 1.3 <cite data-ref="detombe1993"></cite>. Normal human hearts run at Ees/Ea 1.62 (Ea/Ees ≈ 0.62) <cite data-ref="starling1993"></cite>, close to the efficient end.</p>
   <figure class="monitor fig">
     <svg id="fig-sweep"></svg>
     <figcaption>Model sweep of SVR at fixed Ees and volume. Stroke work peaks near Ea/Ees 1.2. SW/PVA keeps rising as the ratio falls because it omits the heart's fixed oxygen cost; with that cost included, efficiency peaks below the work optimum <cite data-ref="burkhoff1986,suga1979"></cite>.</figcaption>

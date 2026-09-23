@@ -16,6 +16,16 @@ The site is static HTML and JavaScript, so there is no server to maintain. It wo
 | `pac.html` | Float-the-catheter tracing (RA → RV → PA → wedge, every scenario) with artifacts: over/underdamping, transducer height, spontaneous and positive-pressure breathing; PA catheter indices (TPG, DPG, PVR, PAC, RC time, PAPi, single-beat Ees/Ea), with a haemodynamic calculator |
 | `references.html` | Full bibliography with PubMed and DOI links |
 
+## Exporting animations for slides
+
+Every animation has an **Export for slides** menu: the simulator (current view, patient and speed), the annotated PV loop on the Concepts page, each echo screen, and the PA catheter tracing. Frames are rendered from the model one at a time, not screen-recorded, so each export is exactly one cycle and loops without a seam.
+
+- **PowerPoint slide (.pptx):** a 16:9 slide with the animation, a caption, a link back to the exact model state, and speaker notes with the key values. The animation is an embedded GIF, which plays in PowerPoint on Windows, Mac, the web and mobile, in edit and slide-show view, with no click.
+- **Animated GIF:** the same animation on its own (Insert → Pictures in PowerPoint, Keynote or Google Slides).
+- **MP4 (H.264):** shown only in browsers that can encode H.264 through WebCodecs (current Chrome, Edge and Safari). Sharper than the GIF; in PowerPoint set Playback → Loop until stopped.
+
+The GIF encoder (`site/js/gif.js`) has no dependencies. PptxGenJS and mp4-muxer are vendored in `site/vendor/` and load only when you export.
+
 ## Model
 
 The model is a closed-loop lumped circulation with six compartments. Each ventricle is a time-varying elastance with an exponential EDPVR:

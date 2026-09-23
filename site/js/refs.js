@@ -1,5 +1,5 @@
 // Bibliography. Every entry was checked against its PubMed record (PMID, title, authors,
-// journal, year, pages, DOI) on 2026-09-22. Page text cites entries by key.
+// journal, year, pages, DOI) on 2026-09-22 (entries from guarracino2013 onward on 2026-09-23). Page text cites entries by key.
 export const REFS = [
  {
   "key": "suga1973",
@@ -638,6 +638,138 @@ export const REFS = [
   "pages": "1647-54",
   "pmid": "1959409",
   "doi": "10.1378/chest.100.6.1647"
+ },
+ {
+  "key": "guarracino2013",
+  "authors": "Guarracino F, Baldassarri R, Pinsky MR",
+  "title": "Ventriculo-arterial decoupling in acutely altered hemodynamic states",
+  "journal": "Crit Care",
+  "year": 2013,
+  "volume": "17",
+  "pages": "213",
+  "pmid": "23510336",
+  "doi": "10.1186/cc12522"
+ },
+ {
+  "key": "guarracino2019",
+  "authors": "Guarracino F, Bertini P, Pinsky MR",
+  "title": "Cardiovascular determinants of resuscitation from sepsis and septic shock",
+  "journal": "Crit Care",
+  "year": 2019,
+  "volume": "23",
+  "pages": "118",
+  "pmid": "30987647",
+  "doi": "10.1186/s13054-019-2414-9"
+ },
+ {
+  "key": "guinot2018",
+  "authors": "Guinot PG, Longrois D, Kamel S, et al",
+  "title": "Ventriculo-Arterial Coupling Analysis Predicts the Hemodynamic Response to Norepinephrine in Hypotensive Postoperative Patients: A Prospective Observational Study",
+  "journal": "Crit Care Med",
+  "year": 2018,
+  "volume": "46",
+  "pages": "e17-e25",
+  "pmid": "29019850",
+  "doi": "10.1097/CCM.0000000000002772"
+ },
+ {
+  "key": "fuchs1982",
+  "authors": "Fuchs RM, Heuser RR, Yin FC, et al",
+  "title": "Limitations of pulmonary wedge V waves in diagnosing mitral regurgitation",
+  "journal": "Am J Cardiol",
+  "year": 1982,
+  "volume": "49",
+  "pages": "849-54",
+  "pmid": "7064833",
+  "doi": "10.1016/0002-9149(82)91968-3"
+ },
+ {
+  "key": "lloyddonald2025",
+  "authors": "Lloyd-Donald P, Fujino M, Waldman B, et al",
+  "title": "Measurement and interpretation of central venous pressure: a narrative review",
+  "journal": "Anaesthesia",
+  "year": 2025,
+  "volume": "80",
+  "pages": "1093-1102",
+  "pmid": "40457939",
+  "doi": "10.1111/anae.16633"
+ },
+ {
+  "key": "vachiery2019",
+  "authors": "Vachiéry JL, Tedford RJ, Rosenkranz S, et al",
+  "title": "Pulmonary hypertension due to left heart disease",
+  "journal": "Eur Respir J",
+  "year": 2019,
+  "volume": "53",
+  "pages": "1801897",
+  "pmid": "30545974",
+  "doi": "10.1183/13993003.01897-2018"
+ },
+ {
+  "key": "rosenkranz2015",
+  "authors": "Rosenkranz S, Preston IR",
+  "title": "Right heart catheterisation: best practice and pitfalls in pulmonary hypertension",
+  "journal": "Eur Respir Rev",
+  "year": 2015,
+  "volume": "24",
+  "pages": "642-52",
+  "pmid": "26621978",
+  "doi": "10.1183/16000617.0062-2015"
+ },
+ {
+  "key": "cooper2019",
+  "authors": "Cooper BL, Beyene JA",
+  "title": "Atrioventricular nodal reentrant tachycardia and cannon A waves",
+  "journal": "Am J Emerg Med",
+  "year": 2019,
+  "volume": "37",
+  "pages": "379.e5-379.e7",
+  "pmid": "30448204",
+  "doi": "10.1016/j.ajem.2018.11.016"
+ },
+ {
+  "key": "evans2021",
+  "authors": "Evans L, Rhodes A, Alhazzani W, et al",
+  "title": "Surviving sepsis campaign: international guidelines for management of sepsis and septic shock 2021",
+  "journal": "Intensive Care Med",
+  "year": 2021,
+  "volume": "47",
+  "pages": "1181-1247",
+  "pmid": "34599691",
+  "doi": "10.1007/s00134-021-06506-y"
+ },
+ {
+  "key": "ostermann2023",
+  "authors": "Ostermann J, Pott J, Hennigs JK, et al",
+  "title": "Residual risk identified in routine noninvasive follow-up assessments in pulmonary arterial hypertension",
+  "journal": "ERJ Open Res",
+  "year": 2023,
+  "volume": "9",
+  "pages": "00072-2023",
+  "pmid": "37260464",
+  "doi": "10.1183/23120541.00072-2023"
+ },
+ {
+  "key": "schwartzenberg2012",
+  "authors": "Schwartzenberg S, Redfield MM, From AM, et al",
+  "title": "Effects of vasodilation in heart failure with preserved or reduced ejection fraction: implications of distinct pathophysiologies on response to therapy",
+  "journal": "J Am Coll Cardiol",
+  "year": 2012,
+  "volume": "59",
+  "pages": "442-51",
+  "pmid": "22281246",
+  "doi": "10.1016/j.jacc.2011.09.062"
+ },
+ {
+  "key": "harjola2016",
+  "authors": "Harjola VP, Mebazaa A, Čelutkienė J, et al",
+  "title": "Contemporary management of acute right ventricular failure: a statement from the Heart Failure Association and the Working Group on Pulmonary Circulation and Right Ventricular Function of the European Society of Cardiology",
+  "journal": "Eur J Heart Fail",
+  "year": 2016,
+  "volume": "18",
+  "pages": "226-41",
+  "pmid": "26995592",
+  "doi": "10.1002/ejhf.478"
  }
 ];
 

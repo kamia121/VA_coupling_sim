@@ -1,5 +1,6 @@
 // Static teaching figures generated from the same engine as the simulator.
-import { simulate } from './engine.js';
+import { simulate, cardiacPhases } from './engine.js';
+import { addExport, svgCapture, header, even } from './export.js';
 import { drawPlot, niceMax, svgEl } from './plot.js';
 import { PRESETS, presetById } from './presets.js';
 
@@ -50,10 +51,14 @@ function drawLoopFig() {
   svgEl('circle', { id: 'fig-cursor', r: 5, class: 'beat-cursor', cx: -9, cy: -9 }, svg);
 }
 
-let loopFig = null;
+let loopFig = null, exporting = false;
+function setLoopCursor(i) {
+  const { r, map } = loopFig, c = document.getElementById('fig-cursor');
+  c.setAttribute('cx', map.sx(r.rec.Vlv[i])); c.setAttribute('cy', map.sy(r.rec.Plv[i]));
+}
 function tickLoop(now) {
   const c = document.getElementById('fig-cursor');
-  if (c && loopFig) {
+  if (c && loopFig && !exporting) {
     const { r, map } = loopFig, n = r.rec.t.length, i = Math.floor(((now / 4000) % r.T) / r.T * n);   // quarter speed
     c.setAttribute('cx', map.sx(r.rec.Vlv[i])); c.setAttribute('cy', map.sy(r.rec.Plv[i]));
   }
@@ -78,6 +83,80 @@ function drawRange() {
       text: `${name}: Ea/Ees ${r.lv.EaEes.toFixed(2)} · LAP ${r.hemo.LAP.toFixed(0)} · BP ${r.hemo.SBP.toFixed(0)}/${r.hemo.DBP.toFixed(0)} (MAP ${r.hemo.MAP.toFixed(0)})`, color,
     })),
   });
+}
+
+// Ees: loops at three preloads; the end-systolic corners line up on the ESPVR.
+function drawEesFig() {
+  const svg = document.getElementById('fig-ees');
+  if (!svg) return;
+  const rs = [520, 740, 1150].map((vStressed) => simulate({ vStressed }));
+  const p = rs[1].params, m = rs[1].lv, W = Math.max(340, Math.min(720, svg.parentElement.clientWidth || 640));
+  const shades = [C.ref, C.cur, C.ref];
+  drawPlot(svg, {
+    width: W, height: Math.round(W * 0.58), title: 'Loops at three preloads share one ESPVR',
+    x: { min: 0, max: 200, label: 'LV volume (mL)' }, y: { min: 0, max: 160, label: 'LV pressure (mmHg)' },
+    series: [
+      { points: [[p.lvV0, 0], [p.lvV0 + 160 / m.Ees, 160]], color: C.cur, width: 1.6 },
+      ...rs.map((r, k) => ({ points: loop(r, 'lv'), color: shades[k], width: k === 1 ? 2.6 : 1.8 })),
+      ...rs.map((r) => ({ points: [[r.lv.ESV, r.lv.Pes]], color: 'var(--flag)', marker: 5 })),
+    ],
+    annotations: [
+      { x: p.lvV0 + 150 / m.Ees, y: 150, text: `ESPVR: slope Ees = ${m.Ees.toFixed(1)} mmHg/mL`, dx: 8 },
+      { x: p.lvV0, y: 0, text: 'V₀', dx: -4, dy: -8, anchor: 'end' },
+    ],
+  });
+}
+
+// Ea: loops at three afterloads; Ea lines steepen, the corner slides up the same ESPVR.
+function drawEaFig() {
+  const svg = document.getElementById('fig-ea');
+  if (!svg) return;
+  const base = simulate({}), rs = [0.6, 1, 1.6].map((f) => simulate({ svr: base.params.svr * f }));
+  const p = base.params, W = Math.max(340, Math.min(720, svg.parentElement.clientWidth || 640));
+  const shades = [C.ref, C.cur, C.ref];
+  drawPlot(svg, {
+    width: W, height: Math.round(W * 0.58), title: 'Loops at three afterloads',
+    x: { min: 0, max: 200, label: 'LV volume (mL)' }, y: { min: 0, max: 160, label: 'LV pressure (mmHg)' },
+    series: [
+      { points: [[p.lvV0, 0], [p.lvV0 + 160 / p.lvEes, 160]], color: C.cur, width: 1.4 },
+      ...rs.map((r, k) => ({ points: loop(r, 'lv'), color: shades[k], width: k === 1 ? 2.6 : 1.8 })),
+      ...rs.map((r, k) => ({ points: [[r.lv.ESV, r.lv.Pes], [r.lv.EDV, 0]], color: shades[k], width: 1.6, dash: '6 4' })),
+      ...rs.map((r) => ({ points: [[r.lv.ESV, r.lv.Pes]], color: 'var(--flag)', marker: 5 })),
+    ],
+    annotations: rs.map((r, k) => ({ x: r.lv.ESV, y: r.lv.Pes, text: `Ea ${r.lv.Ea.toFixed(2)} · SV ${r.lv.SV.toFixed(0)} mL`, dx: -10, dy: k === 2 ? -8 : 4, anchor: 'end' })),
+  });
+}
+
+// The ratio: two lines, EDV and V0 fixed; sliders move Ees and Ea.
+const RQ = { EDV: 138, V0: 10 };
+function drawRatioFig() {
+  const svg = document.getElementById('fig-ratio');
+  if (!svg) return;
+  const ees = +document.getElementById('rq-ees').value, ea = +document.getElementById('rq-ea').value;
+  const { EDV, V0 } = RQ, esv = (ea * EDV + ees * V0) / (ees + ea), pes = ees * (esv - V0), sv = EDV - esv;
+  const W = Math.max(340, Math.min(720, svg.parentElement.clientWidth || 640)), ymax = 200;
+  const m = drawPlot(svg, {
+    width: W, height: Math.round(W * 0.58), title: 'ESPVR and Ea line: the crossing sets stroke volume',
+    x: { min: 0, max: 160, label: 'LV volume (mL)' }, y: { min: 0, max: ymax, label: 'LV pressure (mmHg)' },
+    series: [
+      { points: [[V0, 0], [Math.min(160, V0 + ymax / ees), Math.min(ymax, ees * (160 - V0))]], color: C.cur, width: 2.2 },
+      { points: [[EDV, 0], [Math.max(0, EDV - ymax / ea), Math.min(ymax, ea * EDV)]], color: C.snap, width: 2.2, dash: '6 4' },
+      { points: [[esv, pes]], color: 'var(--flag)', marker: 6 },
+      { points: [[esv, 0], [esv, pes]], color: 'var(--flag)', width: 1, dash: '2 3' },
+    ],
+    annotations: [
+      { x: V0 + Math.min(ymax * 0.25, pes * 0.4) / ees, y: Math.min(ymax * 0.25, pes * 0.4), text: 'ESPVR', dx: 8 },
+      { x: EDV - Math.min(ymax * 0.25, pes * 0.4) / ea, y: Math.min(ymax * 0.25, pes * 0.4), text: 'Ea line', dx: -8, anchor: 'end', color: C.snap },
+      { x: esv, y: pes, text: `ESV ${esv.toFixed(0)}, Pes ${pes.toFixed(0)}`, dx: esv > 80 ? -10 : 10, dy: -10, anchor: esv > 80 ? 'end' : 'start' },
+    ],
+  });
+  // bars under the volume axis: V0 | kept (ESV − V0) | ejected (SV)
+  const y = m.sy(0) - 14, bar = (x0, x1, cls) => svgEl('rect', { x: m.sx(x0), y, width: Math.max(0, m.sx(x1) - m.sx(x0)), height: 10, class: cls }, m.svg);
+  bar(V0, esv, 'rq-kept'); bar(esv, EDV, 'rq-sv');
+  document.getElementById('rq-ees-v').textContent = ees.toFixed(2);
+  document.getElementById('rq-ea-v').textContent = ea.toFixed(2);
+  const share = ees / (ees + ea);
+  document.getElementById('rq-read').innerHTML = `Ea/Ees <b>${(ea / ees).toFixed(2)}</b> · ejected share Ees/(Ees + Ea) = <b>${(share * 100).toFixed(0)}%</b> of EDV − V₀ (${EDV - V0} mL) · SV <b>${sv.toFixed(0)} mL</b> · EF <b>${(sv / EDV * 100).toFixed(0)}%</b>`;
 }
 
 function drawSweep() {
@@ -111,19 +190,73 @@ function drawSweep() {
   });
 }
 
+// One beat at quarter speed, with the phase in the header.
+const PHASE = { fill: 'Filling', ivc: 'Isovolumic contraction', eject: 'Ejection', ivr: 'Isovolumic relaxation' };
+function loopExportSpec() {
+  return {
+    file: 'va-coupling-pv-loop-normal-lv',
+    title: 'The left ventricular pressure–volume loop',
+    caption: 'Simulated normal LV, one beat at quarter speed. Solid line: ESPVR, slope Ees. Dashed: Ea line, slope −Ea. Dotted: EDPVR. The loop runs counter-clockwise; width = stroke volume, area = stroke work.',
+    notes: `EDV ${loopFig.r.lv.EDV.toFixed(0)} mL, ESV ${loopFig.r.lv.ESV.toFixed(0)} mL, EF ${(loopFig.r.lv.EF * 100).toFixed(0)}%, Ees ${loopFig.r.lv.Ees.toFixed(2)} and Ea ${loopFig.r.lv.Ea.toFixed(2)} mmHg/mL (Ea/Ees ${loopFig.r.lv.EaEes.toFixed(2)}).`,
+    async prepare() {
+      exporting = true;
+      const svg = document.getElementById('fig-loop'), cap = svgCapture(svg), { r } = loopFig, n = r.rec.t.length, ph = cardiacPhases(r).lv.ph;
+      const W = 1100, top = 56, H = even(top + W * cap.aspect + 8), bg = getComputedStyle(svg.closest('.monitor')).backgroundColor;
+      return {
+        W, H, duration: 4 * r.T,
+        async frame(g, t) {
+          const i = Math.min(n - 1, Math.floor((t / 4) / r.T * n));
+          setLoopCursor(i);
+          g.fillStyle = bg; g.fillRect(0, 0, W, H);
+          header(g, W, 'Normal left ventricle (model)', `${PHASE[ph[i]]}   ·   t ${(r.rec.t[i] * 1000).toFixed(0)} ms`);
+          g.drawImage(await cap.image(W), 0, top, W, W * cap.aspect);
+        },
+        done() { exporting = false; },
+      };
+    },
+  };
+}
+
 export function initLearnFigures() {
   drawLoopFig();
+  const fig = document.getElementById('fig-loop');
+  if (fig) addExport(fig.closest('figure'), loopExportSpec);
+  drawEesFig(); drawEaFig(); drawRatioFig();
+  for (const id of ['rq-ees', 'rq-ea']) document.getElementById(id)?.addEventListener('input', drawRatioFig);
   drawSweep();
   drawRange();
   requestAnimationFrame(tickLoop);
   let t;
-  window.addEventListener('resize', () => { clearTimeout(t); t = setTimeout(() => { drawLoopFig(); drawSweep(); drawRange(); }, 200); });
+  window.addEventListener('resize', () => { clearTimeout(t); t = setTimeout(() => { drawLoopFig(); drawEesFig(); drawEaFig(); drawRatioFig(); drawSweep(); drawRange(); }, 200); });
   document.addEventListener('themechange', () => {});
 }
 
 const ratioLbl = (s) => (s === 'lv' ? 'Ea/Ees' : 'Ees/Ea');
 
 // Scenario thumbnails: normal loop (grey) against the scenario loop (green).
+// Details panel: mechanism, bedside findings, management evidence, caveat, then model values vs normal.
+function scenarioDetail(p, r, ref, side) {
+  const d = p.detail || {};
+  const sec = (h, t) => (t ? `<h4>${h}</h4><p>${t}</p>` : '');
+  const rows = [
+    ['LV Ees / Ea (mmHg/mL)', (x) => `${x.lv.Ees.toFixed(2)} / ${x.lv.Ea.toFixed(2)}`],
+    ['LV Ea/Ees', (x) => x.lv.EaEes.toFixed(2)],
+    ['LV EDV / ESV (mL), EF', (x) => `${x.lv.EDV.toFixed(0)} / ${x.lv.ESV.toFixed(0)}, ${(x.lv.EF * 100).toFixed(0)}%`],
+    ['RV Ees / Ea (mmHg/mL)', (x) => `${x.rv.Ees.toFixed(2)} / ${x.rv.Ea.toFixed(2)}`],
+    ['RV Ees/Ea', (x) => x.rv.EesEa.toFixed(2)],
+    ['RV EDV / ESV (mL), EF', (x) => `${x.rv.EDV.toFixed(0)} / ${x.rv.ESV.toFixed(0)}, ${(x.rv.EF * 100).toFixed(0)}%`],
+    ['BP (MAP) mmHg', (x) => `${x.hemo.SBP.toFixed(0)}/${x.hemo.DBP.toFixed(0)} (${x.hemo.MAP.toFixed(0)})`],
+    ['PA (mean) mmHg', (x) => `${x.hemo.PASP.toFixed(0)}/${x.hemo.PADP.toFixed(0)} (${x.hemo.mPAP.toFixed(0)})`],
+    ['LAP / RAP mmHg', (x) => `${x.hemo.LAP.toFixed(0)} / ${x.hemo.RAP.toFixed(0)}`],
+    ['CO L/min, HR', (x) => `${x.hemo.CO.toFixed(1)}, ${x.params.hr.toFixed(0)}`],
+    ['PVR WU', (x) => x.hemo.PVR_WU.toFixed(1)],
+  ];
+  const order = side === 'rv' ? [3, 4, 5, 7, 8, 9, 10, 0, 1, 6] : [0, 1, 2, 6, 8, 9, 3, 4, 7];
+  const table = `<table class="data scen-table"><thead><tr><th>Model</th><th class="num">This</th><th class="num">Normal</th></tr></thead><tbody>${
+    order.map((i) => `<tr><td>${rows[i][0]}</td><td class="num">${rows[i][1](r)}</td><td class="num">${rows[i][1](ref)}</td></tr>`).join('')}</tbody></table>`;
+  return `${d.mech ? '' : `<p>${p.text}</p>`}${sec('Mechanism', d.mech)}${sec('What echo and the catheter show', d.see)}${sec('Management: what the evidence says', d.manage)}${sec('Caveat', d.note)}${table}`;
+}
+
 export function initScenarioCards() {
   const ref = simulate({});
   const box = document.getElementById('scenario-list');
@@ -139,7 +272,7 @@ export function initScenarioCards() {
     card.className = 'card scen';
     card.innerHTML = `<h3>${p.label}</h3><div class="monitor mini"><svg aria-hidden="true"></svg></div>
       <div class="scen-nums">${nums.map(([k, v]) => `<div><b>${v}</b><span>${k}</span></div>`).join('')}</div>
-      <details><summary>Details</summary><p>${p.text}</p></details>
+      <details><summary>Details</summary>${scenarioDetail(p, r, ref, side)}</details>
       <a class="more" href="simulator.html#preset=${p.id}&side=${side}">Open in simulator →</a>`;
     box.appendChild(card);
     const xmax = niceMax(Math.max(m.EDV, ref[side].EDV) * 1.15);

@@ -17,24 +17,62 @@
 <main>
   <div class="prose">
     <h1>Echo lab</h1>
-    <p class="lede">Measure on simulated Doppler and M-mode screens. Every display is generated from the model beat of the chosen patient, so each measurement can be checked against catheter truth.</p>
+    <p class="lede">How to estimate ventricular–arterial coupling by echo, what the numbers mean, and practice measuring them on screens generated from each patient's model beat, checked against catheter truth.</p>
   </div>
-  <section class="panel overview">
-    <h2>What the four stations do</h2>
-    <p>Coupling compares two things: how hard the ventricle can push (its contractility, Ees) and how hard the circulation pushes back (its load, Ea). Echo cannot measure either directly. Each station below measures one piece at the bedside. Together they rebuild the coupling picture for the left and the right heart.</p>
-    <div class="flow">
-      <a class="flow-box" href="#st-lvot"><b>1 · LVOT VTI</b><span>Doppler stroke volume</span><em>→ LV load: Ea ≈ 0.9 × SBP / SV</em></a>
-      <a class="flow-box" href="#st-tr"><b>2 · TR velocity</b><span>Peak RV–RA pressure difference</span><em>→ RV load: PASP</em></a>
-      <a class="flow-box" href="#st-tap"><b>3 · TAPSE</b><span>RV longitudinal shortening</span><em>→ RV function; TAPSE/PASP = coupling</em></a>
-      <a class="flow-box" href="#st-rv"><b>4 · RV volumes</b><span>End-diastolic and end-systolic volume</span><em>→ SV/ESV ≈ RV Ees/Ea</em></a>
-    </div>
-    <p class="status">Pick a patient, then work down the stations. Every screen is generated from that patient's model beat. Press <b>Overlay pressures</b> on any screen to see the catheter pressures behind the echo signal.</p>
-  </section>
+  <p class="k cases-k">Patient: every table and screen below follows this choice</p>
   <div class="seg cases" id="cases" role="group" aria-label="Patient"></div>
 
+  <section class="coupling" id="coupling" aria-labelledby="cpl-h">
+    <h2 id="cpl-h">Coupling from echo</h2>
+    <p class="cpl-intro">Coupling compares contractility (Ees) with the load it ejects into (Ea). Echo does not measure either directly, so each index below is built from a few measurements. The stations further down show how to take each one. The <b>This patient</b> tables update as you measure and use the model's values until you do. The catheter truth sits underneath.</p>
+    <div class="grid cols-2">
+      <article class="card cpl">
+        <h3>LV: Ea/Ees</h3>
+        <h4>How to get it</h4>
+        <ol>
+          <li><b>Stroke volume</b> = LVOT area × LVOT VTI (<a href="#st-lvot">station 1</a>) <cite data-ref="quinones2002,blanco2020"></cite>.</li>
+          <li><b>Ea</b> = 0.9 × cuff SBP / SV, because end-systolic pressure is about 90% of systolic <cite data-ref="kelly1992,guarracino2014"></cite>.</li>
+          <li><b>Ees</b> by the published single-beat method uses cuff SBP and DBP, SV, EF, and the ratio of pre-ejection time (R wave to flow onset) to total systolic time (R wave to end of flow) on the LVOT Doppler <cite data-ref="chen2001,guarracino2014"></cite>.</li>
+          <li><b>Shortcut</b> without Ees: if V₀ ≈ 0, Ea/Ees ≈ ESV/SV = (1 − EF)/EF. This is algebra on the PV loop, and it overstates the ratio when V₀ is large.</li>
+        </ol>
+        <h4>This patient</h4>
+        <div id="cpl-lv"></div>
+        <h4>How to read it</h4>
+        <p>Normal human hearts: Ees/Ea 1.62, so Ea/Ees ≈ 0.62 <cite data-ref="starling1993"></cite>. Stroke work and efficiency stay ≥ 90% of optimum from 0.3 to 1.3 (canine hearts) <cite data-ref="detombe1993"></cite>. In a septic shock study, uncoupling was defined as above 1.36 <cite data-ref="guarracino2014"></cite>. Then ask <b>which side moved</b> by comparing Ea and Ees with normal. A normal ratio with both raised is the HFpEF pattern <cite data-ref="kawaguchi2003"></cite>.</p>
+        <h4>What it can change at the bedside</h4>
+        <ul class="cpl-mx">
+          <li><b>Ea high</b> (vasoconstriction, hypertensive heart failure): vasodilators lower Ea. Rapidly reducing high blood pressure restores Ea and reverses the myocardial dysfunction <cite data-ref="guarracino2013"></cite>. In HFpEF, the same vasodilation drops blood pressure 2.6-fold more than in HFrEF and can lower stroke volume <cite data-ref="schwartzenberg2012"></cite>.</li>
+          <li><b>Ees low</b> (cardiomyopathy, septic depression): inotropes raise Ees <cite data-ref="guarracino2013"></cite>. For septic shock with cardiac dysfunction and persistent hypoperfusion despite adequate volume and blood pressure, the guideline suggests adding dobutamine to norepinephrine or using epinephrine alone (weak recommendation) <cite data-ref="evans2021"></cite>.</li>
+          <li><b>Ea low with hypotension</b> (vasoplegia): norepinephrine is first-line, with an initial MAP target of 65 mmHg <cite data-ref="evans2021"></cite>. Norepinephrine raises Ea <cite data-ref="guarracino2019"></cite>. In hypotensive postoperative patients it raised stroke volume only when coupling was altered <cite data-ref="guinot2018"></cite>.</li>
+        </ul>
+        <p class="cpl-caveat"><b>Evidence:</b> coupling explains the haemodynamics but has not been validated as a treatment target; it "still needs to be tested in large trials" <cite data-ref="guarracino2013"></cite>. <b>Error sources:</b> an error in LVOT diameter is squared in SV; 0.9 × SBP only approximates end-systolic pressure; the EF shortcut fails when the ESPVR is shifted right (try HFrEF).</p>
+      </article>
+      <article class="card cpl">
+        <h3>RV: TAPSE/PASP and SV/ESV</h3>
+        <h4>How to get it</h4>
+        <ol>
+          <li><b>TAPSE</b> by M-mode through the lateral tricuspid annulus (<a href="#st-tap">station 3</a>): a length-based index of RV contraction.</li>
+          <li><b>PASP</b> = 4 × (peak TR velocity)² + RAP (<a href="#st-tr">station 2</a>) <cite data-ref="rudski2010"></cite>: the load.</li>
+          <li><b>TAPSE/PASP</b> in mm/mmHg: function divided by load <cite data-ref="guazzi2013,tello2019img"></cite>.</li>
+          <li><b>Volume method</b>: SV/ESV from 3D echo or MRI (<a href="#st-rv">station 4</a>) approximates Ees/Ea if V₀ ≈ 0 <cite data-ref="sanz2012"></cite>.</li>
+        </ol>
+        <h4>This patient</h4>
+        <div id="cpl-rv"></div>
+        <h4>How to read it</h4>
+        <p>In PAH and CTEPH, TAPSE/PASP below 0.31 predicted Ees/Ea below 0.805 <cite data-ref="tello2019img"></cite>, the level at which the RV dilates and fails <cite data-ref="tello2019hf"></cite>. In heart failure, below 0.36 carried a worse prognosis <cite data-ref="guazzi2013"></cite>. For PAH risk, above 0.32 is low and below 0.19 is high <cite data-ref="humbert2022,tello2018"></cite>. SV/ESV ≤ 0.515 predicted a worse outcome <cite data-ref="vanderpool2015"></cite>. A low ratio can come from a low TAPSE or a high PASP, so read both parts.</p>
+        <h4>What it can change at the bedside</h4>
+        <ul class="cpl-mx">
+          <li><b>Chronic PAH:</b> TAPSE/PASP is one of the non-invasive variables in the ESC/ERS 2022 risk assessment at follow-up <cite data-ref="humbert2022,ostermann2023"></cite>.</li>
+          <li><b>Acute RV failure</b> (a low ratio with rising RAP and falling MAP): treating the cause comes first, with judicious fluid management, inotropes and vasopressors, assist devices and RV-protective ventilation <cite data-ref="harjola2016"></cite>. Inhaled pulmonary vasodilators can also be considered <cite data-ref="lloyddonald2025"></cite>. These interventions have not been well investigated <cite data-ref="konstam2018"></cite>.</li>
+          <li><b>PH from left heart disease:</b> a low ratio carries risk in heart failure <cite data-ref="guazzi2013"></cite>, but PAH drugs are not recommended in group 2 PH; treat the left heart disease <cite data-ref="vachiery2019"></cite>.</li>
+        </ul>
+        <p class="cpl-caveat"><b>Error sources:</b> Doppler and catheter PASP were more than 10 mmHg apart in 48% of 65 patients <cite data-ref="fisher2009"></cite>. TAPSE measures longitudinal motion only and depends on the cursor angle. SV/ESV reads low when V₀ is large (try decompensated PAH).</p>
+      </article>
+    </div>
+  </section>
+
   <section class="station" id="st-lvot">
-    <h2>1 · LVOT VTI → stroke volume → Ea</h2>
-    <p class="answers"><b>This answers:</b> How much blood the LV ejects per beat. With cuff pressure, that gives arterial load (Ea). <b>Feeds into:</b> Ea, the load half of LV coupling. EF supplies the rest (see "EF as a coupling index" below).</p>
+    <h2>Station 1 · Stroke volume from the LVOT VTI</h2>
     <div class="acq">
       <div class="view" data-view="lvot"></div>
       <ol class="steps">
@@ -56,8 +94,7 @@
   </section>
 
   <section class="station" id="st-tr">
-    <h2>2 · TR velocity → PASP</h2>
-    <p class="answers"><b>This answers:</b> How high the pressure in the pulmonary artery is during systole. The TR jet velocity reflects the RV–RA pressure difference: ΔP = 4v². <b>Feeds into:</b> PASP, the load the RV faces. It is the denominator of TAPSE/PASP in station 3.</p>
+    <h2>Station 2 · PASP from the TR jet</h2>
     <div class="acq">
       <div class="view" data-view="tr"></div>
       <ol class="steps">
@@ -80,8 +117,7 @@
   </section>
 
   <section class="station" id="st-tap">
-    <h2>3 · TAPSE and TAPSE/PASP</h2>
-    <p class="answers"><b>This answers:</b> How far the tricuspid annulus moves toward the apex in systole: a length-based index of RV contraction. <b>Feeds into:</b> TAPSE/PASP. Station 3 uses the PASP from station 2 if you measured it; otherwise it uses the model value.</p>
+    <h2>Station 3 · TAPSE and TAPSE/PASP</h2>
     <div class="acq">
       <div class="view" data-view="tap"></div>
       <ol class="steps">
@@ -104,8 +140,7 @@
   </section>
 
   <section class="station" id="st-rv">
-    <h2>4 · RV volumes → SV/ESV</h2>
-    <p class="answers"><b>This answers:</b> How big the RV is at the end of filling and at the end of ejection. <b>Feeds into:</b> SV/ESV, the volume estimate of RV Ees/Ea, compared with the model's true value.</p>
+    <h2>Station 4 · RV volumes and SV/ESV</h2>
     <div class="acq">
       <div class="view" data-view="rv"></div>
       <ol class="steps">
@@ -125,10 +160,6 @@
     </div>
   </section>
 
-  <details class="panel">
-    <summary>EF as a coupling index</summary>
-    <p>With V₀ ≈ 0, Ea/Ees ≈ ESV/SV = (1 − EF)/EF. EF 60% → 0.67; EF 40% → 1.5; EF 25% → 3. EF falls when Ea rises at constant Ees. The approximation fails with large V₀ and cannot separate high Ea from low Ees.</p>
-  </details>
   <details class="panel">
     <summary>Other RV findings</summary>
     <p>RV size relative to LV, systolic (pressure) or diastolic (volume) septal flattening, fractional area change, tissue Doppler S′, RA size and IVC <cite data-ref="rudski2010"></cite>. Mid-systolic notching of the RVOT Doppler envelope: 96% specific for PVR > 5 WU <cite data-ref="arkles2011"></cite>. Chen single-beat Ees uses cuff pressures, Doppler SV, EF and an estimated normalized elastance <cite data-ref="chen2001"></cite>.</p>

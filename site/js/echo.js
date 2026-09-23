@@ -2,6 +2,7 @@
 // The learner measures on them the same way as on a scanner; answers come from the model.
 import { simulate } from './engine.js';
 import { presetById } from './presets.js';
+import { addExport, header, even } from './export.js';
 
 const LVOT_D = 2.2;                        // true LVOT diameter in this lab, cm
 const TAPSE_K = 22 / simulate({}).rv.SV;   // mm of annular excursion per mL of RV stroke volume (normal ≈ 22 mm)
@@ -14,11 +15,17 @@ let R = null;               // current simulation
 const st = { ov: { lvot: false, tr: false, tap: false }, angle: 0, dMeas: LVOT_D, trace: [], trCal: null, weak: false, rapEst: 8, tap: [null, null], ed: null, es: null, frame: 0, playing: true };
 
 // ---------- canvas helpers ----------
+let off = null;             // export: { c, w } off-page canvas that stands in for the screen
 function screen(id, aspect = 0.42) {
-  const c = document.getElementById(id);
-  const cs = getComputedStyle(c.parentElement);
-  const w = Math.floor(Math.min(760, c.parentElement.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight)));
-  const h = Math.round(w * (w < 520 ? Math.max(aspect, 0.72) : aspect)), dpr = window.devicePixelRatio || 1;
+  let c, w, dpr = 1;
+  if (off) ({ c, w } = off);
+  else {
+    c = document.getElementById(id);
+    const cs = getComputedStyle(c.parentElement);
+    w = Math.floor(Math.min(760, c.parentElement.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight)));
+    dpr = window.devicePixelRatio || 1;
+  }
+  const h = Math.round(w * (w < 520 ? Math.max(aspect, 0.72) : aspect));
   c.width = w * dpr; c.height = h * dpr; c.style.width = w + 'px'; c.style.height = h + 'px';
   const g = c.getContext('2d');
   g.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -104,6 +111,7 @@ function drawLVOT() {
 }
 
 function lvotOut() {
+  queueMicrotask(cplOut);   // after this station stores its measurement
   const gm = JSON.parse($('#scr-lvot').dataset.geom || '{}');
   let vti = null;
   if (st.trace.length > 5) {
@@ -114,6 +122,7 @@ function lvotOut() {
   const A = Math.PI * (st.dMeas / 2) ** 2;
   const sv = vti != null ? A * vti : null;
   const ea = sv ? 0.9 * R.hemo.SBP / sv : null;
+  st.svEcho = sv;
   $('#out-lvot').innerHTML = row([
     ['Your VTI', vti != null ? `${vti.toFixed(1)} cm` : 'trace one envelope'],
     ['True VTI', `${trueVTI().toFixed(1)} cm`],
@@ -176,6 +185,7 @@ function drawTR() {
 }
 
 function trOut() {
+  queueMicrotask(cplOut);   // after this station stores its measurement
   const pasp = st.trCal != null ? 4 * st.trCal ** 2 + st.rapEst : null;
   st.paspEcho = pasp;
   $('#out-tr').innerHTML = row([
@@ -226,11 +236,13 @@ function drawTAPSE() {
 }
 
 function tapOut() {
+  queueMicrotask(cplOut);   // after this station stores its measurement
   const gm = JSON.parse($('#scr-tap').dataset.geom || '{}');
   const tapse = st.tap[0] != null && st.tap[1] != null ? Math.abs(st.tap[0] - st.tap[1]) / gm.pxmm : null;
   const pasp = st.paspEcho ?? R.hemo.PASP;
   const ratio = tapse != null ? tapse / pasp : null;
   const trueT = TAPSE_K * R.rv.SV;
+  st.tapseEcho = tapse;
   $('#out-tap').innerHTML = row([
     ['Your TAPSE', tapse != null ? `${tapse.toFixed(1)} mm` : 'place both calipers'],
     ['Model TAPSE', `${trueT.toFixed(1)} mm`],
@@ -293,6 +305,7 @@ function drawRV() {
 
 function rvOut() {
   const r = st.ed != null && st.es != null ? (st.ed - st.es) / st.es : null;
+  st.svEsvEcho = r;
   $('#out-rv').innerHTML = row([
     ['Marked EDV', st.ed != null ? `${st.ed.toFixed(0)} mL` : '–'],
     ['Marked ESV', st.es != null ? `${st.es.toFixed(0)} mL` : '–'],
@@ -323,12 +336,38 @@ function seg(id, opts, get, set) {
 }
 
 function loadCase(id) {
+  st.caseId = id;
   R = simulate(presetById(id).params);
-  Object.assign(st, { trace: [], trCal: null, tap: [null, null], ed: null, es: null, paspEcho: null });
+  Object.assign(st, { trace: [], trCal: null, tap: [null, null], ed: null, es: null, paspEcho: null, svEcho: null, tapseEcho: null, svEsvEcho: null });
   document.querySelectorAll('#cases button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.id === id)));
   drawAll();
 }
-function drawAll() { drawLVOT(); drawTR(); drawTAPSE(); drawRV(); }
+function drawAll() { drawLVOT(); drawTR(); drawTAPSE(); drawRV(); cplOut(); }
+
+// ---------- "Coupling from echo" worked example ----------
+// Uses the learner's measurements where made, otherwise the model's values, and shows the
+// catheter (model) truth for comparison.
+function cplOut() {
+  const src = (mine) => `<span class="src">${mine ? 'yours' : 'model'}</span>`;
+  const sv = st.svEcho ?? R.lv.SV, sbp = R.hemo.SBP, ef = R.lv.EF;
+  const ea = 0.9 * sbp / sv, ratio = (1 - ef) / ef, ees = ea / ratio;
+  $('#cpl-lv').innerHTML = row([
+    [`Stroke volume ${src(st.svEcho != null)}`, `${sv.toFixed(0)} mL`],
+    ['Cuff SBP', `${sbp.toFixed(0)} mmHg`],
+    ['Ea = 0.9 × SBP / SV', `${ea.toFixed(2)} mmHg/mL`, Math.abs(ea / R.lv.Ea - 1) > 0.25],
+    [`EF ${src(false)} (biplane in practice)`, `${(ef * 100).toFixed(0)}%`],
+    ['Ea/Ees ≈ (1 − EF)/EF', ratio.toFixed(2), ratio > 1.36],
+    ['Implied Ees = Ea ÷ ratio', `${ees.toFixed(2)} mmHg/mL`],
+  ]) + `<p class="truth">Catheter truth: Ea ${R.lv.Ea.toFixed(2)}, Ees ${R.lv.Ees.toFixed(2)} mmHg/mL, Ea/Ees <b>${R.lv.EaEes.toFixed(2)}</b> · normal 1.43, 2.30, 0.62</p>`;
+  const tapse = st.tapseEcho ?? TAPSE_K * R.rv.SV, pasp = st.paspEcho ?? R.hemo.PASP, tp = tapse / pasp;
+  const svEsv = st.svEsvEcho ?? R.rv.svEsv;
+  $('#cpl-rv').innerHTML = row([
+    [`TAPSE ${src(st.tapseEcho != null)}`, `${tapse.toFixed(1)} mm`],
+    [`PASP ${src(st.paspEcho != null)}`, `${pasp.toFixed(0)} mmHg`],
+    ['TAPSE/PASP', `${tp.toFixed(2)} mm/mmHg`, tp < 0.31],
+    [`SV/ESV ${src(st.svEsvEcho != null)}`, svEsv.toFixed(2), svEsv <= 0.515],
+  ]) + `<p class="truth">Catheter truth: RV Ees/Ea <b>${R.rv.EesEa.toFixed(2)}</b>${R.rv.EesEa < 0.805 ? ' (below 0.805)' : ''} · normal 2.00</p>`;
+}
 
 export function initEcho() {
   $('#cases').innerHTML = CASES.map(([id, t]) => `<button type="button" data-id="${id}">${t}</button>`).join('');
@@ -380,14 +419,60 @@ export function initEcho() {
   $('#rv-play').addEventListener('click', () => { st.playing = !st.playing; $('#rv-play').textContent = st.playing ? 'Freeze' : 'Play'; });
   $('#rv-back').addEventListener('click', () => { st.playing = false; st.frame = (st.frame - 20 + R.rec.Vrv.length) % R.rec.Vrv.length; $('#rv-play').textContent = 'Play'; drawRV(); });
   $('#rv-fwd').addEventListener('click', () => { st.playing = false; st.frame = (st.frame + 20) % R.rec.Vrv.length; $('#rv-play').textContent = 'Play'; drawRV(); });
-  $('#rv-ed').addEventListener('click', () => { st.ed = R.rec.Vrv[st.frame % R.rec.Vrv.length]; rvOut(); });
-  $('#rv-es').addEventListener('click', () => { st.es = R.rec.Vrv[st.frame % R.rec.Vrv.length]; rvOut(); });
+  $('#rv-ed').addEventListener('click', () => { st.ed = R.rec.Vrv[st.frame % R.rec.Vrv.length]; rvOut(); cplOut(); });
+  $('#rv-es').addEventListener('click', () => { st.es = R.rec.Vrv[st.frame % R.rec.Vrv.length]; rvOut(); cplOut(); });
 
   let rt;
   window.addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(drawAll, 150); });
+  for (const id of Object.keys(EXPORTS)) addExport(document.getElementById(id).parentElement, () => echoSpec(id), { still: !EXPORTS[id].animated });
   loadCase('normal');
   if (reduce) st.playing = false;
   requestAnimationFrame(playRV);
+}
+
+// ---------- export for slides ----------
+// Static screens export as one frame; the RV station exports one beat at quarter speed.
+const EXPORTS = {
+  'scr-lvot': { draw: () => drawLVOT(), name: 'lvot', title: 'LVOT pulsed-wave Doppler',
+    caption: () => `Pulsed-wave Doppler in the LVOT, two beats, generated from the model. VTI × LVOT area = stroke volume; Ea ≈ 0.9 × SBP / SV.${st.ov.lvot ? ' Overlay: LV (solid), aortic (dashed) and LA (dotted) pressure, right-hand scale: flow runs only while LV pressure exceeds aortic pressure.' : ''}`,
+    notes: () => `Model SV ${R.lv.SV.toFixed(0)} mL, BP ${R.hemo.SBP.toFixed(0)}/${R.hemo.DBP.toFixed(0)} mmHg, model Ea ${R.lv.Ea.toFixed(2)} mmHg/mL.` },
+  'scr-tr': { draw: () => drawTR(), name: 'tr', title: 'TR continuous-wave Doppler',
+    caption: () => `Continuous-wave Doppler of the tricuspid regurgitant jet, generated from the model. Peak velocity v gives the RV–RA gradient 4v²; PASP ≈ 4v² + RAP.${st.ov.tr ? ' Overlay: RV (solid), PA (dashed) and RA (dotted) pressure: the jet velocity follows the RV–RA difference.' : ''}`,
+    notes: () => `Catheter (model) PASP ${R.hemo.PASP.toFixed(0)} mmHg, RAP ${R.hemo.RAP.toFixed(0)} mmHg.` },
+  'scr-tap': { draw: () => drawTAPSE(), name: 'tapse', title: 'TAPSE M-mode',
+    caption: () => `M-mode through the lateral tricuspid annulus, generated from the model. TAPSE = annular excursion from end-diastole to peak systole; TAPSE/PASP is a coupling surrogate.${st.ov.tap ? ' Overlay: RV volume: the annulus moves toward the apex as the RV empties.' : ''}`,
+    notes: () => `Model TAPSE ${(R.rv.SV * TAPSE_K).toFixed(1)} mm, PASP ${R.hemo.PASP.toFixed(0)} mmHg, RV Ees/Ea ${R.rv.EesEa.toFixed(2)}.` },
+  'scr-rv': { draw: () => drawRV(), name: 'rv', title: 'RV volumes through one beat', animated: true,
+    caption: () => 'RV in an apical four-chamber view, one beat at quarter speed, generated from the model. Right: the RV pressure–volume loop; the white dot is the current frame. SV/ESV approximates Ees/Ea if V₀ ≈ 0.',
+    notes: () => `RV EDV ${R.rv.EDV.toFixed(0)} mL, ESV ${R.rv.ESV.toFixed(0)} mL, SV/ESV ${R.rv.svEsv.toFixed(2)}, true Ees/Ea ${R.rv.EesEa.toFixed(2)} (V₀ = ${R.params.rvV0} mL).` },
+};
+function echoSpec(id) {
+  const x = EXPORTS[id], label = (CASES.find(([k]) => k === st.caseId) || [, ''])[1];
+  return {
+    file: `va-coupling-echo-${x.name}-${st.caseId}`,
+    title: `${x.title} · ${label}`,
+    caption: x.caption(), notes: x.notes(),
+    async prepare() {
+      const saved = { playing: st.playing, frame: st.frame };
+      st.playing = false;
+      const W = 1100, top = 56, cv = document.createElement('canvas');
+      off = { c: cv, w: W };
+      x.draw();
+      const sh = cv.height, H = even(top + sh + 8), n = R.rec.Vrv.length;
+      off = null;
+      return {
+        W, H, duration: x.animated ? 4 * R.T : 1,
+        async frame(g, t) {
+          if (x.animated) st.frame = Math.min(n - 1, Math.floor((t / 4) / R.T * n));
+          off = { c: cv, w: W }; x.draw(); off = null;
+          g.fillStyle = '#05090A'; g.fillRect(0, 0, W, H);
+          header(g, W, `${x.title} · ${label}`, x.animated ? `RV volume ${R.rec.Vrv[st.frame].toFixed(0)} mL` : 'model-generated');
+          g.drawImage(cv, 0, top);
+        },
+        done() { Object.assign(st, saved); drawAll(); },
+      };
+    },
+  };
 }
 
 // For tests: quantities the lab derives from the model.
