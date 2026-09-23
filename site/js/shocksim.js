@@ -328,8 +328,10 @@ function drawFK() {
 }
 
 function logPanel() {
-  const L = st.pt.log;
-  $('#log').innerHTML = L.length ? L.slice().reverse().map((e) => `<li><span class="log-t">${hm(e.t)}</span>${e.text}</li>`).join('') : '<li class="status">No treatment given yet.</li>';
+  const L = st.pt.log, box = $('#log'), added = L.length > (box.dataset.n | 0);
+  box.innerHTML = L.length ? L.slice().reverse().map((e, i) => `<li${added && i === 0 ? ' class="log-new"' : ''}><span class="log-t">${hm(e.t)}</span>${e.text}</li>`).join('') : '<li class="status">No treatment given yet.</li>';
+  box.dataset.n = L.length;
+  if (added) box.scrollTop = 0;       // newest entry is at the top; bring it into view
 }
 
 function refresh() {

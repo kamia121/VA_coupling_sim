@@ -469,3 +469,6 @@ body[data-view="both"] .pv-card { position: static; }
   .scen-table td, .scen-table th { padding: 3px 4px; }
   .scen-table td.num { white-space: normal; }
 }
+.log li.log-new { animation: log-new 2s ease-out; }
+@keyframes log-new { from { background: var(--flag-bg); } to { background: transparent; } }
+@media (prefers-reduced-motion: reduce) { .log li.log-new { animation: none; } }
