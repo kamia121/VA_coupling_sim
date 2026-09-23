@@ -72,8 +72,11 @@ function drawMonitor(tEnd, target) {
     w = Math.floor(box.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight));
     h = Math.round(w < 560 ? w * 0.95 : w * 0.46);
     const dpr = window.devicePixelRatio || 1;
-    if (c.width !== w * dpr || c.height !== h * dpr) { c.width = w * dpr; c.height = h * dpr; c.style.width = w + 'px'; c.style.height = h + 'px'; }
-    g = c.getContext('2d'); g.setTransform(dpr, 0, 0, dpr, 0, 0);
+    // whole-pixel backing store: with a fractional devicePixelRatio (125%, 150%) w·dpr is not an integer,
+    // so comparing it with c.width never matched and the canvas was cleared and resized on every frame
+    const bw = Math.round(w * dpr), bh = Math.round(h * dpr);
+    if (c.width !== bw || c.height !== bh) { c.width = bw; c.height = bh; c.style.width = w + 'px'; c.style.height = h + 'px'; }
+    g = c.getContext('2d'); g.setTransform(bw / w, 0, 0, bh / h, 0, 0);
   }
   const b = st.beat, o = st.pt.out;
   const src = target || reduce ? scrollFill(tEnd) : sweepFill(tEnd);

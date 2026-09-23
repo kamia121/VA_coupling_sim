@@ -12,7 +12,7 @@ const POS = [['ra', 'RA'], ['rv', 'RV'], ['pa', 'PA'], ['wedge', 'Wedge']];
 const $ = (s) => document.querySelector(s);
 const reduce = typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-const st = { preset: 'normal', pos: 'ra', damp: 'ok', level: 0, resp: 'none', atr: 'sinus', showLA: true, labels: true, t0: performance.now(), playing: !reduce, tFrozen: 0 };
+const st = { preset: 'normal', pos: 'ra', damp: 'ok', level: 0, resp: 'none', atr: 'sinus', showLA: true, labels: true, view: 'tip', t0: performance.now(), playing: !reduce, tFrozen: 0 };
 let R = null, beat = null, ev = null, evs = null, BREATH = BREATH_TARGET, TB = 1;   // TB: beat period as sampled
 
 // ---------- atrial waves ----------
@@ -79,10 +79,10 @@ function resp(t) {
 }
 
 // True tip pressure plus breathing and transducer level, then the catheter–tubing dynamics.
-function signal(tEnd) {
+function signal(tEnd, pos = st.pos) {
   const N = WIN * FS, warm = FS, out = new Array(N), raw = new Array(N), ed = [];
   const kEd = Math.round((ev.inClose / R.rec.t.length) * beat.n);   // RV end-diastole sample within the beat
-  const b = beat[st.pos];
+  const b = beat[pos];
   const dyn = st.damp === 'over' ? { wn: 2 * Math.PI * 3, z: 1.6 } : st.damp === 'under' ? { wn: 2 * Math.PI * 9, z: 0.08 } : null;
   let x = null, v = 0;
   const dt = 1 / FS;
@@ -117,17 +117,71 @@ function report(arr, kind, ed = [], offset = 0) {
   return `${s.max.toFixed(0)}/${s.min.toFixed(0)} (${s.mean.toFixed(0)})`;
 }
 
+// ECG sampled on the pressure traces' whole-sample grid, each pixel column drawn from the lowest to the
+// highest sample it covers, so the narrow QRS keeps its full height as the trace scrolls.
+function drawEcg(g, s0, N, x0, pw, base) {
+  g.strokeStyle = '#7CE38B'; g.lineWidth = 1.2; g.beginPath();
+  const per = N / pw, ey = (k) => base - ecg((s0 + k) / FS);
+  for (let j = 0; j < pw; j++) {
+    const k0 = Math.floor(j * per), k1 = Math.max(k0 + 1, Math.floor((j + 1) * per));
+    let lo = Infinity, hi = -Infinity;
+    for (let k = k0; k < k1; k++) { const y = ey(k); if (y < lo) lo = y; if (y > hi) hi = y; }
+    const x = x0 + j + 0.5;
+    j ? g.lineTo(x, ey(k0)) : g.moveTo(x, ey(k0));
+    if (hi - lo > 0.2) { g.lineTo(x, lo); g.lineTo(x, hi); }
+    g.lineTo(x, ey(k1 - 1));
+  }
+  g.stroke();
+}
+
+function sizeCanvas(ratioWide, ratioNarrow) {
+  const c = $('#pac-scr'), cs = getComputedStyle(c.parentElement);
+  const w = Math.floor(Math.min(800, c.parentElement.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight)));
+  const h = Math.round(w * (w < 520 ? ratioNarrow : ratioWide));
+  const dpr = window.devicePixelRatio || 1;
+  // whole-pixel backing store: with a fractional devicePixelRatio (125%, 150%) w·dpr is not an integer,
+  // so comparing it with c.width never matched and the canvas was cleared and resized on every frame
+  const bw = Math.round(w * dpr), bh = Math.round(h * dpr);
+  if (c.width !== bw || c.height !== bh) { c.width = bw; c.height = bh; c.style.width = w + 'px'; c.style.height = h + 'px'; }
+  const g = c.getContext('2d'); g.setTransform(bw / w, 0, 0, bh / h, 0, 0);
+  return { g, w, h };
+}
+
+// All four positions at once: RA, RV, PA and wedge from the same beats, stacked over one ECG, as if
+// four catheters sat in the four positions at the same moment. RV and PA share a scale, so the RV
+// systolic peak can be seen to equal the PA systolic pressure; RA and wedge share a lower one.
+const ALL_ROWS = [['ra', 'RA'], ['rv', 'RV'], ['pa', 'PA'], ['wedge', 'Wedge']];
+function drawAll(tEnd, target) {
+  const { g, w, h } = target || sizeCanvas(0.95, 1.6);
+  g.fillStyle = '#05090A'; g.fillRect(0, 0, w, h);
+  const sig = Object.fromEntries(ALL_ROWS.map(([k]) => [k, signal(tEnd, k)]));
+  const N = sig.ra.out.length, s0 = Math.round(tEnd * FS) - N;
+  const x0 = 40, pw = w - x0 - 12, ecgH = 44, rows = ALL_ROWS.length, rh = (h - ecgH - 8) / rows;
+  const hiMax = Math.max(40, Math.ceil(Math.max(...sig.rv.out, ...sig.pa.out) * 1.12 / 10) * 10);
+  const loMax = Math.max(20, Math.ceil(Math.max(...sig.ra.out, ...sig.wedge.out) * 1.2 / 5) * 5);
+  const read = {};
+  ALL_ROWS.forEach(([k, name], i) => {
+    const top = 14 + i * rh, bot = top + rh - 22, ymax = k === 'rv' || k === 'pa' ? hiMax : loMax;
+    const Y = (p) => bot - (Math.max(-5, p) / ymax) * (bot - top);
+    g.strokeStyle = '#16251F'; g.lineWidth = 1; g.fillStyle = '#8FA39D'; g.font = '11px system-ui'; g.textAlign = 'right';
+    for (const p of [0, ymax / 2, ymax]) { g.beginPath(); g.moveTo(x0, Y(p)); g.lineTo(x0 + pw, Y(p)); g.stroke(); g.fillText(p, x0 - 6, Y(p) + 4); }
+    const { out, ed } = sig[k];
+    g.strokeStyle = '#E8D35F'; g.lineWidth = 1.8; g.beginPath();
+    out.forEach((p, j) => { const x = x0 + (j / N) * pw; j ? g.lineTo(x, Y(p)) : g.moveTo(x, Y(p)); }); g.stroke();
+    if (st.labels && (k === 'ra' || k === 'wedge')) labelWaves(g, out, s0, (j) => x0 + (j / N) * pw, Y, k);
+    read[k] = report(out.slice(-beat.n * 2), k, ed, N - beat.n * 2);
+    g.textAlign = 'left'; g.font = '600 12px system-ui'; g.fillStyle = '#E6EFEC';
+    g.fillText(`${name}  ${read[k]}`, x0 + 6, top + 4);
+  });
+  drawEcg(g, s0, N, x0, pw, h - 18);
+  if (target) return { all: true, ...read };
+  $('#pac-read').innerHTML = ALL_ROWS.map(([k, name]) => `<div class="tile"><div class="tile-v">${read[k]}</div><div class="tile-k">${name}, last 2 beats</div></div>`).join('');
+}
+
 // target (export only): { g, w, h } of an off-page canvas; the page readout is left alone.
 function draw(tEnd, target) {
-  let g, w, h;
-  if (target) ({ g, w, h } = target);
-  else {
-    const c = $('#pac-scr'), cs = getComputedStyle(c.parentElement);
-    w = Math.floor(Math.min(800, c.parentElement.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight))); h = Math.round(w * (w < 520 ? 0.75 : 0.42));
-    const dpr = window.devicePixelRatio || 1;
-    if (c.width !== w * dpr || c.height !== h * dpr) { c.width = w * dpr; c.height = h * dpr; c.style.width = w + 'px'; c.style.height = h + 'px'; }
-    g = c.getContext('2d'); g.setTransform(dpr, 0, 0, dpr, 0, 0);
-  }
+  if (st.view === 'all') return drawAll(tEnd, target);
+  const { g, w, h } = target || sizeCanvas(0.42, 0.75);
   g.fillStyle = '#05090A'; g.fillRect(0, 0, w, h);
   const { out, raw, ed } = signal(tEnd);
   const N = out.length, s0 = Math.round(tEnd * FS) - N;
@@ -152,25 +206,20 @@ function draw(tEnd, target) {
     raw.forEach((p, j) => { const x = x0 + (j / out.length) * pw; j ? g.lineTo(x, Y(p)) : g.moveTo(x, Y(p)); }); g.stroke();
   }
   if (laTrue) {                                                               // true LA pressure, as a second catheter would show it
-    g.strokeStyle = '#A9BCF2'; g.lineWidth = 1.6; g.setLineDash([5, 4]); g.beginPath();
-    laTrue.forEach((p, j) => { const x = x0 + (j / N) * pw; j ? g.lineTo(x, Y(p)) : g.moveTo(x, Y(p)); }); g.stroke(); g.setLineDash([]);
+    // solid and translucent: a dash pattern stays fixed to the screen while the trace scrolls, so the dashes crawl
+    g.strokeStyle = 'rgba(169,188,242,0.75)'; g.lineWidth = 1.4; g.beginPath();
+    laTrue.forEach((p, j) => { const x = x0 + (j / N) * pw; j ? g.lineTo(x, Y(p)) : g.moveTo(x, Y(p)); }); g.stroke();
   }
   g.strokeStyle = '#E8D35F'; g.lineWidth = 2; g.beginPath();                 // monitor PA/RA trace color
   out.forEach((p, j) => { const x = x0 + (j / out.length) * pw; j ? g.lineTo(x, Y(p)) : g.moveTo(x, Y(p)); }); g.stroke();
   if (laTrue) {
     g.font = '12px system-ui'; g.textAlign = 'right';
     g.fillStyle = '#E8D35F'; g.fillText('— wedge (catheter)', x0 + pw - 6, top + 14);
-    g.fillStyle = '#A9BCF2'; g.fillText('- - true LA pressure', x0 + pw - 6, top + 30);
+    g.fillStyle = '#A9BCF2'; g.fillText('— true LA pressure', x0 + pw - 6, top + 30);
     g.textAlign = 'left';
   }
   if (st.labels && (st.pos === 'ra' || st.pos === 'wedge')) labelWaves(g, out, s0, (j) => x0 + (j / N) * pw, Y);
-  // ECG
-  g.strokeStyle = '#7CE38B'; g.lineWidth = 1.2; g.beginPath();
-  for (let j = 0; j <= pw; j++) {
-    const d = ecg(tEnd - WIN + (j / pw) * WIN);
-    j ? g.lineTo(x0 + j, h - 18 - d) : g.moveTo(x0 + j, h - 18 - d);
-  }
-  g.stroke();
+  drawEcg(g, s0, N, x0, pw, h - 18);
   // readout
   const lastBeats = out.slice(-beat.n * 2), trueBeats = raw.slice(-beat.n * 2);
   const label = POS.find((p) => p[0] === st.pos)[1];
@@ -201,26 +250,32 @@ function endDiastolicWedge(out, s0) {
 }
 
 // Letters on the last complete beat on screen, placed on the trace's own peaks and troughs.
-function labelWaves(g, out, s0, X, Y) {
-  const wedge = st.pos === 'wedge', side = wedge ? 'la' : 'ra', lag = wedge ? WEDGE_LAG : 0, A = st.atr;
+function labelWaves(g, out, s0, X, Y, pos = st.pos) {
+  const wedge = pos === 'wedge', side = wedge ? 'la' : 'ra', lag = wedge ? WEDGE_LAG : 0, A = st.atr;
   const w = waveTimes(side), n = beat.n, N = out.length;
-  const bs = (Math.floor((s0 + N) / n) - 2) * n - s0;          // index in `out` of the last complete beat's QRS
-  const idx = (t) => bs + Math.round((t + lag) * FS);
-  const find = (t0, t1, max) => {
-    let best = -1;
-    for (let j = Math.max(0, idx(t0)); j <= Math.min(N - 1, idx(t1)); j++) if (best < 0 || (max ? out[j] > out[best] : out[j] < out[best])) best = j;
-    return best;
-  };
-  const T = TB, ta = w.a > T / 2 && A !== 'junc' ? w.a - T : w.a;
-  const big = (A === 'mr' && wedge) || (A === 'tr' && !wedge);
-  const items = [];
-  if (A !== 'af') items.push([A === 'junc' ? 'cannon a' : 'a', find(ta - 0.06, ta + 0.06, true), true]);
-  if (!wedge && !big && A !== 'junc') items.push(['c', find(w.c - 0.02, w.c + 0.04, true), true]);
-  if (!big) items.push(['x', find(w.c + 0.05, w.v - 0.08, false), false]);
-  items.push([big ? (wedge ? 'giant v' : 'cv') : 'v', find(w.v - 0.12, w.v + 0.04, true), true]);
-  items.push(['y', find(w.tIO + 0.02, w.tIO + 0.25, false), false]);
   g.font = '600 13px system-ui'; g.textAlign = 'center'; g.fillStyle = '#F2C66D';
-  for (const [txt, j, up] of items) if (j >= 0) g.fillText(txt, X(j), Y(out[j]) + (up ? -8 : 17));
+  // every beat on screen, each wave labeled only when its whole search window is on screen
+  for (let bi = 1; bi <= Math.ceil(N / n) + 1; bi++) {
+    const bs = (Math.floor((s0 + N) / n) - bi) * n - s0;       // index in `out` of this beat's QRS
+    const idx = (t) => bs + Math.round((t + lag) * FS);
+    const find = (t0, t1, max) => {
+      const a = idx(t0), b = idx(t1);
+      if (a < 0 || b > N - 1) return -1;
+      let best = -1;
+      for (let j = a; j <= b; j++) if (best < 0 || (max ? out[j] > out[best] : out[j] < out[best])) best = j;
+      return best;
+    };
+    const T = TB, ta = w.a > T / 2 && A !== 'junc' ? w.a - T : w.a;
+    const big = (A === 'mr' && wedge) || (A === 'tr' && !wedge);
+    const items = [];
+    if (A !== 'af') items.push([A === 'junc' ? 'cannon a' : 'a', find(ta - 0.06, ta + 0.06, true), true]);
+    if (!wedge && !big && A !== 'junc') items.push(['c', find(w.c - 0.02, w.c + 0.04, true), true]);
+    if (!big) items.push(['x', find(w.c + 0.05, w.v - 0.08, false), false]);
+    items.push([big ? (wedge ? 'giant v' : 'cv') : 'v', find(w.v - 0.12, w.v + 0.04, true), true]);
+    items.push(['y', find(w.tIO + 0.02, w.tIO + 0.25, false), false]);
+    g.font = '600 13px system-ui'; g.textAlign = 'center'; g.fillStyle = '#F2C66D';
+    for (const [txt, j, up] of items) if (j >= 0) g.fillText(txt, X(j), Y(out[j]) + (up ? -8 : 17));
+  }
   g.textAlign = 'left';
 }
 
@@ -245,22 +300,23 @@ const DAMP = { ok: '', over: 'overdamped', under: 'underdamped (whip)' };
 const LEVEL = { 0: '', 1: 'transducer 10 cm below the phlebostatic axis', '-1': 'transducer 10 cm above the phlebostatic axis' };
 const RESP = { none: '', spont: 'spontaneous breaths', ppv: 'positive-pressure breaths' };
 function pacSpec() {
-  const label = POS.find((p) => p[0] === st.pos)[1], patient = presetById(st.preset).label;
+  const all = st.view === 'all';
+  const label = all ? 'All four positions' : POS.find((p) => p[0] === st.pos)[1], patient = presetById(st.preset).label;
   const faults = [DAMP[st.damp], LEVEL[st.level], RESP[st.resp]].filter(Boolean);
   const rhythm = st.atr === 'sinus' ? '' : ATRIAL[st.atr].toLowerCase();
   const fault = faults.length ? faults.join(', ') : 'no artifact';
   return {
-    file: `va-coupling-pac-${st.pos}-${st.preset}${st.atr === 'sinus' ? '' : '-' + st.atr}${faults.length ? '-artifact' : ''}`,
-    title: `PA catheter, ${label} tracing · ${patient}`,
-    caption: `Pressure at the catheter tip in the ${label} position, generated from the model beat${rhythm ? ` with ${rhythm}` : ''} (${fault}).${st.pos === 'ra' || st.pos === 'wedge' ? ' Every atrial wave comes from the model beat.' : ''}${st.pos === 'wedge' && st.showLA ? ' The dashed line is the true LA pressure.' : ''}${faults.length ? ' The gray line is the true tip pressure without the artifact.' : ''}${st.resp !== 'none' ? ' The shaded bands mark inspiration, and pressures are read at end-expiration, which is marked.' : ''}`,
+    file: `va-coupling-pac-${all ? 'all' : st.pos}-${st.preset}${st.atr === 'sinus' ? '' : '-' + st.atr}${faults.length ? '-artifact' : ''}`,
+    title: `PA catheter, ${label} · ${patient}`,
+    caption: all ? `RA, RV, PA and wedge pressures from the same model beats, stacked over one ECG${rhythm ? `, with ${rhythm}` : ''} (${fault}). RV and PA share a scale, as do RA and wedge.` : `Pressure at the catheter tip in the ${label} position, generated from the model beat${rhythm ? ` with ${rhythm}` : ''} (${fault}).${st.pos === 'ra' || st.pos === 'wedge' ? ' Every atrial wave comes from the model beat.' : ''}${st.pos === 'wedge' && st.showLA ? ' The lavender line is the true LA pressure.' : ''}${faults.length ? ' The gray line is the true tip pressure without the artifact.' : ''}${st.resp !== 'none' ? ' The shaded bands mark inspiration, and pressures are read at end-expiration, which is marked.' : ''}`,
     notes: '',
     async prepare() {
-      const W = 1100, h = Math.round(W * 0.42), top = 56, band = 44, H = even(top + h + band);
+      const W = 1100, h = Math.round(W * (all ? 0.95 : 0.42)), top = 56, band = 44, H = even(top + h + band);
       const c = document.createElement('canvas'); c.width = W; c.height = h;
       const cg = c.getContext('2d'), t0 = 100 * BREATH;          // well past start-up, on a whole breath and beat
       const duration = st.resp === 'none' ? Math.ceil(3 / TB) * TB : BREATH;
       const first = draw(t0 + duration, { g: cg, w: W, h });
-      this.notes = `Monitor reads ${first.monitor} (whole screen), last 2 beats ${first.last}; true tip pressure ${first.truth} mmHg. Artifact: ${fault}.`;
+      this.notes = all ? `Last 2 beats: RA ${first.ra}, RV ${first.rv}, PA ${first.pa}, wedge ${first.wedge} mmHg. Artifact: ${fault}.` : `Monitor reads ${first.monitor} (whole screen), last 2 beats ${first.last}; true tip pressure ${first.truth} mmHg. Artifact: ${fault}.`;
       return {
         W, H, duration,
         async frame(g, t) {
@@ -269,7 +325,7 @@ function pacSpec() {
           header(g, W, `${label} · ${patient}`, [rhythm, faults.length ? fault : ''].filter(Boolean).join(' · ') || 'no artifact');
           g.drawImage(c, 0, top);
           g.font = '600 17px system-ui, sans-serif'; g.textAlign = 'left';
-          const items = [['Monitor reads', r.monitor, '#E8D35F'], ...(r.ed ? [[r.ed.how === 'mean of the a wave' ? 'At the a wave (end-diastole)' : 'End-diastole (AF)', r.ed.value.toFixed(0), '#E8D35F']] : []),
+          const items = all ? ALL_ROWS.map(([k, n]) => [n, r[k], '#E8D35F']) : [['Monitor reads', r.monitor, '#E8D35F'], ...(r.ed ? [[r.ed.how === 'mean of the a wave' ? 'At the a wave (end-diastole)' : 'End-diastole (AF)', r.ed.value.toFixed(0), '#E8D35F']] : []),
             [r.la ? 'True LA' : 'True pressure (model)', r.la || r.truth, '#A7B8B2'], [r.ed ? 'Model LVEDP' : 'Last 2 beats', r.ed ? R.lv.EDP.toFixed(0) : r.last, '#A7B8B2']];
           let x = 20;
           for (const [k, v, col] of items) {
@@ -300,6 +356,11 @@ export function initPacSim() {
   seg('pac-damp', [['ok', 'Optimal'], ['over', 'Overdamped'], ['under', 'Underdamped (whip)']], () => st.damp, (v) => { st.damp = v; });
   seg('pac-level', [['0', 'At phlebostatic axis'], ['1', '10 cm below'], ['-1', '10 cm above']], () => st.level, (v) => { st.level = +v; });
   seg('pac-atr', Object.entries(ATRIAL), () => st.atr, (v) => { st.atr = v; buildBeat(); });
+  seg('pac-view', [['tip', 'Catheter tip'], ['all', 'All four positions']], () => st.view, (v) => {
+    st.view = v;
+    $('#pac-path').hidden = v === 'all'; $('#pac-float').hidden = v === 'all';
+    mapPos = null; if (v === 'tip') drawMap();
+  });
   seg('pac-lbl', [['1', 'Label waves'], ['0', 'No labels']], () => (st.labels ? '1' : '0'), (v) => { st.labels = v === '1'; });
   seg('pac-la', [['1', 'Show true LA at wedge'], ['0', 'Hide']], () => (st.showLA ? '1' : '0'), (v) => { st.showLA = v === '1'; });
   seg('pac-resp', [['none', 'Apnoeic'], ['spont', 'Spontaneous breaths'], ['ppv', 'Positive-pressure breaths']], () => st.resp, (v) => { st.resp = v; });
