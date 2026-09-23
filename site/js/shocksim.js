@@ -1,5 +1,6 @@
 // Shock lab page: accelerated clock, bedside monitor, infusions and fluids, four-interface panel,
 // live PV loops, trends, and the flow–congestion (Forrester–Kenny) diagram.
+import { ecgWave } from './ecgwave.js';
 import { simulate, couplingLines } from './engine.js';
 import { DRUGS, DRUG, FLUIDS } from './pharm.js';
 import { SHOCK, SHOCK_BY, createPatient, advance, setDrug, give, setBleed, setUF, action, interfaces } from './shockcore.js';
@@ -24,12 +25,7 @@ function buildBeat() {
   const pick = (a) => Array.from({ length: n }, (_, k) => a[Math.min(m - 1, Math.floor((k / n) * m))]);
   st.beat = { n, T: n / FS, abp: pick(r.rec.Pao), cvp: pick(r.rec.Pra), pa: pick(r.rec.Ppa) };
 }
-function ecg(ph, T) {
-  const u = ph / T, tp = ph - (T - 0.16);
-  let d = u < 0.03 ? Math.sin(u / 0.03 * Math.PI) * 12 * (u < 0.015 ? 1 : -0.4) : u > 0.3 && u < 0.45 ? Math.sin((u - 0.3) / 0.15 * Math.PI) * 3.5 : 0;
-  if (tp >= 0 && tp < 0.09) d += 2 * Math.sin(tp / 0.09 * Math.PI);
-  return d;
-}
+const ecg = (ph, T) => ecgWave(ph, T);
 
 // Sweep buffer, as on a bedside monitor: samples are written once at the moving cursor and never
 // redrawn, and each new sample continues the beat phase, so a change of heart rate at a tick changes
