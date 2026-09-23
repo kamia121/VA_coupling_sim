@@ -526,3 +526,33 @@ body[data-view="both"] .pv-card { position: static; }
 .dia-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 400px), 1fr)); gap: 16px; align-items: start; }
 table.data caption { text-align: left; caption-side: top; padding: 4px 0; }
 #c-table td.num { white-space: nowrap; }
+
+/* the grade selector and the hemodynamic values stay at the top of the screen while the page scrolls */
+.dia-bar { position: sticky; top: 0; z-index: 20; background: var(--bg); margin: 0 -16px 14px; padding: 8px 16px 8px;
+  border-bottom: 1px solid var(--border); box-shadow: 0 6px 12px -10px rgba(0, 0, 0, 0.35); }
+.dia-bar-row { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; }
+.dia-bar-row .seg { margin: 0; }
+.dia-bar-row .k { font-size: 0.9rem; color: var(--text-muted); }
+.dia-cond { font-size: 0.8rem; color: var(--text-muted); margin-left: auto; }
+.dia-bar .g-short { display: none; }
+.dia-tiles { grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 6px; margin: 8px 0 0; }
+.dia-tiles .tile { padding: 3px 8px 4px; border-left-width: 3px; }
+.dia-tiles .tile-k { font-size: 0.72rem; white-space: nowrap; }
+.dia-tiles .tile-v { font-size: 1.15rem; }
+.dia-tiles .tile-d { font-family: "Source Code Pro", ui-monospace, monospace; font-size: 0.7rem; color: var(--text-muted); line-height: 1.2; }
+/* anchors land below the bar */
+.dia-page :is(h2, figure, section) { scroll-margin-top: 150px; }
+@media (max-width: 700px) {
+  .dia-bar { padding: 6px 12px; margin: 0 -12px 12px; }
+  .dia-bar-row { flex-wrap: nowrap; }
+  .dia-bar-row .seg { flex-wrap: nowrap; }
+  .dia-bar-row .seg button { padding: 3px 10px; font-size: 0.82rem; min-width: 34px; }
+  .dia-bar .g-long { display: none; }
+  .dia-bar .g-short { display: inline; }
+  .dia-cond { margin-left: auto; font-size: 0.72rem; text-align: right; }
+  .dia-tiles { display: flex; overflow-x: auto; gap: 5px; margin-top: 6px; scrollbar-width: thin; }
+  .dia-tiles .tile { flex: 0 0 74px; }
+  .dia-tiles .tile-v { font-size: 1rem; }
+  .dia-tiles .tile-k span { display: inline; }
+  .dia-page .side-col .panel:first-child { display: block; }   /* the simulator's phone rule hides it; here it holds the controls */
+}

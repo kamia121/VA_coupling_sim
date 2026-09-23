@@ -13,21 +13,25 @@
 <title>Diastolic Lab</title>
 <meta name="description" content="Grades 0 to IV of LV diastolic dysfunction on the circulation model: the Doppler echo of each grade, and a virtual cohort that shows how each grade tolerates fluid, diuresis, afterload and atrial fibrillation.">
 </head>
-<body>
+<body class="dia-page">
 <main>
   <div class="sim-head">
     <h1>Diastolic lab</h1>
-    <div class="toolbar">
-      <span class="k">Grade</span>
-      <span class="seg speed" id="grades" role="group" aria-label="Grade of diastolic dysfunction"></span>
-    </div>
   </div>
   <div id="grade-text" class="prose preset-text"></div>
   <p class="status">The same circulation model as the rest of the site, with slower relaxation, a stiffer LV, atrial remodeling and volume retention added grade by grade. The screens and numbers below are solved again every time a control moves. The grades are synthetic teaching cases, not patient data.</p>
 
+  <div class="dia-bar" id="dia-bar">
+    <div class="dia-bar-row">
+      <span class="k">Grade</span>
+      <span class="seg speed" id="grades" role="group" aria-label="Grade of diastolic dysfunction"></span>
+      <span class="dia-cond" id="cond-sum" aria-live="polite"></span>
+    </div>
+    <div class="tiles dia-tiles" id="tiles" aria-live="polite"></div>
+  </div>
+
   <div class="sim2">
     <div>
-      <div class="tiles" id="tiles" aria-live="polite"></div>
       <section class="monitor" id="echo-panel">
         <div class="mon-head"><h2>Doppler echocardiogram</h2><span class="status" id="live-status" aria-live="polite"></span></div>
         <div class="dia-screens">

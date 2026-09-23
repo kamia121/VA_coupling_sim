@@ -45,17 +45,23 @@ const sgn = (v, f = f1) => (v >= 0 ? '+' : '−') + f(Math.abs(v));
 function tiles() {
   const o = st.cur, b = baseline(st.g).o;
   const T = [
-    ['Cardiac output', f1(o.CO), 'L/min', o.CO - b.CO, false],
-    ['Stroke volume', f0(o.SV), 'mL', o.SV - b.SV, false],
-    ['Heart rate', f0(o.HR), '/min', o.HR - b.HR, false],
-    ['MAP', f0(o.MAP), 'mmHg', o.MAP - b.MAP, o.MAP < 65],
-    ['LA pressure (PAWP)', f0(o.LAP), 'mmHg', o.LAP - b.LAP, o.LAP > LAP_WET],
-    ['LVEDP', f0(o.EDP), 'mmHg', o.EDP - b.EDP, o.EDP > 16],
-    ['Mean PA pressure', f0(o.mPAP), 'mmHg', o.mPAP - b.mPAP, o.mPAP > 20],
-    ['RA pressure', f0(o.RAP), 'mmHg', o.RAP - b.RAP, o.RAP > 12],
+    ['CO', 'Cardiac output', f1(o.CO), 'L/min', o.CO - b.CO, false],
+    ['SV', 'Stroke volume', f0(o.SV), 'mL', o.SV - b.SV, false],
+    ['HR', 'Heart rate', f0(o.HR), '/min', o.HR - b.HR, false],
+    ['MAP', 'Mean arterial pressure', f0(o.MAP), 'mmHg', o.MAP - b.MAP, o.MAP < 65],
+    ['LAP', 'LA pressure (PAWP)', f0(o.LAP), 'mmHg', o.LAP - b.LAP, o.LAP > LAP_WET],
+    ['LVEDP', 'LV end-diastolic pressure', f0(o.EDP), 'mmHg', o.EDP - b.EDP, o.EDP > 16],
+    ['mPAP', 'Mean PA pressure', f0(o.mPAP), 'mmHg', o.mPAP - b.mPAP, o.mPAP > 20],
+    ['RAP', 'RA pressure', f0(o.RAP), 'mmHg', o.RAP - b.RAP, o.RAP > 12],
   ];
-  $('#tiles').innerHTML = T.map(([k, v, u, d, off]) => `<div class="tile${off ? ' off' : ''}"><div class="tile-v">${v}</div>
-    <div class="tile-k">${k} <span>${u}${Math.abs(d) >= 0.05 ? ` · ${sgn(d, Math.abs(d) < 10 ? f1 : f0)}` : ''}</span></div></div>`).join('');
+  // compact tiles for the bar that stays at the top of the screen; the full name is in the tooltip
+  $('#tiles').innerHTML = T.map(([k, name, v, u, d, off]) => `<div class="tile${off ? ' off' : ''}" title="${name}${off ? ' (outside the usual range)' : ''}">
+    <div class="tile-k">${k} <span>${u}</span></div><div class="tile-v">${v}</div>
+    <div class="tile-d">${Math.abs(d) >= 0.05 ? sgn(d, Math.abs(d) < 10 ? f1 : f0) : '&nbsp;'}</div></div>`).join('');
+  // what has been done to the patient, since the controls scroll out of view
+  const parts = [st.vol ? `${st.vol > 0 ? '+' : '−'}${Math.abs(st.vol)} mL` : '', st.svrX !== 1 ? `SVR × ${st.svrX.toFixed(2)}` : '',
+    st.surge ? 'surge' : '', st.rhythm === 'af' ? `AF ${st.afRate}/min` : ''].filter(Boolean);
+  $('#cond-sum').innerHTML = parts.length ? `Now: ${parts.join(' · ')}<span class="g-long"> · change from as found below each value</span>` : 'As found';
 }
 
 function loopPts(r) {
@@ -140,6 +146,22 @@ function spectrum(g, x0, pw, yb, pxPerCm, v) {
     }
   }
 }
+// Tissue Doppler: the annulus moves as one solid body at low velocity with a strong echo, so the spectrum
+// is a narrow bright band that traces the velocity, with no fill between it and the baseline. The band
+// joins adjacent columns so the fast upstrokes stay continuous, and a little clutter sits at the baseline.
+function tdiSpectrum(g, x0, pw, yb, pxPerCm, v) {
+  for (let i = 0; i < pw; i++) {
+    const a = v[Math.max(0, i - 1)], b = v[i];
+    const w = (0.7 + 0.06 * Math.abs(b)) * pxPerCm;           // narrow spectral width, a little wider at speed
+    const top = yb - Math.max(a, b) * pxPerCm - w, bot = yb - Math.min(a, b) * pxPerCm + w;
+    for (let y = top; y < bot; y += 1) {
+      const edge = Math.min(y - top, bot - y) / w;               // brightest in the middle of the band
+      const al = Math.min(1, 0.35 + 0.65 * Math.min(1, edge)) * (0.65 + 0.35 * rand(i * 29 + Math.round(y)));
+      g.fillStyle = `rgba(232,244,240,${al.toFixed(3)})`; g.fillRect(x0 + i, y, 1, 1);
+    }
+    if (rand(i * 7) > 0.55) { g.fillStyle = 'rgba(200,220,215,0.25)'; g.fillRect(x0 + i, yb + (rand(i * 5) - 0.5) * 1.6 * pxPerCm, 1, 1); }
+  }
+}
 function axes(g, x0, pw, yb, pxPerCm, lo, hi, step, label) {
   g.strokeStyle = '#3B4E48'; g.lineWidth = 1; g.beginPath(); g.moveTo(x0, yb); g.lineTo(x0 + pw, yb); g.stroke();
   g.fillStyle = '#8FA39D'; g.font = '11px system-ui'; g.textAlign = 'right';
@@ -195,7 +217,7 @@ function drawTDI() {
   const cache = new Map();
   const s = sample(sw, pw, (b, i) => { if (!cache.has(b)) cache.set(b, shape(b)); return cache.get(b)(i); });
   axes(g, x0, pw, yb, px, -vmax, vmax, 8, 'Lateral mitral annulus, tissue Doppler (cm/s)');
-  spectrum(g, x0, pw, yb, px, s.v);
+  tdiSpectrum(g, x0, pw, yb, px, s.v);
   ecgRow(g, x0, pw, h - 14, s);
   const n0 = Math.round(sw.beats[0].T / sw.T * pw);
   const iS = peakIdx(s.v, 0, n0, 1), iE = peakIdx(s.v, 0, Math.round(n0 * 0.8), -1);
@@ -472,7 +494,8 @@ function echoSpec() {
 
 // ---------- controls ----------
 export function initDiastolic() {
-  $('#grades').innerHTML = GRADES.map((g) => `<button type="button" data-g="${g.id}" aria-pressed="false">${g.short}</button>`).join('');
+  // on phones the buttons show only the numeral (0, I–IV) so the bar fits on one line
+  $('#grades').innerHTML = GRADES.map((g) => `<button type="button" data-g="${g.id}" aria-pressed="false" aria-label="${g.short}"><span class="g-long">${g.short}</span><span class="g-short" aria-hidden="true">${g.roman}</span></button>`).join('');
   const syncGrade = () => $('#grades').querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', String(+b.dataset.g === st.g)));
   $('#grades').addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; st.g = +b.dataset.g; syncGrade(); update(); });
   const vol = $('#vol'), svr = $('#svr'), afr = $('#afrate');
