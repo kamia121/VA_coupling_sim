@@ -37,7 +37,7 @@ if (!isMainThread) {
   const r3 = (v) => (Number.isFinite(v) ? +v.toPrecision(4) : null);
 
   // Page data: compact rows (the fields the charts read), tolerance, and the reference course.
-  const PF = ['CO', 'SV', 'MAP', 'LAP', 'mPAP', 'EA', 'Eep', 'echoGrade'];
+  const PF = ['CO', 'SV', 'MAP', 'LAP', 'mPAP', 'EA', 'Eep', 'echoGrade', 'EDV', 'EDP'];
   const conds = results[0].patients[0].rows.map((r) => [r.kind, r.x]);
   const data = {
     N, seed, generated: new Date().toISOString().slice(0, 10), fields: PF, conds,

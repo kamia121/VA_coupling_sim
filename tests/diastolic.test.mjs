@@ -4,6 +4,8 @@
 import { simulate } from '../site/js/engine.js';
 import { GRADES, solveCond, readout, protocol, tolerance, gradeFromEcho, CUT } from '../site/js/diastcore.js';
 import { COHORT } from '../site/js/diastdata.js';
+import { QUESTIONS } from '../site/js/diastquiz.js';
+import { consequences } from '../site/js/diastcore.js';
 
 let failed = 0;
 function check(name, cond, detail = '') {
@@ -110,6 +112,25 @@ check('course: diuresis costs about 0.2 L/min in grades III–IV', [3, 4].every(
 q('course grade III E/A 240', C(3, 240).EA, 1.70, 0.006); q('course grade IV E/A 240', C(4, 240).EA, 2.74, 0.006);
 q('course grade II E/A 0', C(2, 0).EA, 1.39, 0.006); q('course grade II E/A 240', C(2, 240).EA, 0.85, 0.006);
 check('course: normal and grade I stop at the stressed-volume floor', C(0, 240).LAP == null && C(1, 240).LAP == null);
+
+q('limits: grade III cardiac index', O[3].CO / 1.9, 1.8, 0.06); q('limits: grade IV cardiac index', O[4].CO / 1.9, 1.8, 0.06);
+check('grades III–IV sit in the cold, wet subset at rest (stated in the limits)', [3, 4].every((g) => consequences(O[g]).subset === 'Cold and wet'));
+// ---------- predict-then-test answers (the model decides; these are the answers the page teaches) ----------
+const EXPECT = { pseudo: 'sup', grade1: 'relax', unmask: 'low', fixed: 'g4', fluid3: 'lap', diur: 'g1', afterload: 'small', afrate: 'g1', kick: 'mid' };
+for (const q of QUESTIONS) {
+  const r = q.run();
+  check(`question ${q.id}: model answer is ${EXPECT[q.id]}`, r.key === EXPECT[q.id], r.key);
+  check(`question ${q.id}: answer is one of its choices`, q.choices.some(([k]) => k === r.key));
+  check(`question ${q.id}: explanation has no NaN`, !/NaN|undefined/.test(r.explain));
+}
+check('every question has an expected answer', QUESTIONS.every((q) => q.id in EXPECT) && QUESTIONS.length === Object.keys(EXPECT).length);
+
+// ---------- bedside consequences ----------
+const cq = (o) => Object.fromEntries(consequences(o).items.map((x) => [x.id, x.level]));
+check('normal heart: warm and dry, no flags', consequences(O[0]).subset === 'Warm and dry' && Object.values(cq(O[0])).every((l) => l === 0));
+check('grade IV: wet, alveolar edema range, post-capillary PH', cq(O[4]).lungs === 2 && consequences(O[4]).items[3].text === 'post-capillary PH');
+check('grade III: congested, not yet in the edema range', cq(O[3]).lungs === 1);
+check('low output flagged below CI 2.2', cq({ ...O[0], CO: 3.9 }).perf === 1 && cq({ ...O[0], CO: 3.9, MAP: 60 }).perf === 2);
 
 console.log(failed ? `\n${failed} check(s) failed` : '\nall diastolic checks passed');
 process.exit(failed ? 1 : 0);

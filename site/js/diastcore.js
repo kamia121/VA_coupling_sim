@@ -328,3 +328,28 @@ export function course(base, plan = COURSE) {
   }
   return out;
 }
+
+// Bedside consequences of a hemodynamic state, by thresholds (not simulated lung water or kidneys).
+//   Lungs: PAWP > 18 mmHg congestion (Forrester 1976); > 25 mmHg the range in which alveolar edema
+//   develops with a normal plasma protein (Guyton 1959). Perfusion: cardiac index < 2.2 L/min/m²
+//   (Forrester 1976), MAP < 65 mmHg (Evans 2021). Venous congestion: CVP > 12 mmHg (Rola 2025).
+//   Pulmonary hypertension: mPAP > 20 mmHg, post-capillary when PAWP > 15 mmHg (Humbert 2022).
+// level: 0 none, 1 present, 2 severe. Each item carries its own label so it is never color alone.
+export const CONSEQ = { wet: LAP_WET, edema: LAP_EDEMA, ci: 2.2, map: 65, cvp: 12, mpap: 20, pawpPH: 15 };
+export function consequences(o) {
+  const ci = o.CO / BSA;
+  const wet = o.LAP > CONSEQ.wet, cold = ci < CONSEQ.ci;
+  return {
+    ci,
+    subset: `${cold ? 'Cold' : 'Warm'} and ${wet ? 'wet' : 'dry'}`,
+    items: [
+      { id: 'lungs', label: 'Lungs', level: o.LAP > CONSEQ.edema ? 2 : wet ? 1 : 0,
+        text: o.LAP > CONSEQ.edema ? 'alveolar edema range' : wet ? 'congested' : 'dry' },
+      { id: 'perf', label: 'Perfusion', level: cold && o.MAP < CONSEQ.map ? 2 : cold || o.MAP < CONSEQ.map ? 1 : 0,
+        text: `${cold ? `low output (CI ${ci.toFixed(1)})` : `adequate (CI ${ci.toFixed(1)})`}${o.MAP < CONSEQ.map ? ', hypotensive' : ''}` },
+      { id: 'veins', label: 'Systemic veins', level: o.RAP > CONSEQ.cvp ? 1 : 0, text: o.RAP > CONSEQ.cvp ? 'congested (CVP > 12)' : 'not congested' },
+      { id: 'ph', label: 'Pulmonary circulation', level: o.mPAP > CONSEQ.mpap ? (o.mPAP > 35 ? 2 : 1) : 0,
+        text: o.mPAP > CONSEQ.mpap ? (o.LAP > CONSEQ.pawpPH ? 'post-capillary PH' : 'PH') : 'no PH' },
+    ],
+  };
+}
