@@ -12,34 +12,36 @@ const C = { cur: 'var(--series-current)', ref: 'var(--series-ref)', snap: 'var(-
 const S = (o) => ({ step: 0.01, digits: 2, to: (v) => v, from: (p) => p[o.key], ...o });
 const SLIDERS = [
   S({ group: 'global', key: 'hr', label: 'Heart rate', unit: '/min', min: 40, max: 160, step: 1, digits: 0, range: [60, 100] }),
+  S({ group: 'global', key: 'aKick', label: 'Atrial contraction', unit: '× normal', min: 0, max: 1.5, step: 0.05,
+    hint: 'Zero removes atrial contraction, as in atrial fibrillation, and with it the a wave and the late-diastolic filling it provides.' }),
   S({ group: 'global', key: 'vStressed', label: 'Stressed blood volume (preload)', unit: 'mL', min: 450, max: 1400, step: 10, digits: 0,
-    hint: 'Volume that actually distends the vessels; changes filling pressures and EDV.' }),
+    hint: 'The volume that distends the vessels. It changes the filling pressures and EDV.' }),
 
   S({ group: 'lv', key: 'lvEes', label: 'LV Ees (contractility)', unit: 'mmHg/mL', min: 0.3, max: 7, step: 0.05, range: [1.2, 3.0],
-    hint: 'Slope of the ESPVR. Normal controls 2.1 ± 0.9 mmHg/mL (Kawaguchi 2003).' }),
+    hint: 'The slope of the ESPVR. Normal controls had 2.1 ± 0.9 mmHg/mL (Kawaguchi 2003).' }),
   S({ group: 'lv', key: 'lvBeta', label: 'LV diastolic stiffness β', unit: '1/mL', min: 0.012, max: 0.07, step: 0.001, digits: 3,
-    hint: 'Exponent of the EDPVR. Higher = stiffer, less compliant chamber (HFpEF, hypertrophy).' }),
+    hint: 'The exponent of the EDPVR. A higher value means a stiffer, less compliant chamber, as in HFpEF or hypertrophy.' }),
   S({ group: 'lv', key: 'lvV0', label: 'LV V₀ (ESPVR intercept)', unit: 'mL', min: 0, max: 100, step: 1, digits: 0, advanced: true,
-    hint: 'Rightward shift of the ESPVR, as in a dilated ventricle.' }),
+    hint: 'A larger value shifts the ESPVR to the right, as in a dilated ventricle.' }),
 
   S({ group: 'sys', key: 'svrTot', label: 'Systemic vascular resistance', unit: 'dyn·s·cm⁻⁵', min: 250, max: 3000, step: 10, digits: 0, range: [800, 1600],
     to: (v, p) => ({ svr: Math.max(0.05, v * DYN - p.zcAo) }), from: (p) => (p.svr + p.zcAo) / DYN,
-    hint: 'Steady (resistive) afterload; the main determinant of Ea.' }),
+    hint: 'The steady, resistive part of afterload and the main determinant of Ea.' }),
   S({ group: 'sys', key: 'cSys', label: 'Systemic arterial compliance', unit: 'mL/mmHg', min: 0.3, max: 3, step: 0.05,
-    hint: 'Pulsatile load. Lower = stiffer arteries, wider pulse pressure.' }),
+    hint: 'The pulsatile part of afterload. A lower value means stiffer arteries and a wider pulse pressure.' }),
   S({ group: 'sys', key: 'zcAo', label: 'Aortic characteristic impedance', unit: 'mmHg·s/mL', min: 0.01, max: 0.15, step: 0.005, digits: 3, advanced: true }),
 
   S({ group: 'rv', key: 'rvEes', label: 'RV Ees (contractility)', unit: 'mmHg/mL', min: 0.15, max: 3, step: 0.05, range: [0.2, 0.8],
-    hint: 'Normal about 0.4 ± 0.2 mmHg/mL; rises with homeometric adaptation (Naeije 2014).' }),
+    hint: 'The normal value is about 0.4 ± 0.2 mmHg/mL, and it rises with homeometric adaptation (Naeije 2014).' }),
   S({ group: 'rv', key: 'rvBeta', label: 'RV diastolic stiffness β', unit: '1/mL', min: 0.01, max: 0.06, step: 0.001, digits: 3 }),
   S({ group: 'rv', key: 'rvV0', label: 'RV V₀ (ESPVR intercept)', unit: 'mL', min: 0, max: 120, step: 1, digits: 0, advanced: true,
-    hint: 'Rightward shift with RV dilatation.' }),
+    hint: 'A larger value shifts the ESPVR to the right, as in RV dilation.' }),
 
   S({ group: 'pul', key: 'pvrTot', label: 'Pulmonary vascular resistance', unit: 'WU', min: 0.5, max: 20, step: 0.1, digits: 1, range: [0, 2],
     to: (v, p) => ({ pvr: Math.max(0.005, v * WU - p.zcPa) }), from: (p) => (p.pvr + p.zcPa) / WU,
-    hint: 'PH definition uses PVR > 2 WU (ESC/ERS 2022).' }),
+    hint: 'The ESC/ERS 2022 definition of pre-capillary PH uses a PVR above 2 WU.' }),
   S({ group: 'pul', key: 'cPa', label: 'Pulmonary arterial compliance', unit: 'mL/mmHg', min: 0.3, max: 6, step: 0.05,
-    hint: 'In the pulmonary circulation compliance falls as resistance rises (Lankhaar 2008).' }),
+    hint: 'In the pulmonary circulation, compliance falls as resistance rises (Lankhaar 2008).' }),
   S({ group: 'pul', key: 'zcPa', label: 'Pulmonary characteristic impedance', unit: 'mmHg·s/mL', min: 0.005, max: 0.08, step: 0.001, digits: 3, advanced: true }),
 ];
 
@@ -299,14 +301,14 @@ function exportSpec() {
   const notes = [`Patient: ${patient}. HR ${f0(r.params.hr)}/min, CO ${f1(h.CO)} L/min.`,
     sides.includes('lv') ? `LV: EDV ${f0(r.lv.EDV)} mL, ESV ${f0(r.lv.ESV)} mL, EF ${f0(r.lv.EF * 100)}%, Ees ${f2(r.lv.Ees)} and Ea ${f2(r.lv.Ea)} mmHg/mL, Ea/Ees ${f2(r.lv.EaEes)}. BP ${f0(h.SBP)}/${f0(h.DBP)} (MAP ${f0(h.MAP)}) mmHg, LAP ${f0(h.LAP)} mmHg.` : '',
     sides.includes('rv') ? `RV: EDV ${f0(r.rv.EDV)} mL, ESV ${f0(r.rv.ESV)} mL, EF ${f0(r.rv.EF * 100)}%, Ees ${f2(r.rv.Ees)} and Ea ${f2(r.rv.Ea)} mmHg/mL, Ees/Ea ${f2(r.rv.EesEa)}. PA ${f0(h.PASP)}/${f0(h.PADP)} (mean ${f0(h.mPAP)}) mmHg, RAP ${f0(h.RAP)} mmHg, PVR ${f1(h.PVR_WU)} WU.` : '',
-    'Valve events: MVC/TVC inflow valve closes, AVO/PVO outflow valve opens, AVC/PVC outflow valve closes, MVO/TVO inflow valve opens.'].filter(Boolean).join('\n');
+    'Valve events: MVC and TVC are closure of the mitral and tricuspid valves, AVO and PVO are opening of the aortic and pulmonic valves, AVC and PVC are their closure, and MVO and TVO are opening of the mitral and tricuspid valves.'].filter(Boolean).join('\n');
   return {
     file: `va-coupling-${view}-${pid || 'custom'}`,
     title: `${both ? 'LV and RV' : name[side]} pressure–volume loop${both ? 's' : ''} · ${patient}`,
-    caption: `One beat at ${speed}${play.dwell ? ', isovolumic phases a further 5× slower' : ''}. Dots: valve events (${ev}). Shaded: isovolumic contraction and relaxation. Grey: normal ventricle.`,
+    caption: `One beat at ${speed}${play.dwell ? ', with the isovolumic phases a further 5× slower' : ''}. The dots mark the valve events (${ev}), the shaded bands mark isovolumic contraction and relaxation, and the gray loop is the normal ventricle.`,
     notes,
     async prepare() {
-      if (busy) throw new Error('wait for the animation to finish, then export again.');
+      if (busy) throw new Error('the animation is still running. Export again when it finishes.');
       const saved = { on: play.on, t: play.t };
       setPlaying(false);
       const pvs = (both ? ['#pv', '#pv2'] : ['#pv']).map((q) => svgCapture($(q)));
@@ -676,9 +678,9 @@ function drawStrip(sd, sel, atrialOnly = false) {
   const pick = (arr) => ms.map((t, i) => [t, arr[i]]).filter((_, i) => i % 3 === 0);
   const vent = sd === 'lv' ? r.rec.Plv : r.rec.Prv;
   const art = sd === 'lv' ? r.rec.Pao : r.rec.Ppa;
-  const atr = sd === 'lv' ? r.rec.Ppv : r.rec.Psv;
+  const atr = sd === 'lv' ? r.rec.Pla : r.rec.Pra;
   const refV = sd === 'lv' ? REF.rec.Plv : REF.rec.Prv;
-  const refA = sd === 'lv' ? REF.rec.Ppv : REF.rec.Psv;
+  const refA = sd === 'lv' ? REF.rec.Pla : REF.rec.Pra;
   const refMs = REF.rec.t.map((t) => t * 1000);
   const xmax = Math.max(ms[ms.length - 1], refMs[refMs.length - 1]);
   const ymax = atrialOnly ? niceMax(Math.max(...atr, ...refA) * 1.35) : niceMax(Math.max(...vent, ...art, ...refV) * 1.1);
@@ -711,12 +713,20 @@ function drawStrip(sd, sel, atrialOnly = false) {
     t.textContent = EVENT_LABELS[sd][k];
   });
   if (atrialOnly) {
-    // v wave: atrial peak while the inflow valve is closed; y descent: fall after the inflow valve opens
-    let iv = ev.inClose, iy = ev.inOpen;
+    // a wave: peak during atrial systole; x descent: fall after it, before the v wave;
+    // v wave: peak while the inflow valve is closed; y descent: fall after the inflow valve opens
+    let iv = ev.inClose, iy = ev.inOpen, ia = -1, ix = ev.inClose;
     for (let i = ev.inClose; i < Math.min(ev.inOpen, atr.length); i++) if (atr[i] > atr[iv]) iv = i;
     for (let i = ev.inOpen; i < Math.min(atr.length, ev.inOpen + Math.round(0.25 / r.dt)); i++) if (atr[i] < atr[iy]) iy = i;
-    for (const [i, lab] of [[iv, 'v'], [iy, 'y']]) {
-      const t = svgEl('text', { x: pm.sx(ms[i]), y: pm.sy(atr[i]) + (lab === 'v' ? -7 : 15), class: 'ev-wave', 'text-anchor': 'middle' }, pm.svg);
+    for (let i = 0; i < atr.length; i++) if (r.rec.aAct[i] > 0.02 && (ia < 0 || atr[i] > atr[ia])) ia = i;
+    if (ia >= 0) {                                   // x: lowest point from the a wave to the v wave, across the end of the beat
+      ix = ia;
+      for (let k = ia; k !== iv; k = (k + 1) % atr.length) if (atr[k] < atr[ix]) ix = k;
+    }
+    const marks = [[iv, 'v'], [iy, 'y']];
+    if (ia >= 0) marks.push([ia, 'a'], [ix, 'x']);
+    for (const [i, lab] of marks) {
+      const t = svgEl('text', { x: pm.sx(ms[i]), y: pm.sy(atr[i]) + (lab === 'v' || lab === 'a' ? -7 : 15), class: 'ev-wave', 'text-anchor': 'middle' }, pm.svg);
       t.textContent = lab;
     }
   }
@@ -734,10 +744,10 @@ function renderPT() {
   const sd = both ? 'lv' : side;
   $('#pt-legend').innerHTML = `<span>${swatch(C.cur, '', 2.4)}Ventricle</span>
     <span>${swatch(C.cur, '6 4')}${both ? 'Aorta / PA' : sd === 'lv' ? 'Aorta' : 'Pulmonary artery'}</span>
-    <span>${swatch(C.cur, '2 3')}${both ? 'LA / RA' : sd === 'lv' ? 'LA (pulmonary veins + LA)' : 'RA (systemic veins + RA)'}</span>
+    <span>${swatch(C.cur, '2 3')}${both ? 'LA / RA' : sd === 'lv' ? 'LA' : 'RA'}</span>
     <span>${swatch(C.ref, '', 1.4)}Normal ventricle</span><span class="iso-key"></span>Isovolumic`;
   $('#atr-title').textContent = sd === 'lv' ? 'Left atrial pressure' : 'Right atrial pressure';
-  $('#atr-note').textContent = `${sd === 'lv' ? 'LA' : 'RA'} ${ (sd === 'lv' ? result.hemo.LAP : result.hemo.RAP).toFixed(0)} mmHg mean. v wave: atrial filling while the ${sd === 'lv' ? 'mitral' : 'tricuspid'} valve is closed. y descent: emptying after it opens. The model has no atrial contraction, so there is no a wave or x descent.`;
+  $('#atr-note').textContent = `${sd === 'lv' ? 'LA' : 'RA'} ${ (sd === 'lv' ? result.hemo.LAP : result.hemo.RAP).toFixed(0)} mmHg mean. The a wave is atrial contraction at the end of diastole, and the x descent follows as the atrium relaxes. The v wave is atrial filling while the ${sd === 'lv' ? 'mitral' : 'tricuspid'} valve is closed, and the y descent is atrial emptying after the valve opens. The model has no c wave, because it does not represent the valve bulging into the atrium. ${sd === 'lv' ? `Mitral flow during atrial systole supplies ${(result.hemo.atrialFill * 100).toFixed(0)}% of the stroke volume in this beat${result.params.hr >= 100 ? '. At this heart rate early and late filling overlap, so the share includes passive filling' : ''}.` : ''}`;
 }
 
 function renderLegend() {
@@ -758,7 +768,7 @@ function renderMetrics() {
       <td class="num cur">${show(cur)}${flag ? ' *' : ''}</td><td class="num">${show(ref)}</td>${snapshot ? `<td class="num">${show(snap)}</td>` : ''}</tr>`;
   }).join('');
   $('#metrics').innerHTML = `<table class="data metrics"><thead><tr><th>Measure</th><th class="num">Current</th><th class="num">Normal</th>${snapshot ? '<th class="num">Snapshot</th>' : ''}</tr></thead><tbody>${rows}</tbody></table>
-    <p class="status">* outside the usual resting adult range; a teaching aid, not a cut-off.</p>`;
+    <p class="status">* Outside the usual resting adult range. The flag is a teaching aid and not a clinical cutoff.</p>`;
 }
 
 function render(light = false) {

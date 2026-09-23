@@ -16,11 +16,13 @@ const st = { preset: 'normal', pos: 'ra', damp: 'ok', level: 0, resp: 'none', at
 let R = null, beat = null, ev = null, evs = null, BREATH = BREATH_TARGET, TB = 1;   // TB: beat period as sampled
 
 // ---------- atrial waves ----------
-// The model has no atria that contract, so its RA and LA pressures carry only the v wave and
-// y descent. The a wave, c wave and x descent (and the rhythm/valve patterns) are added from a
-// template timed to the model's own valve events and to the ECG below. Amplitudes are
-// illustrative, not fitted to data. t = 0 is QRS onset (start of ventricular activation).
-const PR = 0.16;                      // s, P-wave onset to QRS
+// The model's atria contract (engine.js), so the a wave, the fall in pressure as the atrium
+// relaxes, the loss of the a wave in atrial fibrillation, and cannon a waves in AV dissociation
+// all come from the physics. What the lumped model cannot produce is added from a template
+// timed to its valve events: the small c wave (the valve bulging into the atrium), the part of
+// the x descent caused by descent of the base in systole, and the large systolic waves of
+// severe mitral or tricuspid regurgitation. t = 0 is QRS onset (start of ventricular activation).
+const PR = 0.16;                      // s, P-wave onset to QRS (engine default)
 export const ATRIAL = {
   sinus: 'Sinus rhythm',
   af: 'Atrial fibrillation',
@@ -28,11 +30,17 @@ export const ATRIAL = {
   mr: 'Severe mitral regurgitation',
   tr: 'Severe tricuspid regurgitation',
 };
+// Engine settings for each rhythm: no atrial contraction in AF; in AV dissociation the atrium
+// contracts 50 ms after the QRS, against closed AV valves.
+const RHYTHM = { af: { aKick: 0 }, junc: { aShift: PR + 0.05 } };
+
 function waveTimes(side) {            // side: 'ra' (right heart events) or 'la' (left heart events)
   const e = evs[side === 'ra' ? 'rv' : 'lv'].events, m = R.rec.t.length, T = R.T;
   const at = (i) => (i / m) * T;
   const tIn = at(e.inClose), tOpen = at(e.outOpen), tClose = at(e.outClose), tIO = at(e.inOpen);
-  return { a: st.atr === 'junc' ? tOpen + 0.08 : T - 0.07, c: tIn + 0.03, x: tOpen + 0.35 * (tClose - tOpen), v: tIO - 0.02, y: tIO + 0.09, tOpen, tClose, tIO };
+  let ia = 0;                         // peak of atrial activation
+  for (let i = 1; i < m; i++) if (R.rec.aAct[i] > R.rec.aAct[ia]) ia = i;
+  return { a: at(ia), c: tIn + 0.03, x: tOpen + 0.35 * (tClose - tOpen), v: tIO - 0.02, y: tIO + 0.09, tOpen, tClose, tIO };
 }
 function atrialWaves(side, n) {
   const T = n / FS, w = waveTimes(side), out = new Array(n);
@@ -42,28 +50,30 @@ function atrialWaves(side, n) {
     return t >= w.tIO ? Math.exp(-(t - w.tIO) / 0.05) : 0;
   };
   const la = side === 'la', A = st.atr;
-  const aAmp = A === 'af' ? 0 : (la ? 2.5 : 3) * (A === 'junc' ? 3 : 1);
-  const xAmp = (la ? 2 : 2.5) * (A === 'af' ? 0.4 : (A === 'mr' && la) || (A === 'tr' && !la) ? 0 : 1);
   const big = A === 'mr' && la ? 18 : A === 'tr' && !la ? 9 : 0;
+  const cAmp = A === 'junc' ? 0 : la ? 0.8 : 1.2;
+  // systolic x descent from descent of the base (atrial relaxation is already in the model);
+  // filled in by the regurgitant wave in severe MR or TR
+  const xAmp = big ? 0 : la ? 1.5 : 2;
   for (let k = 0; k < n; k++) {
     const t = k / FS;
-    out[k] = aAmp * g(t, w.a, 0.035) + (la ? 0.8 : 1.2) * g(t, w.c, 0.015) - xAmp * g(t, w.x, 0.3 * (w.tClose - w.tOpen)) + big * sys(t);
+    out[k] = cAmp * g(t, w.c, 0.015) - xAmp * g(t, w.x, 0.3 * (w.tClose - w.tOpen)) + big * sys(t);
   }
   return out;
 }
 
-// One beat of each site's pressure, resampled to FS. Wedge = LA pressure (model + atrial waves),
+// One beat of each site's pressure, resampled to FS. Wedge = LA pressure,
 // smoothed (τ 50 ms) and delayed 60 ms to mimic transmission through the occluded capillary bed.
 function buildBeat() {
-  R = simulate(presetById(st.preset).params);
+  R = simulate({ ...presetById(st.preset).params, ...(RHYTHM[st.atr] || {}) });
   evs = cardiacPhases(R); ev = evs.rv.events;
   const n = Math.round(R.T * FS), m = R.rec.t.length;
   const pick = (arr) => Array.from({ length: n }, (_, k) => arr[Math.min(m - 1, Math.floor((k / n) * m))]);
   const addA = (arr, side) => { const a = atrialWaves(side, n); return arr.map((v, k) => v + a[k]); };
-  const la = addA(pick(R.rec.Ppv), 'la'), wedge = new Array(n), d = Math.round(0.06 * FS), a = 1 / (1 + 0.05 * FS);
+  const la = addA(pick(R.rec.Pla), 'la'), wedge = new Array(n), d = Math.round(0.06 * FS), a = 1 / (1 + 0.05 * FS);
   let y = la.reduce((s, v) => s + v, 0) / n;
   for (let pass = 0; pass < 2; pass++) for (let k = 0; k < n; k++) { y += a * (la[(k - d + n) % n] - y); wedge[k] = y; }
-  beat = { n, ra: addA(pick(R.rec.Psv), 'ra'), rv: pick(R.rec.Prv), pa: pick(R.rec.Ppa), wedge, la };
+  beat = { n, ra: addA(pick(R.rec.Pra), 'ra'), rv: pick(R.rec.Prv), pa: pick(R.rec.Ppa), wedge, la };
   TB = n / FS;
   BREATH = Math.max(2, Math.round(BREATH_TARGET / TB)) * TB;   // whole number of beats, so the pattern repeats exactly
 }
@@ -167,7 +177,7 @@ function draw(tEnd, target) {
     g.strokeStyle = '#A9BCF2'; g.lineWidth = 1.6; g.setLineDash([5, 4]); g.beginPath();
     laTrue.forEach((p, j) => { const x = x0 + (j / N) * pw; j ? g.lineTo(x, Y(p)) : g.moveTo(x, Y(p)); }); g.stroke(); g.setLineDash([]);
   }
-  g.strokeStyle = '#E8D35F'; g.lineWidth = 2; g.beginPath();                 // monitor PA/RA trace colour
+  g.strokeStyle = '#E8D35F'; g.lineWidth = 2; g.beginPath();                 // monitor PA/RA trace color
   out.forEach((p, j) => { const x = x0 + (j / out.length) * pw; j ? g.lineTo(x, Y(p)) : g.moveTo(x, Y(p)); }); g.stroke();
   if (laTrue) {
     g.font = '12px system-ui'; g.textAlign = 'right';
@@ -191,7 +201,7 @@ function draw(tEnd, target) {
   if (laTrue) read.la = `${stats(laTrue.slice(-beat.n * 2)).mean.toFixed(0)} mean`;
   if (st.pos === 'wedge') read.ed = endDiastolicWedge(out, s0);
   if (target) return read;
-  $('#pac-read').innerHTML = (read.ed ? `<div class="tile"><div class="tile-v">${read.ed.value.toFixed(0)}</div><div class="tile-k">Wedge at end-diastole: ${read.ed.how} · model LVEDP ${R.lv.EDP.toFixed(0)}</div></div>` : '')
+  $('#pac-read').innerHTML = (read.ed ? `<div class="tile"><div class="tile-v">${read.ed.value.toFixed(0)}</div><div class="tile-k">Wedge at end-diastole (${read.ed.how}). Model LVEDP ${R.lv.EDP.toFixed(0)}</div></div>` : '')
     + (laTrue ? `<div class="tile la"><div class="tile-v">${read.la}</div><div class="tile-k">True LA pressure (model), last 2 beats</div></div>` : '') + `<div class="tile"><div class="tile-v">${report(out, st.pos, ed)}</div><div class="tile-k">Monitor reads (${label}, whole ${WIN}-s screen)</div></div>
     <div class="tile"><div class="tile-v">${report(lastBeats, st.pos, ed, off)}</div><div class="tile-k">Last 2 beats on screen</div></div>
     <div class="tile"><div class="tile-v">${report(trueBeats, st.pos, ed, off)}</div><div class="tile-k">True tip pressure, no artifact (model)</div></div>`;
@@ -264,7 +274,7 @@ function pacSpec() {
   return {
     file: `va-coupling-pac-${st.pos}-${st.preset}${st.atr === 'sinus' ? '' : '-' + st.atr}${faults.length ? '-artifact' : ''}`,
     title: `PA catheter, ${label} tracing · ${patient}`,
-    caption: `Pressure at the catheter tip (${label}), generated from the model beat${rhythm ? `, ${rhythm}` : ''}; ${fault}.${st.pos === 'ra' || st.pos === 'wedge' ? ' Atrial a, c and x waves come from a template timed to the model beat (illustrative).' : ''}${st.pos === 'wedge' && st.showLA ? ' Dashed: true LA pressure.' : ''}${faults.length ? ' Grey: true tip pressure without the artifact.' : ''}${st.resp !== 'none' ? ' Shaded: inspiration; read at end-expiration (marked).' : ''}`,
+    caption: `Pressure at the catheter tip in the ${label} position, generated from the model beat${rhythm ? ` with ${rhythm}` : ''} (${fault}).${st.pos === 'ra' || st.pos === 'wedge' ? ' The atrial a, c, and x waves come from an illustrative template timed to the model beat.' : ''}${st.pos === 'wedge' && st.showLA ? ' The dashed line is the true LA pressure.' : ''}${faults.length ? ' The gray line is the true tip pressure without the artifact.' : ''}${st.resp !== 'none' ? ' The shaded bands mark inspiration, and pressures are read at end-expiration, which is marked.' : ''}`,
     notes: '',
     async prepare() {
       const W = 1100, h = Math.round(W * 0.42), top = 56, band = 44, H = even(top + h + band);

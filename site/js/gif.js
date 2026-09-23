@@ -1,11 +1,11 @@
-// Minimal animated-GIF (GIF89a) encoder. One global palette for every frame (no colour flicker),
+// Minimal animated-GIF (GIF89a) encoder. One global palette for every frame (no color flicker),
 // LZW compression, and delta frames: pixels unchanged from the previous frame are written as the
 // transparent index, so a moving cursor costs a few bytes. The LZW coder follows omggif (MIT).
 
 const TRANSPARENT = 255;                  // palette slot reserved for "unchanged"
 
-// Palette of up to 255 colours from RGBA samples: 15-bit histogram, most frequent colours first,
-// skipping near-duplicates so antialiased edges do not crowd out the distinct plot colours.
+// Palette of up to 255 colors from RGBA samples: 15-bit histogram, most frequent colors first,
+// skipping near-duplicates so antialiased edges do not crowd out the distinct plot colors.
 export function buildPalette(samples, maxColors = 255) {
   const n = new Uint32Array(32768), sr = new Float64Array(32768), sg = new Float64Array(32768), sb = new Float64Array(32768);
   for (const d of samples) {
@@ -95,7 +95,7 @@ export class GifWriter {
     this.w = w; this.h = h; this.prev = null; this.pending = null;
     const o = this.out = new Bytes();
     o.bytes([0x47, 0x49, 0x46, 0x38, 0x39, 0x61]);        // GIF89a
-    o.u16(w); o.u16(h); o.byte(0xf7); o.byte(0); o.byte(0); // 256-entry global colour table
+    o.u16(w); o.u16(h); o.byte(0xf7); o.byte(0); o.byte(0); // 256-entry global color table
     o.bytes(pal);
     o.bytes([0x21, 0xff, 0x0b, ...'NETSCAPE2.0'].map((c) => (typeof c === 'string' ? c.charCodeAt(0) : c)));
     o.bytes([3, 1, 0, 0, 0]);                              // loop forever

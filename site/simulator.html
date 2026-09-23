@@ -25,7 +25,7 @@
       <button class="btn" id="clear" type="button">Clear snapshot</button>
     </div>
   </div>
-  <div id="preset-text" class="prose preset-text"><p>Drag the three handles on the loop, or give a treatment. Grey is the normal ventricle.</p></div>
+  <div id="preset-text" class="prose preset-text"><p>Drag the three handles on the loop or give a treatment. The gray loop is the normal ventricle.</p></div>
 
   <div class="tabs" role="tablist" aria-label="Ventricle">
     <button type="button" role="tab" data-side="lv">Left ventricle<span class="d-only"> · systemic</span></button>
@@ -41,14 +41,14 @@
       <div class="pb" id="pb" aria-label="Playback"></div>
       <div class="legend" id="pv-legend"></div>
       <div class="m-only m-bar"><div class="give-scroll" id="give-m" aria-label="Treatments"></div><div class="chips" id="chips-m" aria-live="off"></div></div>
-      <p class="hint-line handles-hint">Marks: <b>MVC</b>/<b>TVC</b> inflow valve closes · <b>AVO</b>/<b>PVO</b> outflow opens · <b>AVC</b>/<b>PVC</b> outflow closes · <b>MVO</b>/<b>TVO</b> inflow opens.</p>
-      <p class="hint-line handles-hint">Handles: <b>upper line</b> contractility (Ees) · <b>dashed line</b> afterload (Ea) · <b>volume axis</b> preload</p>
+      <p class="hint-line handles-hint">The dots mark the valve events. <b>MVC</b> and <b>TVC</b> are closure of the mitral and tricuspid valves, <b>AVO</b> and <b>PVO</b> are opening of the aortic and pulmonic valves, <b>AVC</b> and <b>PVC</b> are their closure, and <b>MVO</b> and <b>TVO</b> are opening of the mitral and tricuspid valves.</p>
+      <p class="hint-line handles-hint">The handle on the upper line changes contractility (Ees), the handle on the dashed line changes afterload (Ea), and the handle on the volume axis changes preload.</p>
     </div>
     <div class="side-col">
       <section class="panel">
         <h2>Give</h2>
         <div class="give-row" id="give"></div>
-        <p class="status">Fixed, illustrative parameter changes; not doses.</p>
+        <p class="status">Each button applies a fixed, illustrative change to the parameters and does not represent a dose.</p>
       </section>
       <section class="panel">
         <h2>What changed</h2>
@@ -61,13 +61,13 @@
         <svg id="gauge" aria-label="Coupling ratio scale"></svg>
         <button class="btn" id="hidden-toggle" type="button"></button>
         <div class="chips" id="hidden-list" hidden></div>
-        <p class="status">A ratio inside the band does not exclude disease. In HFpEF, Ees and Ea rise together (Kawaguchi 2003: Ees 4.7, Ea 2.6 mmHg/mL; ratio ≈ 0.55) <cite data-ref="kawaguchi2003"></cite>.</p>
+        <p class="status">A ratio inside the normal range does not exclude disease. In HFpEF, Ees and Ea rise together, to 4.7 and 2.6 mmHg/mL, for a ratio of about 0.55 <cite data-ref="kawaguchi2003"></cite>.</p>
       </section>
     </div>
   </div>
 
   <div class="monitor">
-    <div class="mon-head"><h2>Pressure over one beat</h2><span class="status">Shaded: isovolumic contraction and relaxation. Lines: valve events.</span></div>
+    <div class="mon-head"><h2>Pressure over one beat</h2><span class="status">Shaded bands mark isovolumic contraction and relaxation, and vertical lines mark the valve events.</span></div>
     <div><svg id="pt"></svg></div>
     <div id="pt2-wrap" hidden><svg id="pt2"></svg></div>
     <div class="legend" id="pt-legend"></div>
@@ -87,7 +87,7 @@
   <p class="status" id="status"></p>
   <details class="panel">
     <summary>Model limits</summary>
-    <p>Lumped model. No septal interdependence, pericardium, valve disease, atrial contraction, reflexes or force–frequency relation. Scenario parameters are synthetic. <a href="learn.html#model">How the model works</a>.</p>
+    <p>This is a lumped model. It includes atrial contraction but not septal interdependence, the pericardium, valve disease, reflexes, or the force–frequency relation, and the scenario parameters are synthetic. <a href="learn.html#model">How the model works</a>.</p>
   </details>
   <div id="page-refs"></div>
 </main>
