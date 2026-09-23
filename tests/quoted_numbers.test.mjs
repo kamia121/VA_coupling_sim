@@ -183,5 +183,27 @@ q('Shock: hemorrhage 15 min Pmsf fall %', -pct(hb0.pmsf, hs[15].pmsf), 22, 0.6);
 q('Shock: 15 min MAP fall %', -pct(hb0.map, hs[15].map), 4, 0.6); q('Shock: 15 min loss', hs[15].bled, 450, 1);
 q('Shock: 30 min MAP', hs[30].map, 85, 0.6); q('Shock: 30 min loss % of blood volume', hs[30].bled / 4900 * 100, 18, 0.6); q('Shock: 45 min MAP', hs[45].map, 74, 0.6);
 
+// Guided practice: the revealed examples must match the same actions a reader takes.
+q('Guide: normal SV before vasodilator', n.lv.SV, 80, 0.6);
+q('Guide: normal SV after vasodilator', S.nD.lv.SV, 87, 0.6);
+q('Guide: HFrEF SV before vasodilator', hfref.lv.SV, 53, 0.6);
+q('Guide: HFrEF SV after vasodilator', S.hfrefD.lv.SV, 61, 0.6);
+q('Guide: HFrEF ESV before vasodilator', hfref.lv.ESV, 184, 0.6);
+q('Guide: HFrEF ESV after vasodilator', S.hfrefD.lv.ESV, 173, 0.6);
+q('Guide: HFpEF SV before volume step', hfpef.lv.SV, 72, 0.6);
+q('Guide: HFpEF SV after volume step', S.hfF.lv.SV, 73, 0.6);
+q('Guide: HFpEF LAP after volume step', S.hfF.hemo.LAP, 18.5, 0.06);
+const guideShock = createPatient('septicCM');
+setDrug(guideShock, 'norepinephrine', 0.1);
+advance(guideShock, 15);
+q('Guide: septic CM MAP after norepinephrine', guideShock.out.map, 82, 0.6);
+q('Guide: septic CM CO after norepinephrine', guideShock.out.co, 5.5, 0.06);
+q('Guide: septic CM ScvO2 after norepinephrine %', guideShock.out.svo2 * 100, 66, 0.6);
+q('Guide: septic CM PCO2 gap after norepinephrine', guideShock.out.gap, 4.9, 0.06);
+setDrug(guideShock, 'dobutamine', 5);
+advance(guideShock, 15);
+q('Guide: septic CM CO after adding dobutamine', guideShock.out.co, 6.7, 0.06);
+q('Guide: septic CM ScvO2 after adding dobutamine %', guideShock.out.svo2 * 100, 71, 0.6);
+
 console.log(failed ? `\n${failed} quoted number(s) out of date` : '\nall quoted numbers match the model');
 process.exit(failed ? 1 : 0);

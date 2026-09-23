@@ -1133,6 +1133,39 @@ export const REFS = [
   "doi": "10.1161/CIRCULATIONAHA.104.488486"
  },
  {
+  "key": "hernandez2025",
+  "authors": "Hernández G, Ospina-Tascón GA, Kattan E, et al",
+  "title": "Personalized Hemodynamic Resuscitation Targeting Capillary Refill Time in Early Septic Shock: The ANDROMEDA-SHOCK-2 Randomized Clinical Trial",
+  "journal": "JAMA",
+  "year": 2025,
+  "volume": "334",
+  "pages": "1988-99",
+  "pmid": "41159835",
+  "doi": "10.1001/jama.2025.20402"
+ },
+ {
+  "key": "prescott2026",
+  "authors": "Prescott HC, Antonelli M, Alhazzani W, et al",
+  "title": "Surviving Sepsis Campaign: International Guidelines for Management of Sepsis and Septic Shock 2026",
+  "journal": "Crit Care Med",
+  "year": 2026,
+  "volume": "54",
+  "pages": "725-812",
+  "pmid": "41869847",
+  "doi": "10.1097/CCM.0000000000007075"
+ },
+ {
+  "key": "tedford2012",
+  "authors": "Tedford RJ, Hassoun PM, Mathai SC, et al",
+  "title": "Pulmonary capillary wedge pressure augments right ventricular pulsatile loading",
+  "journal": "Circulation",
+  "year": 2012,
+  "volume": "125",
+  "pages": "289-97",
+  "pmid": "22131357",
+  "doi": "10.1161/CIRCULATIONAHA.111.051540"
+ },
+ {
   "key": "magder2007",
   "authors": "Magder S, Bafaqeeh F",
   "title": "The clinical role of central venous pressure measurements",

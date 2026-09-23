@@ -1,6 +1,6 @@
 # Ventricular–Arterial Coupling: Simulator and Tutorial
 
-This is a teaching website for left ventricular–arterial (LV–Ea) and right ventricular–pulmonary arterial (RV–PA) coupling. It is written for medical students, residents, and fellows and attendings in pulmonary and critical care medicine. Each simulated pressure–volume loop is drawn over the normal ventricle so the reader can see what changed. The site also covers how echocardiography and the pulmonary artery catheter estimate coupling at the bedside.
+This is a teaching website for left ventricular–arterial (LV–Ea) and right ventricular–pulmonary arterial (RV–PA) coupling. It is written for clinicians learning the topic from first principles, with optional detail for readers who already use pressure–volume analysis. Each simulated pressure–volume loop is drawn over the normal ventricle so the reader can see what changed. The site also covers how echocardiography and the pulmonary artery catheter estimate coupling at the bedside.
 
 The site is static HTML and JavaScript, so there is no server to maintain. It works on any device with a browser and is deployed with GitHub Pages.
 
@@ -9,10 +9,11 @@ The site is static HTML and JavaScript, so there is no server to maintain. It wo
 | Page | Content |
 |---|---|
 | `index.html` | Overview and a suggested learning path |
-| `learn.html` | Concepts: the PV loop, Ees, Ea, Ea/Ees, stroke work and efficiency, RV vs LV, and how the model works |
+| `learn.html` | First-principles explanation of the PV loop, Ees, Ea, their ratio, RV physiology, and model assumptions |
+| `guide.html` | Guided predictions and simulator exercises, followed by bedside questions about pressure, flow, congestion, and perfusion |
 | `advanced.html` | Advanced: pericardium, septal interdependence, c wave and base descent, relaxation τ, force–frequency, baroreflex, coronary perfusion, and valve lesions, each drawn on and off; seven advanced scenarios |
 | `interfaces.html` | Shock as four interfaces (LV–arterial, arteriole–capillary, capillary–venular, RV–PA; Rola et al. 2025): critical closing pressure and tissue perfusion pressure, capillary refill, PCO₂ gap and the DO₂–VO₂ relation, Pmsf and venous return (Guyton figure from the model), congestion, and bedside calculators |
-| `simulator.html` | LV, RV and side-by-side LV + RV simulator: valve-event marks (MVC/AVO/AVC/MVO, TVC/PVO/PVC/TVO) on loops and pressure strips, isovolumic phases slowed ×5, LA pressure strip (v wave, y descent), drag handles on the loop (Ees, afterload, preload), intervention buttons, animated transitions, beat cursor with valve/phase strip, step-by-step "why did it move?" replay, normal-reference overlay, in-range-disease overlay, snapshot comparison, shareable URLs |
+| `simulator.html` | LV, RV and side-by-side LV + RV simulator: valve-event marks (MVC/AVO/AVC/MVO, TVC/PVO/PVC/TVO) on loops and pressure strips, isovolumic phases slowed ×5, LA pressure strip (v wave, y descent), drag handles on the loop (Ees, afterload, preload), intervention buttons, animated transitions, beat cursor with valve/phase strip, step-by-step "why did it move?" replay, normal-reference overlay, disease comparison overlay, snapshot comparison, shareable URLs |
 | `shock.html` | Shock lab: an accelerated clock (1 simulated minute per second, ×2, ×5) on which vasopressors, inotropes, vasodilators, pulmonary vasodilators and esmolol are infused with first-order kinetics, and crystalloid, red cells, bleeding and fluid removal change blood volume; bedside monitor, four-interface panel, live LV and RV loops, oxygen transport, trends and a flow–congestion (VTI–CVP) diagram, for nine patients including hemorrhagic, cardiogenic and obstructive shock and dynamic LVOT obstruction |
 | `scenarios.html` | HFpEF, HFrEF, septic vasoplegia, septic cardiomyopathy, acute afterload rise, compensated and decompensated PAH, acute PE and CpcPH |
 | `echo.html` | Echo lab: model-generated PW Doppler (trace LVOT VTI), CW Doppler (TR peak velocity → PASP), M-mode (TAPSE) and RV volume frames (SV/ESV), with acquisition steps and pitfall toggles (Doppler angle, LVOT diameter, weak signal, IVC-based RAP); pressure overlays on each echo screen and an overview of what each station contributes |
@@ -76,13 +77,14 @@ Scenario parameter sets are synthetic. They were chosen to reproduce the directi
 ## Verifying the numbers
 
 ```sh
-node tests/engine.test.mjs          # calibration, conservation, ESPVR recovery, mechanisms, scenario and quoted-number checks
+node tests/engine.test.mjs          # calibration, conservation, ESPVR recovery, mechanisms and scenarios
+node tests/quoted_numbers.test.mjs # compare published model examples with current output
 node tests/shock.test.mjs           # drug directions and kinetics, Fick identities, venous return, LVOT obstruction, course of each shock case
 ```
 
 ## Evidence
 
-Every reference was checked against its PubMed record: PMID, title, authors, journal, year, pages and DOI. Every number quoted from a source was checked against its abstract or PMC full text. A few statements could only be checked against the bibliographic record, because the source has no open abstract or text. These are the ESC/ERS 2022 hemodynamic definitions and TAPSE/sPAP risk thresholds, the ASE recommendations and the ESC 2019 PE guideline. They are flagged on `references.html`.
+The [bibliography](site/references.html) links each cited study or guideline to PubMed and its DOI. The model examples have separate automated checks; a passing model test does not validate a clinical claim. Read cohort thresholds in the population where they were derived, and distinguish physiological experiments, observational associations, and treatment guidelines. The 2022 ESC/ERS pulmonary hypertension guideline and the 2026 Surviving Sepsis Campaign guideline are available in full and were used for the clinical wording in this edition.
 
 ## Running locally
 
