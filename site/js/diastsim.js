@@ -165,11 +165,8 @@ function peakIdx(v, from, to, sign = 1) {
 function drawMitral() {
   const { g, w, h } = screen('scr-mv');
   const x0 = 40, pw = w - x0 - 10, yb = h - 44, top = 26, vmax = 140, px = (yb - top) / vmax;
-  // In AF, a beat that follows a short one starts while the LV is still filling. The model then shows a
-  // brief jump in mitral flow at the QRS, because its AV-plane descent term resets its reference volume
-  // at each QRS; the display holds the first 40 ms of such a beat to the flow at the end of the one before.
-  const sw = sweep(), endQ = new Map(sw.beats.map((b, k) => [b, k ? sw.beats[k - 1].rec.Qmv.at(-1) : Infinity]));
-  const s = sample(sw, pw, (b, i) => (b.rec.t[i] < 0.04 ? Math.min(b.rec.Qmv[i], endQ.get(b)) : b.rec.Qmv[i]) / MV_AREA);
+  const sw = sweep();
+  const s = sample(sw, pw, (b, i) => b.rec.Qmv[i] / MV_AREA);
   axes(g, x0, pw, yb, px, 0, vmax, 20, 'Mitral inflow, PW at the leaflet tips (cm/s)');
   spectrum(g, x0, pw, yb, px, s.v);
   ecgRow(g, x0, pw, h - 14, s);
@@ -187,7 +184,7 @@ function drawTDI() {
   const x0 = 40, pw = w - x0 - 10, yb = 26 + (h - 70) * 0.45, vmax = 16, px = (h - 70) * 0.5 / vmax;
   const e = st.cur.echo, sw = sweep();
   const shape = (b) => {
-    const { Qao, aAct, t } = b.rec, Qmv = b.rec.Qmv.map((q, i) => (t[i] < 0.04 ? 0 : q));   // see drawMitral
+    const { Qao, Qmv, aAct } = b.rec;
     const qa = Math.max(...Qao), eMax = Math.max(1, ...Qmv.map((q, i) => (aAct[i] < 0.02 ? q : 0))), aMax = Math.max(1, ...Qmv.map((q, i) => (aAct[i] >= 0.02 ? q : 0)));
     const sp = 9 * Math.sqrt(b.lv.fwdSV / NORM.lv.fwdSV);
     return (i) => (Qao[i] > 0 ? sp * Qao[i] / qa : 0) - (aAct[i] < 0.02 ? e.ep * Qmv[i] / eMax : (e.ap || 0) * Qmv[i] / aMax);
