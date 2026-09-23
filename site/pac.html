@@ -21,12 +21,13 @@
 
   <section class="panel" id="tracings">
     <h2>Float the catheter</h2>
-    <p>The tracing is the pressure at the catheter tip, generated from the model beat of the selected patient. The tip can be advanced from the RA through the RV and PA to the wedge position, where a thin lavender line shows the true left atrial pressure. The atrial rhythm and valve lesion controls change the a, c, x, v, and y waves, and the artifact controls show the difference between the monitor reading and the true pressure, which is drawn as a faint gray line.</p>
+    <p>The tracing is the pressure at the catheter tip, generated from the model beat of the selected patient. The tip can be advanced from the RA through the RV and PA to the wedge position, where a thin lavender line shows the true left atrial pressure, or all four positions can be shown at once, stacked over one ECG. The atrial rhythm and valve lesion controls change the a, c, x, v, and y waves, and the artifact controls show the difference between the monitor reading and the true pressure, which is drawn as a faint gray line.</p>
     <div class="toolbar">
       <label for="pac-case">Patient</label><select id="pac-case"></select>
       <button class="btn primary" id="pac-float" type="button">Advance tip ▶</button>
       <button class="btn" id="pac-play" type="button"></button>
     </div>
+    <div class="seg" id="pac-view" role="group" aria-label="View"></div>
     <div class="pac-path" id="pac-path" role="group" aria-label="Catheter tip position (click to jump)"></div>
     <div class="monitor"><canvas id="pac-scr" aria-label="Pressure tracing at the catheter tip"></canvas></div>
     <div class="tiles pac-tiles" id="pac-read" aria-live="polite"></div>
