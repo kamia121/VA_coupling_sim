@@ -76,7 +76,7 @@ export const NORMAL = Object.freeze({
   baroSlope: 14,      // mmHg; smaller is steeper
   gHR: 0.35, gSVR: 0.2, gEes: 0.15, gVol: 200,
   // Coronary supply and demand
-  cfr: 4,             // coronary flow reserve (maximal / resting flow)
+  cfr: 5,             // coronary flow reserve (maximal / resting flow)
   lvMass: 1, rvMass: 1,   // muscle mass relative to normal (hypertrophy)
   corL0: 48.15, corR0: 86.55, pvaL0: 10963, pvaR0: 1572,   // perfusion and PVA of the normal heart
   // Valve lesions: stenotic orifice area (cm², 0 = normal) and regurgitant orifice (EROA, cm²)

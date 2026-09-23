@@ -24,7 +24,7 @@ jobs:
         with:
           node-version: 22
       - name: Engine tests
-        run: node tests/engine.test.mjs
+        run: node tests/engine.test.mjs && node tests/quoted_numbers.test.mjs
 
   deploy:
     if: github.event_name != 'pull_request'

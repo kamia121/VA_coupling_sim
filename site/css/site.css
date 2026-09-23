@@ -400,3 +400,15 @@ body[data-view="both"] .pv-card { position: static; }
 .ratio-read b { color: var(--mon-current); }
 .rq-sv { fill: var(--mon-current); opacity: 0.85; }
 .rq-kept { fill: var(--mon-ref); opacity: 0.9; }
+
+/* Simulator: physiology switches and valve lesions */
+.mech { display: flex; flex-direction: column; gap: 4px; margin: 6px 0 10px; }
+.mech .k a { font-weight: 400; margin-left: 6px; }
+.mech-sw { display: flex; align-items: center; gap: 8px; font-size: 0.9rem; cursor: pointer; }
+.mech-sw input { accent-color: var(--mcw-green); width: 16px; height: 16px; }
+.valve-seg .k { margin: 4px 0 2px; }
+.fig .legend { color: var(--mon-axis); margin: 2px 0 6px; }
+.mech-sec .table-wrap { margin-top: 10px; }
+.try { font-size: 0.92rem; }
+.grid.cols-2.valves .monitor { padding: 8px; }
+.grid.valves { grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); }

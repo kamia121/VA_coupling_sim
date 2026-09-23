@@ -10,6 +10,7 @@ The site is static HTML and JavaScript, so there is no server to maintain. It wo
 |---|---|
 | `index.html` | Overview and a suggested learning path |
 | `learn.html` | Concepts: the PV loop, Ees, Ea, Ea/Ees, stroke work and efficiency, RV vs LV, and how the model works |
+| `advanced.html` | Advanced: pericardium, septal interdependence, c wave and base descent, relaxation τ, force–frequency, baroreflex, coronary perfusion, and valve lesions, each drawn on and off; seven advanced scenarios |
 | `simulator.html` | LV, RV and side-by-side LV + RV simulator: valve-event marks (MVC/AVO/AVC/MVO, TVC/PVO/PVC/TVO) on loops and pressure strips, isovolumic phases slowed ×5, LA pressure strip (v wave, y descent), drag handles on the loop (Ees, afterload, preload), intervention buttons, animated transitions, beat cursor with valve/phase strip, step-by-step "why did it move?" replay, normal-reference overlay, in-range-disease overlay, snapshot comparison, shareable URLs |
 | `scenarios.html` | HFpEF, HFrEF, septic vasoplegia, septic cardiomyopathy, acute afterload rise, compensated and decompensated PAH, acute PE and CpcPH |
 | `echo.html` | Echo lab: model-generated PW Doppler (trace LVOT VTI), CW Doppler (TR peak velocity → PASP), M-mode (TAPSE) and RV volume frames (SV/ESV), with acquisition steps and pitfall toggles (Doppler angle, LVOT diameter, weak signal, IVC-based RAP); pressure overlays on each echo screen and an overview of what each station contributes |
@@ -50,18 +51,21 @@ Seven mechanisms are on by default and each can be switched off (`site/advanced.
 
 Valve lesions (aortic stenosis, and mitral, aortic and tricuspid regurgitation) are orifice flows from ΔP = 4v².
 
-### Normal calibration (tests/engine.test.mjs checks each)
+### Normal calibration (tests/engine.test.mjs checks each; tests/quoted_numbers.test.mjs checks every number quoted in the text)
 
 | Quantity | Model | Target / source |
 |---|---|---|
-| LV EF | 58% | 50–65% |
-| BP | 119/73 mmHg | resting adult |
-| CO | 5.7 L/min | resting adult |
+| LV EF | 57% | 50–65% |
+| BP | 117/71 mmHg | resting adult |
+| CO | 5.6 L/min | resting adult |
 | LAP | 7 mmHg | resting adult |
 | LV Ea/Ees | 0.62 | Ees/Ea 1.62 in normal human hearts (Starling 1993) |
-| mPAP | 14 mmHg | 14.0 ± 3.3 mmHg (Kovacs 2009) |
+| mPAP | 13 mmHg | 14.0 ± 3.3 mmHg (Kovacs 2009) |
 | PVR | 1.2 WU | < 2 WU (ESC/ERS 2022) |
 | RV Ees/Ea | 2.0 | 1.5–2 (Tello 2019) |
+| τ | 36 ms | 35 ± 10 ms in controls (Zile 2004) |
+| Baroreflex | neutral at MAP 96 mmHg | set point |
+| Coronary supply / demand | 5 | flow reserve |
 
 Scenario parameter sets are synthetic. They were chosen to reproduce the direction and approximate size of the changes reported in the cited studies. They are not patient data or treatment targets.
 

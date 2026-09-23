@@ -116,7 +116,7 @@ check('CpcPH: LAP > 15, PVR > 2 WU, mPAP > 20', byId.cpcph.hemo.LAP > 15 && byId
   const pI = byId.peIschemia, ne = INTERVENTIONS.find((x) => x.id === 'norepi'), pp = { ...NORMAL, ...presetById('peIschemia').params };
   const pINe = simulate({ ...presetById('peIschemia').params, ...ne.apply(pp) });
   check('coronary: no ischemia in the normal heart or at PVR 7 WU', n.hemo.ischL === 1 && n.hemo.ischR === 1 && byId.acutePE.hemo.ischR === 1);
-  check('coronary: RV ischemia at PVR ~10 WU; norepinephrine restores RV perfusion and CO', pI.hemo.ischR < 0.6 && pINe.hemo.ischR > 0.95 && pINe.hemo.CO > pI.hemo.CO + 1, `ischemia ${pI.hemo.ischR.toFixed(2)} → ${pINe.hemo.ischR.toFixed(2)}, CO ${pI.hemo.CO.toFixed(1)} → ${pINe.hemo.CO.toFixed(1)}`);
+  check('coronary: RV ischemia at PVR ~12 WU; norepinephrine restores RV perfusion and CO', pI.hemo.ischR < 0.6 && pINe.hemo.ischR > 0.95 && pINe.hemo.CO > pI.hemo.CO + 1, `ischemia ${pI.hemo.ischR.toFixed(2)} → ${pINe.hemo.ischR.toFixed(2)}, CO ${pI.hemo.CO.toFixed(1)} → ${pINe.hemo.CO.toFixed(1)}`);
   check('coronary off: no ischemic depression', off('coronary', presetById('peIschemia').params).hemo.ischR === 1);
   // c wave and base descent come from the model: RA pressure rises at inflow valve closure and falls in ejection
   const cp = cardiacPhases(n).rv.events, ra = n.rec.Pra;

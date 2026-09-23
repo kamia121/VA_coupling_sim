@@ -4,6 +4,7 @@ import { REF_INDEX, REFS } from './refs.js';
 const PAGES = [
   ['index.html', 'Overview'],
   ['learn.html', 'Concepts'],
+  ['advanced.html', 'Advanced'],
   ['simulator.html', 'Simulator'],
   ['scenarios.html', 'Scenarios'],
   ['echo.html', 'Echo lab'],

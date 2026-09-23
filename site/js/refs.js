@@ -770,6 +770,127 @@ export const REFS = [
   "pages": "226-41",
   "pmid": "26995592",
   "doi": "10.1002/ejhf.478"
+ },
+ {
+  "key": "smith2004",
+  "authors": "Smith BW, Chase JG, Nokes RI, et al",
+  "title": "Minimal haemodynamic system model including ventricular interaction and valve dynamics",
+  "journal": "Med Eng Phys",
+  "year": 2004,
+  "volume": "26",
+  "pages": "131-9",
+  "pmid": "15036180",
+  "doi": "10.1016/j.medengphy.2003.10.001"
+ },
+ {
+  "key": "santamore1998",
+  "authors": "Santamore WP, Dell'Italia LJ",
+  "title": "Ventricular interdependence: significant left ventricular contributions to right ventricular systolic function",
+  "journal": "Prog Cardiovasc Dis",
+  "year": 1998,
+  "volume": "40",
+  "pages": "289-308",
+  "pmid": "9449956",
+  "doi": "10.1016/s0033-0620(98)80049-2"
+ },
+ {
+  "key": "freeman1984",
+  "authors": "Freeman GL, LeWinter MM",
+  "title": "Pericardial adaptations during chronic cardiac dilation in dogs",
+  "journal": "Circ Res",
+  "year": 1984,
+  "volume": "54",
+  "pages": "294-300",
+  "pmid": "6230171",
+  "doi": "10.1161/01.res.54.3.294"
+ },
+ {
+  "key": "spodick2003",
+  "authors": "Spodick DH",
+  "title": "Acute cardiac tamponade",
+  "journal": "N Engl J Med",
+  "year": 2003,
+  "volume": "349",
+  "pages": "684-90",
+  "pmid": "12917306",
+  "doi": "10.1056/NEJMra022643"
+ },
+ {
+  "key": "zile2004",
+  "authors": "Zile MR, Baicu CF, Gaasch WH",
+  "title": "Diastolic heart failure--abnormalities in active relaxation and passive stiffness of the left ventricle",
+  "journal": "N Engl J Med",
+  "year": 2004,
+  "volume": "350",
+  "pages": "1953-9",
+  "pmid": "15128895",
+  "doi": "10.1056/NEJMoa032566"
+ },
+ {
+  "key": "hasenfuss1994",
+  "authors": "Hasenfuss G, Reinecke H, Studer R, et al",
+  "title": "Relation between myocardial function and expression of sarcoplasmic reticulum Ca(2+)-ATPase in failing and nonfailing human myocardium",
+  "journal": "Circ Res",
+  "year": 1994,
+  "volume": "75",
+  "pages": "434-42",
+  "pmid": "8062417",
+  "doi": "10.1161/01.res.75.3.434"
+ },
+ {
+  "key": "ursino1998",
+  "authors": "Ursino M",
+  "title": "Interaction between carotid baroregulation and the pulsating heart: a mathematical model",
+  "journal": "Am J Physiol",
+  "year": 1998,
+  "volume": "275",
+  "pages": "H1733-47",
+  "pmid": "9815081",
+  "doi": "10.1152/ajpheart.1998.275.5.H1733"
+ },
+ {
+  "key": "lohmeier2015",
+  "authors": "Lohmeier TE, Iliescu R",
+  "title": "The baroreflex as a long-term controller of arterial pressure",
+  "journal": "Physiology (Bethesda)",
+  "year": 2015,
+  "volume": "30",
+  "pages": "148-58",
+  "pmid": "25729060",
+  "doi": "10.1152/physiol.00035.2014"
+ },
+ {
+  "key": "vlahakes1981",
+  "authors": "Vlahakes GJ, Turley K, Hoffman JI",
+  "title": "The pathophysiology of failure in acute right ventricular hypertension: hemodynamic and biochemical correlations",
+  "journal": "Circulation",
+  "year": 1981,
+  "volume": "63",
+  "pages": "87-95",
+  "pmid": "7438411",
+  "doi": "10.1161/01.cir.63.1.87"
+ },
+ {
+  "key": "briand2005",
+  "authors": "Briand M, Dumesnil JG, Kadem L, et al",
+  "title": "Reduced systemic arterial compliance impacts significantly on left ventricular afterload and function in aortic stenosis: implications for diagnosis and treatment",
+  "journal": "J Am Coll Cardiol",
+  "year": 2005,
+  "volume": "46",
+  "pages": "291-8",
+  "pmid": "16022957",
+  "doi": "10.1016/j.jacc.2004.10.081"
+ },
+ {
+  "key": "baumgartner2017",
+  "authors": "Baumgartner H, Hung J, Bermejo J, et al",
+  "title": "Recommendations on the echocardiographic assessment of aortic valve stenosis: a focused update from the European Association of Cardiovascular Imaging and the American Society of Echocardiography",
+  "journal": "J Am Soc Echocardiogr",
+  "year": 2017,
+  "volume": "30",
+  "pages": "372-92",
+  "pmid": "28385280",
+  "doi": "10.1016/j.echo.2017.02.009"
  }
 ];
 

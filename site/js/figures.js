@@ -89,7 +89,7 @@ function drawRange() {
 function drawEesFig() {
   const svg = document.getElementById('fig-ees');
   if (!svg) return;
-  const rs = [480, 700, 1100].map((vStressed) => simulate({ vStressed }));
+  const rs = [480, 700, 1100].map((vStressed) => simulate({ vStressed, baro: 0, coronary: 0 }));   // a caval occlusion: faster than the reflexes
   const p = rs[1].params, m = rs[1].lv, W = Math.max(340, Math.min(720, svg.parentElement.clientWidth || 640));
   const shades = [C.ref, C.cur, C.ref];
   drawPlot(svg, {
@@ -111,7 +111,8 @@ function drawEesFig() {
 function drawEaFig() {
   const svg = document.getElementById('fig-ea');
   if (!svg) return;
-  const base = simulate({}), rs = [0.6, 1, 1.6].map((f) => simulate({ svr: base.params.svr * f }));
+  const iso = { baro: 0, coronary: 0 };                   // contractility and volume held constant
+  const base = simulate(iso), rs = [0.6, 1, 1.6].map((f) => simulate({ ...iso, svr: base.params.svr * f }));
   const p = base.params, W = Math.max(340, Math.min(720, svg.parentElement.clientWidth || 640));
   const shades = [C.ref, C.cur, C.ref];
   drawPlot(svg, {
@@ -165,7 +166,7 @@ function drawSweep() {
   const pts = [];
   let state;
   for (let svr = 0.15; svr <= 5; svr *= 1.12) {
-    const r = simulate({ svr }, state ? { state } : {});
+    const r = simulate({ svr, baro: 0, coronary: 0 }, state ? { state } : {});   // fixed Ees and volume
     state = r.state;
     pts.push({ q: r.lv.EaEes, sw: r.lv.SW, eff: r.lv.eff });
   }
@@ -248,19 +249,30 @@ function scenarioDetail(p, r, ref, side) {
     ['BP (MAP) mmHg', (x) => `${x.hemo.SBP.toFixed(0)}/${x.hemo.DBP.toFixed(0)} (${x.hemo.MAP.toFixed(0)})`],
     ['PA (mean) mmHg', (x) => `${x.hemo.PASP.toFixed(0)}/${x.hemo.PADP.toFixed(0)} (${x.hemo.mPAP.toFixed(0)})`],
     ['LAP / RAP mmHg', (x) => `${x.hemo.LAP.toFixed(0)} / ${x.hemo.RAP.toFixed(0)}`],
-    ['CO L/min, HR', (x) => `${x.hemo.CO.toFixed(1)}, ${x.params.hr.toFixed(0)}`],
+    ['CO L/min, HR', (x) => `${x.hemo.CO.toFixed(1)}, ${x.eff.hr.toFixed(0)}`],
     ['PVR WU', (x) => x.hemo.PVR_WU.toFixed(1)],
   ];
   const order = side === 'rv' ? [3, 4, 5, 7, 8, 9, 10, 0, 1, 6] : [0, 1, 2, 6, 8, 9, 3, 4, 7];
+  // rows that matter only when a lesion or mechanism moves them away from normal
+  const extra = [
+    ['Regurgitant fraction LV / RV', (x) => `${(x.lv.RF * 100).toFixed(0)}% / ${(x.rv.RF * 100).toFixed(0)}%`, r.lv.RF + r.rv.RF > 0.01],
+    ['Forward SV (mL)', (x) => x.lv.fwdSV.toFixed(0), r.lv.RF > 0.01],
+    ['Aortic valve mean / peak gradient (mmHg)', (x) => `${x.hemo.avMeanGrad.toFixed(0)} / ${x.hemo.avPeakGrad.toFixed(0)}`, r.hemo.avMeanGrad > 1],
+    ['Pericardial pressure (mmHg)', (x) => x.hemo.Ppcd.toFixed(1), r.hemo.Ppcd > 3],
+    ['Septal shift at end-diastole (mL)', (x) => x.hemo.VsptED.toFixed(0), r.hemo.VsptED < -5],
+    ['Ischemic Ees, LV / RV (% of intrinsic)', (x) => `${(x.hemo.ischL * 100).toFixed(0)} / ${(x.hemo.ischR * 100).toFixed(0)}`, r.hemo.ischL < 0.99 || r.hemo.ischR < 0.99],
+    ['Relaxation τ (ms)', (x) => (x.lv.tau * 1000).toFixed(0), Math.abs(r.lv.tau - ref.lv.tau) > 0.008],
+  ].filter((e) => e[2]);
   const table = `<table class="data scen-table"><thead><tr><th>Model</th><th class="num">This</th><th class="num">Normal</th></tr></thead><tbody>${
-    order.map((i) => `<tr><td>${rows[i][0]}</td><td class="num">${rows[i][1](r)}</td><td class="num">${rows[i][1](ref)}</td></tr>`).join('')}</tbody></table>`;
+    [...order.map((i) => rows[i]), ...extra].map((row) => `<tr><td>${row[0]}</td><td class="num">${row[1](r)}</td><td class="num">${row[1](ref)}</td></tr>`).join('')}</tbody></table>`;
   return `${d.mech ? '' : `<p>${p.text}</p>`}${sec('Mechanism', d.mech)}${sec('Echo and catheter findings', d.see)}${sec('Evidence on management', d.manage)}${sec('Limitation', d.note)}${table}`;
 }
 
-export function initScenarioCards() {
+export function initScenarioCards(group = 'basic', boxId = 'scenario-list') {
   const ref = simulate({});
-  const box = document.getElementById('scenario-list');
-  for (const p of PRESETS.filter((x) => x.id !== 'normal')) {
+  const box = document.getElementById(boxId);
+  if (!box) return;
+  for (const p of PRESETS.filter((x) => x.id !== 'normal' && (x.group || 'basic') === group)) {
     const r = simulate(p.params);
     const side = p.side === 'rv' ? 'rv' : 'lv';
     const card = document.createElement('div');

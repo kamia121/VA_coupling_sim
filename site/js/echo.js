@@ -128,8 +128,8 @@ function lvotOut() {
     ['Your VTI', vti != null ? `${vti.toFixed(1)} cm` : 'trace one envelope'],
     ['True VTI', `${trueVTI().toFixed(1)} cm`],
     ['LVOT area (your D)', `${A.toFixed(2)} cm²`],
-    ['Echo SV', sv ? `${sv.toFixed(0)} mL` : '–', sv && Math.abs(sv / R.lv.SV - 1) > 0.15],
-    ['Model SV', `${R.lv.SV.toFixed(0)} mL`],
+    ['Echo SV', sv ? `${sv.toFixed(0)} mL` : '–', sv && Math.abs(sv / R.lv.SVout - 1) > 0.15],
+    [`Model SV (aortic valve)`, `${R.lv.SVout.toFixed(0)} mL`],
     ['Ea ≈ 0.9·SBP/SV', ea ? `${ea.toFixed(2)} mmHg/mL` : '–'],
     ['Model Ea', `${R.lv.Ea.toFixed(2)} mmHg/mL`],
   ]);
@@ -350,7 +350,7 @@ function drawAll() { drawLVOT(); drawTR(); drawTAPSE(); drawRV(); cplOut(); }
 // catheter (model) truth for comparison.
 function cplOut() {
   const src = (mine) => `<span class="src">${mine ? 'yours' : 'model'}</span>`;
-  const sv = st.svEcho ?? R.lv.SV, sbp = R.hemo.SBP, ef = R.lv.EF;
+  const sv = st.svEcho ?? R.lv.SVout, sbp = R.hemo.SBP, ef = R.lv.EF;
   const ea = 0.9 * sbp / sv, ratio = (1 - ef) / ef, ees = ea / ratio;
   $('#cpl-lv').innerHTML = row([
     [`Stroke volume ${src(st.svEcho != null)}`, `${sv.toFixed(0)} mL`],
@@ -436,7 +436,7 @@ export function initEcho() {
 const EXPORTS = {
   'scr-lvot': { draw: () => drawLVOT(), name: 'lvot', title: 'LVOT pulsed-wave Doppler',
     caption: () => `Pulsed-wave Doppler in the LVOT over two beats, generated from the model. The VTI multiplied by the LVOT area gives the stroke volume, and Ea is approximately 0.9 × SBP / SV.${st.ov.lvot ? ' The overlay shows LV (solid), aortic (dashed), and LA (dotted) pressure on the right-hand scale. Flow occurs only while LV pressure exceeds aortic pressure.' : ''}`,
-    notes: () => `Model SV ${R.lv.SV.toFixed(0)} mL, BP ${R.hemo.SBP.toFixed(0)}/${R.hemo.DBP.toFixed(0)} mmHg, model Ea ${R.lv.Ea.toFixed(2)} mmHg/mL.` },
+    notes: () => `Model SV ${R.lv.SVout.toFixed(0)} mL, BP ${R.hemo.SBP.toFixed(0)}/${R.hemo.DBP.toFixed(0)} mmHg, model Ea ${R.lv.Ea.toFixed(2)} mmHg/mL.` },
   'scr-tr': { draw: () => drawTR(), name: 'tr', title: 'TR continuous-wave Doppler',
     caption: () => `Continuous-wave Doppler of the tricuspid regurgitant jet, generated from the model. The peak velocity v gives the RV–RA gradient as 4v², and PASP is approximately 4v² + RAP.${st.ov.tr ? ' The overlay shows RV (solid), PA (dashed), and RA (dotted) pressure. The jet velocity follows the RV–RA pressure difference.' : ''}`,
     notes: () => `Catheter (model) PASP ${R.hemo.PASP.toFixed(0)} mmHg, RAP ${R.hemo.RAP.toFixed(0)} mmHg.` },

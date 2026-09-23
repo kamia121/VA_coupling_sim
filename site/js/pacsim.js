@@ -17,7 +17,7 @@ let R = null, beat = null, ev = null, evs = null, BREATH = BREATH_TARGET, TB = 1
 
 // ---------- atrial waves ----------
 // Every atrial wave comes from the model (engine.js): the a wave from atrial contraction, the c wave
-// from the closed leaflets bulging into the atrium, the x descent from atrial relaxation and descent
+// from filling and leaflet bulging against the closed valve, the x descent from atrial relaxation and descent
 // of the AV plane, the v wave from atrial filling against the closed valve, and the y descent from
 // atrial emptying. Atrial fibrillation removes atrial contraction; in AV dissociation the atrium
 // contracts against closed valves; the regurgitant lesions open a regurgitant orifice in the model.
