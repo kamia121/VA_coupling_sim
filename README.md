@@ -13,7 +13,7 @@ The site is static HTML and JavaScript, so there is no server to maintain. It wo
 | `simulator.html` | LV, RV and side-by-side LV + RV simulator: valve-event marks (MVC/AVO/AVC/MVO, TVC/PVO/PVC/TVO) on loops and pressure strips, isovolumic phases slowed ×5, LA pressure strip (v wave, y descent), drag handles on the loop (Ees, afterload, preload), intervention buttons, animated transitions, beat cursor with valve/phase strip, step-by-step "why did it move?" replay, normal-reference overlay, in-range-disease overlay, snapshot comparison, shareable URLs |
 | `scenarios.html` | HFpEF, HFrEF, septic vasoplegia, septic cardiomyopathy, acute afterload rise, compensated and decompensated PAH, acute PE and CpcPH |
 | `echo.html` | Echo lab: model-generated PW Doppler (trace LVOT VTI), CW Doppler (TR peak velocity → PASP), M-mode (TAPSE) and RV volume frames (SV/ESV), with acquisition steps and pitfall toggles (Doppler angle, LVOT diameter, weak signal, IVC-based RAP); pressure overlays on each echo screen and an overview of what each station contributes |
-| `pac.html` | Float-the-catheter tracing (RA → RV → PA → wedge, every scenario) with artifacts: over/underdamping, transducer height, spontaneous and positive-pressure breathing; PA catheter indices (TPG, DPG, PVR, PAC, RC time, PAPi, single-beat Ees/Ea), with a haemodynamic calculator |
+| `pac.html` | Float-the-catheter tracing (RA → RV → PA → wedge, every scenario) with artifacts: over/underdamping, transducer height, spontaneous and positive-pressure breathing; PA catheter indices (TPG, DPG, PVR, PAC, RC time, PAPi, single-beat Ees/Ea), with a hemodynamic calculator |
 | `references.html` | Full bibliography with PubMed and DOI links |
 
 ## Exporting animations for slides
@@ -34,7 +34,7 @@ The model is a closed-loop lumped circulation with six compartments. Each ventri
 P(V,t) = e(t)·Ees·(V − V0) + [1 − e(t)]·A·(exp(β(V − V0)) − 1)
 ```
 
-Activation e(t) is a normalised double-Hill function, and time to peak is 0.2 + 0.15·T s. The systemic and pulmonary arterial beds are three-element Windkessels (Zc, C, R). The venous and atrial compartments are passive compliances, and the valves are ideal diodes. The equations are integrated with fixed-step RK4 (0.5 ms) until the state changes by less than 0.05 mL per beat. Ea is measured from the simulated beat as Pes/SV, with Pes taken at peak elastance. It is not an input.
+Activation e(t) is a normalized double-Hill function, and time to peak is 0.2 + 0.15·T s. The systemic and pulmonary arterial beds are three-element Windkessels (Zc, C, R). The venous and atrial compartments are passive compliances, and the valves are ideal diodes. The equations are integrated with fixed-step RK4 (0.5 ms) until the state changes by less than 0.05 mL per beat. Ea is measured from the simulated beat as Pes/SV, with Pes taken at peak elastance. It is not an input.
 
 The model deliberately leaves out ventricular interdependence and the pericardium, valve disease, atrial contraction, baroreflexes, the force–frequency relation and coronary perfusion.
 
@@ -70,7 +70,7 @@ plot(r$rec$Vrv, r$rec$Prv, type = "l", xlab = "RV volume (mL)", ylab = "RV press
 
 ## Evidence
 
-Every reference was checked against its PubMed record: PMID, title, authors, journal, year, pages and DOI. Every number quoted from a source was checked against its abstract or PMC full text. A few statements could only be checked against the bibliographic record, because the source has no open abstract or text. These are the ESC/ERS 2022 haemodynamic definitions and TAPSE/sPAP risk thresholds, the ASE recommendations and the ESC 2019 PE guideline. They are flagged on `references.html`.
+Every reference was checked against its PubMed record: PMID, title, authors, journal, year, pages and DOI. Every number quoted from a source was checked against its abstract or PMC full text. A few statements could only be checked against the bibliographic record, because the source has no open abstract or text. These are the ESC/ERS 2022 hemodynamic definitions and TAPSE/sPAP risk thresholds, the ASE recommendations and the ESC 2019 PE guideline. They are flagged on `references.html`.
 
 ## Running locally
 
@@ -87,6 +87,6 @@ cd site && python3 -m http.server 8000   # then open http://localhost:8000
 
 ## Design
 
-All colours are defined in `site/css/tokens.css`. MCW green (`#2F6E66`) and navy (`#0E2B73`) were sampled from the mcw.edu header. Replace them there if MCW Marketing supplies official values. Light and dark themes follow the system setting, and the header has a manual toggle.
+All colors are defined in `site/css/tokens.css`. MCW green (`#2F6E66`) and navy (`#0E2B73`) were sampled from the mcw.edu header. Replace them there if MCW Marketing supplies official values. Light and dark themes follow the system setting, and the header has a manual toggle.
 
 This project is not an official Medical College of Wisconsin publication.
