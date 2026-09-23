@@ -254,7 +254,7 @@ function scenarioDetail(p, r, ref, side) {
   const order = side === 'rv' ? [3, 4, 5, 7, 8, 9, 10, 0, 1, 6] : [0, 1, 2, 6, 8, 9, 3, 4, 7];
   const table = `<table class="data scen-table"><thead><tr><th>Model</th><th class="num">This</th><th class="num">Normal</th></tr></thead><tbody>${
     order.map((i) => `<tr><td>${rows[i][0]}</td><td class="num">${rows[i][1](r)}</td><td class="num">${rows[i][1](ref)}</td></tr>`).join('')}</tbody></table>`;
-  return `${d.mech ? '' : `<p>${p.text}</p>`}${sec('Mechanism', d.mech)}${sec('What echo and the catheter show', d.see)}${sec('What the evidence says about management', d.manage)}${sec('Caveat', d.note)}${table}`;
+  return `${d.mech ? '' : `<p>${p.text}</p>`}${sec('Mechanism', d.mech)}${sec('Echo and catheter findings', d.see)}${sec('Evidence on management', d.manage)}${sec('Limitation', d.note)}${table}`;
 }
 
 export function initScenarioCards() {

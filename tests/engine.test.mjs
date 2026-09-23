@@ -111,6 +111,13 @@ for (const vs of [520, 740, 1150]) {
   check(`ESPVR: preload ${vs}, end-systolic point within 2 mmHg of the line`, Math.abs(m.Ees * (m.ESV - NORMAL.lvV0) - m.Pes) < 2);
 }
 
+// Scenario text: the afterload rise costs more stroke volume in HFrEF (15% vs 29% quoted)
+{
+  const hf = byId.hfref.params, rise = (p) => simulate({ ...p, svr: p.svr * 1.7 / NORMAL.svr, cSys: 0.8 * p.cSys / NORMAL.cSys });
+  const fallN = 1 - byId.highAfterload.lv.SV / n.lv.SV, fallH = 1 - rise(hf).lv.SV / byId.hfref.lv.SV;
+  check('afterload rise: SV falls ~15% (normal) and ~29% (HFrEF)', Math.abs(fallN - 0.15) < 0.02 && Math.abs(fallH - 0.29) < 0.02, `${(fallN * 100).toFixed(0)}% vs ${(fallH * 100).toFixed(0)}%`);
+}
+
 // 9. Valve events
 for (const [id, r] of Object.entries(byId)) {
   const cp = cardiacPhases(r);
