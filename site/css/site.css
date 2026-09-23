@@ -489,5 +489,5 @@ body[data-view="both"] .pv-card { position: static; }
 .pac-extra { margin-top: 14px; }
 .pac-extra .card p { font-size: 0.92rem; }
 #pac-scr { touch-action: pan-y; }
-.pac-quick { display: flex; flex-wrap: wrap; gap: 4px 14px; margin: 4px 0 6px; }
-.pac-quick .seg, .seg.pac-inline { margin: 0; }
+.pac-quick { gap: 6px; margin: 4px 0 6px; }
+.seg.pac-inline { margin: 0; }

@@ -622,6 +622,16 @@ function seg(id, opts, get, set) {
   SEGS.push(sync);
   sync();
 }
+// Independent on/off buttons: each press flips one st flag.
+function toggles(id, opts) {
+  const box = document.getElementById(id);
+  if (!box) return;
+  box.innerHTML = opts.map(([k, t]) => `<button type="button" data-k="${k}">${t}</button>`).join('');
+  const sync = () => box.querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', String(!!st[b.dataset.k])));
+  box.addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; st[b.dataset.k] = !st[b.dataset.k]; sync(); if (!st.playing) draw(st.tFrozen); });
+  SEGS.push(sync);
+  sync();
+}
 function syncSegs() {
   SEGS.forEach((f) => f());
   $('#pac-path').hidden = st.view === 'all'; $('#pac-float').hidden = st.view === 'all';
@@ -637,9 +647,7 @@ export function initPacSim() {
   seg('pac-atr', Object.entries(ATRIAL), () => st.atr, (v) => { st.atr = v; buildBeat(); challengePanel(); });
   seg('pac-view', [['tip', 'Catheter tip'], ['all', 'All four positions']], () => st.view, (v) => { st.view = v; syncSegs(); mapPos = null; drawMap(); drawHeart(); });
   seg('pac-lbl', [['1', 'Label waves'], ['0', 'No labels']], () => (st.labels ? '1' : '0'), (v) => { st.labels = v === '1'; });
-  seg('pac-guide', [['1', 'Where to read'], ['0', 'Off']], () => (st.guide ? '1' : '0'), (v) => { st.guide = v === '1'; });
-  seg('pac-la', [['1', 'True LA at wedge'], ['0', 'Off']], () => (st.showLA ? '1' : '0'), (v) => { st.showLA = v === '1'; });
-  seg('pac-lvedp', [['1', 'LVEDP at wedge'], ['0', 'Off']], () => (st.showLVEDP ? '1' : '0'), (v) => { st.showLVEDP = v === '1'; });
+  toggles('pac-quick', [['guide', 'Where to read'], ['showLA', 'True LA at wedge'], ['showLVEDP', 'LVEDP at wedge']]);
   seg('pac-resp', [['none', 'Apnoeic'], ['spont', 'Spontaneous, 15/min'], ['tachy', 'Tachypnea, 30/min'], ['ppv', 'Positive-pressure breaths']], () => st.resp, (v) => { st.resp = v; setBreath(); });
   seg('pac-win', [['6', '6 s'], ['12', '12 s'], ['24', '24 s']], () => st.win, (v) => { st.win = +v; });
   seg('pac-scale', [['auto', 'Fit this site'], ['20', '0–20'], ['40', '0–40'], ['80', '0–80']], () => st.scale, (v) => { st.scale = v; });
