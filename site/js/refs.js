@@ -539,6 +539,105 @@ export const REFS = [
   "pages": "e009085",
   "pmid": "35135302",
   "doi": "10.1161/CIRCHEARTFAILURE.121.009085"
+ },
+ {
+  "key": "maran1980",
+  "authors": "Maran AG",
+  "title": "Variables in pulmonary capillary wedge pressure: variation with intrathoracic pressure, graphic and digital recorders",
+  "journal": "Crit Care Med",
+  "year": "1980",
+  "volume": "8",
+  "pages": "102-5",
+  "pmid": "7353384",
+  "doi": "10.1097/00003246-198002000-00010"
+ },
+ {
+  "key": "riedinger1981",
+  "authors": "Riedinger MS, Shellock FG, Swan HJ",
+  "title": "Reading pulmonary artery and pulmonary capillary wedge pressure waveforms with respiratory variations",
+  "journal": "Heart Lung",
+  "year": "1981",
+  "volume": "10",
+  "pages": "675-8",
+  "pmid": "6909194",
+  "doi": ""
+ },
+ {
+  "key": "kovacs2014ajrccm",
+  "authors": "Kovacs G, Avian A, Pienn M, et al.",
+  "title": "Reading pulmonary vascular pressure tracings. How to handle the problems of zero leveling and respiratory swings",
+  "journal": "Am J Respir Crit Care Med",
+  "year": "2014",
+  "volume": "190",
+  "pages": "252-7",
+  "pmid": "24869464",
+  "doi": "10.1164/rccm.201402-0269PP"
+ },
+ {
+  "key": "levarge2014",
+  "authors": "LeVarge BL, Pomerantsev E, Channick RN",
+  "title": "Reliance on end-expiratory wedge pressure leads to misclassification of pulmonary hypertension",
+  "journal": "Eur Respir J",
+  "year": "2014",
+  "volume": "44",
+  "pages": "425-34",
+  "pmid": "24925918",
+  "doi": "10.1183/09031936.00209313"
+ },
+ {
+  "key": "michard2024",
+  "authors": "Michard F",
+  "title": "Towards the automatic detection and correction of abnormal arterial pressure waveforms",
+  "journal": "J Clin Monit Comput",
+  "year": "2024",
+  "volume": "38",
+  "pages": "749-752",
+  "pmid": "38573369",
+  "doi": "10.1007/s10877-024-01152-3"
+ },
+ {
+  "key": "saugel2020",
+  "authors": "Saugel B, Kouz K, Meidert AS, et al.",
+  "title": "How to measure blood pressure using an arterial catheter: a systematic 5-step approach",
+  "journal": "Crit Care",
+  "year": "2020",
+  "volume": "24",
+  "pages": "172",
+  "pmid": "32331527",
+  "doi": "10.1186/s13054-020-02859-w"
+ },
+ {
+  "key": "kleinman1989",
+  "authors": "Kleinman B, Powell S",
+  "title": "Dynamic response of the ROSE damping device",
+  "journal": "J Clin Monit",
+  "year": "1989",
+  "volume": "5",
+  "pages": "111-5",
+  "pmid": "2723705",
+  "doi": "10.1007/BF01617884"
+ },
+ {
+  "key": "kovacs2013erj",
+  "authors": "Kovacs G, Avian A, Olschewski A, et al.",
+  "title": "Zero reference level for right heart catheterisation",
+  "journal": "Eur Respir J",
+  "year": "2013",
+  "volume": "42",
+  "pages": "1586-94",
+  "pmid": "23794468",
+  "doi": "10.1183/09031936.00050713"
+ },
+ {
+  "key": "komadina1991",
+  "authors": "Komadina KH, Schenk DA, LaVeau P, et al.",
+  "title": "Interobserver variability in the interpretation of pulmonary artery catheter pressure tracings",
+  "journal": "Chest",
+  "year": "1991",
+  "volume": "100",
+  "pages": "1647-54",
+  "pmid": "1959409",
+  "doi": "10.1378/chest.100.6.1647"
  }
 ];
 

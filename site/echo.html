@@ -19,10 +19,22 @@
     <h1>Echo lab</h1>
     <p class="lede">Measure on simulated Doppler and M-mode screens. Every display is generated from the model beat of the chosen patient, so each measurement can be checked against catheter truth.</p>
   </div>
+  <section class="panel overview">
+    <h2>What the four stations do</h2>
+    <p>Coupling compares two things: how hard the ventricle can push (its contractility, Ees) and how hard the circulation pushes back (its load, Ea). Echo cannot measure either directly. Each station below measures one piece at the bedside. Together they rebuild the coupling picture for the left and the right heart.</p>
+    <div class="flow">
+      <a class="flow-box" href="#st-lvot"><b>1 · LVOT VTI</b><span>Doppler stroke volume</span><em>→ LV load: Ea ≈ 0.9 × SBP / SV</em></a>
+      <a class="flow-box" href="#st-tr"><b>2 · TR velocity</b><span>Peak RV–RA pressure difference</span><em>→ RV load: PASP</em></a>
+      <a class="flow-box" href="#st-tap"><b>3 · TAPSE</b><span>RV longitudinal shortening</span><em>→ RV function; TAPSE/PASP = coupling</em></a>
+      <a class="flow-box" href="#st-rv"><b>4 · RV volumes</b><span>End-diastolic and end-systolic volume</span><em>→ SV/ESV ≈ RV Ees/Ea</em></a>
+    </div>
+    <p class="status">Pick a patient, then work down the stations. Every screen is generated from that patient's model beat. Press <b>Overlay pressures</b> on any screen to see the catheter pressures behind the echo signal.</p>
+  </section>
   <div class="seg cases" id="cases" role="group" aria-label="Patient"></div>
 
   <section class="station" id="st-lvot">
     <h2>1 · LVOT VTI → stroke volume → Ea</h2>
+    <p class="answers"><b>This answers:</b> How much blood the LV ejects per beat. With cuff pressure, that gives arterial load (Ea). <b>Feeds into:</b> Ea, the load half of LV coupling. EF supplies the rest (see "EF as a coupling index" below).</p>
     <div class="acq">
       <div class="view" data-view="lvot"></div>
       <ol class="steps">
@@ -35,7 +47,7 @@
       <div class="monitor screen"><canvas id="scr-lvot" aria-label="Pulsed-wave Doppler display. Drag along the envelope to trace it."></canvas>
         <p class="hint-line">Drag along the bright edge of one envelope, from onset to end of ejection.</p></div>
       <div class="lab-side">
-        <div class="btn-row"><button class="btn primary" id="lvot-show" type="button">Show me</button><button class="btn" id="lvot-clear" type="button">Clear trace</button></div>
+        <div class="btn-row"><button class="btn" id="ov-lvot" type="button" aria-pressed="false">Overlay pressures</button><button class="btn primary" id="lvot-show" type="button">Show me</button><button class="btn" id="lvot-clear" type="button">Clear trace</button></div>
         <p class="k">Doppler angle to flow</p><div class="seg" id="lvot-angle"></div>
         <p class="k">Measured LVOT diameter</p><div class="seg" id="lvot-d"></div>
         <div id="out-lvot"></div>
@@ -45,6 +57,7 @@
 
   <section class="station" id="st-tr">
     <h2>2 · TR velocity → PASP</h2>
+    <p class="answers"><b>This answers:</b> How high the pressure in the pulmonary artery is during systole. The TR jet velocity reflects the RV–RA pressure difference: ΔP = 4v². <b>Feeds into:</b> PASP, the load the RV faces. It is the denominator of TAPSE/PASP in station 3.</p>
     <div class="acq">
       <div class="view" data-view="tr"></div>
       <ol class="steps">
@@ -57,7 +70,7 @@
       <div class="monitor screen"><canvas id="scr-tr" aria-label="Continuous-wave Doppler display. Drag vertically to place the velocity caliper."></canvas>
         <p class="hint-line">Press and drag to place the caliper on the peak.</p></div>
       <div class="lab-side">
-        <div class="btn-row"><button class="btn primary" id="tr-show" type="button">Show me</button></div>
+        <div class="btn-row"><button class="btn" id="ov-tr" type="button" aria-pressed="false">Overlay pressures</button><button class="btn primary" id="tr-show" type="button">Show me</button></div>
         <p class="k">Signal quality</p><div class="seg" id="tr-weak"></div>
         <p class="k">RAP estimate from IVC (mmHg)</p><div class="seg stack" id="tr-rap"></div>
         <div id="out-tr"></div>
@@ -68,6 +81,7 @@
 
   <section class="station" id="st-tap">
     <h2>3 · TAPSE and TAPSE/PASP</h2>
+    <p class="answers"><b>This answers:</b> How far the tricuspid annulus moves toward the apex in systole: a length-based index of RV contraction. <b>Feeds into:</b> TAPSE/PASP. Station 3 uses the PASP from station 2 if you measured it; otherwise it uses the model value.</p>
     <div class="acq">
       <div class="view" data-view="tap"></div>
       <ol class="steps">
@@ -80,7 +94,7 @@
       <div class="monitor screen"><canvas id="scr-tap" aria-label="M-mode display. Click to place end-diastole then peak-systole calipers."></canvas>
         <p class="hint-line">Click the annulus at end-diastole (lowest), then at peak systole (highest). Drag to adjust.</p></div>
       <div class="lab-side">
-        <div class="btn-row"><button class="btn primary" id="tap-show" type="button">Show me</button></div>
+        <div class="btn-row"><button class="btn" id="ov-tap" type="button" aria-pressed="false">Overlay pressures</button><button class="btn primary" id="tap-show" type="button">Show me</button></div>
         <div id="out-tap"></div>
         <svg id="tap-bar" aria-label="TAPSE/PASP thresholds"></svg>
         <p class="status">0.19 and 0.32: prognostic tertiles in PAH <cite data-ref="tello2018"></cite>, used in the ESC/ERS 2022 risk table <cite data-ref="humbert2022"></cite>. 0.31: predicted Ees/Ea &lt; 0.805 in PAH <cite data-ref="tello2019img"></cite>. 0.36: risk threshold in heart failure <cite data-ref="guazzi2013"></cite>. TAPSE &lt; 18 mm: lower survival in PH <cite data-ref="forfia2006"></cite>.</p>
@@ -91,6 +105,7 @@
 
   <section class="station" id="st-rv">
     <h2>4 · RV volumes → SV/ESV</h2>
+    <p class="answers"><b>This answers:</b> How big the RV is at the end of filling and at the end of ejection. <b>Feeds into:</b> SV/ESV, the volume estimate of RV Ees/Ea, compared with the model's true value.</p>
     <div class="acq">
       <div class="view" data-view="rv"></div>
       <ol class="steps">
@@ -105,7 +120,7 @@
         <div class="btn-row"><button class="btn" id="rv-play" type="button">Freeze</button><button class="btn" id="rv-back" type="button">◀ frame</button><button class="btn" id="rv-fwd" type="button">frame ▶</button></div>
         <div class="btn-row"><button class="btn primary" id="rv-ed" type="button">Mark end-diastole</button><button class="btn primary" id="rv-es" type="button">Mark end-systole</button></div>
         <div id="out-rv"></div>
-        <p class="status">With a right-shifted ESPVR (large V₀), SV/ESV reads below the true Ees/Ea. Compare the two in decompensated PAH.</p>
+        <p class="status">The small loop on the right is this patient's RV pressure–volume loop. The white dot is the current frame, and your ED and ES marks appear on it. With a right-shifted ESPVR (large V₀), SV/ESV reads below the true Ees/Ea. Compare the two in decompensated PAH.</p>
       </div>
     </div>
   </section>

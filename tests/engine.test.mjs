@@ -1,5 +1,6 @@
 // Engine tests. Run with: node tests/engine.test.mjs  (no dependencies)
-import { simulate, NORMAL, WU } from '../site/js/engine.js';
+import { simulate, NORMAL, WU, cardiacPhases } from '../site/js/engine.js';
+import { _pac } from '../site/js/pacsim.js';
 import { PRESETS, INTERVENTIONS } from '../site/js/presets.js';
 
 let failed = 0;
@@ -91,6 +92,29 @@ check('arterial vasodilator → ↓Ea, ↑SV', I.dilate.lv.Ea < n.lv.Ea && I.dil
 check('inotrope → ↓ESV, ↓Ea/Ees', I.dobut.lv.ESV < n.lv.ESV && I.dobut.lv.EaEes < n.lv.EaEes);
 const pah = simulate(byId.pahDecomp.params), pahV = simulate({ ...pah.params, ...INTERVENTIONS.find((x) => x.id === 'pvd').apply(pah.params) });
 check('pulmonary vasodilator in PAH → ↑RV Ees/Ea, ↑CO', pahV.rv.EesEa > pah.rv.EesEa && pahV.hemo.CO > pah.hemo.CO);
+
+// 9. Valve events
+for (const [id, r] of Object.entries(byId)) {
+  const cp = cardiacPhases(r);
+  for (const sd of ['lv', 'rv']) {
+    const e = cp[sd].events;
+    check(`${id} ${sd}: inflow close < outflow open < outflow close < inflow open`, e.inClose < e.outOpen && e.outOpen < e.outClose && e.outClose < e.inOpen && e.inOpen < r.rec.t.length);
+  }
+}
+const cpn = cardiacPhases(n);
+check('normal: RV outflow opens before LV outflow', cpn.rv.events.outOpen < cpn.lv.events.outOpen, `${cpn.rv.events.outOpen} vs ${cpn.lv.events.outOpen}`);
+
+// 10. PA catheter artifacts
+_pac.buildBeat();
+const baseSig = () => _pac.signal(12).out;
+Object.assign(_pac.st, { pos: 'pa', damp: 'ok', level: 0, resp: 'none' });
+const s0 = _pac.stats(baseSig());
+_pac.st.damp = 'over'; const sOver = _pac.stats(baseSig());
+_pac.st.damp = 'under'; const sUnder = _pac.stats(baseSig());
+_pac.st.damp = 'ok'; _pac.st.level = 1; const sLevel = _pac.stats(baseSig()); _pac.st.level = 0;
+check('overdamped: mean within 1 mmHg, systolic lower', Math.abs(sOver.mean - s0.mean) < 1 && sOver.max < s0.max - 1, `${s0.max.toFixed(1)}→${sOver.max.toFixed(1)}, mean ${s0.mean.toFixed(1)}→${sOver.mean.toFixed(1)}`);
+check('underdamped: systolic overshoot', sUnder.max > s0.max + 1, `${s0.max.toFixed(1)}→${sUnder.max.toFixed(1)}`);
+check('transducer 10 cm low: +7.4 mmHg everywhere', Math.abs(sLevel.mean - s0.mean - 7.4) < 0.05 && Math.abs(sLevel.max - s0.max - 7.4) < 0.05);
 
 console.log(failed ? `\n${failed} test(s) failed` : '\nall tests passed');
 process.exit(failed ? 1 : 0);

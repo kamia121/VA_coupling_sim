@@ -216,3 +216,28 @@ export function couplingLines(m, V0) {
     ea: [[m.ESV, m.Pes], [m.EDV, 0]],
   };
 }
+
+// Cardiac phases and valve events for one recorded beat.
+// ph[i] ∈ fill | ivc | eject | ivr. Events are sample indices:
+// inClose (MVC/TVC), outOpen (AVO/PVO), outClose (AVC/PVC), inOpen (MVO/TVO).
+export function cardiacPhases(r) {
+  const n = r.rec.t.length, res = {};
+  for (const s of ['lv', 'rv']) {
+    const out = (i) => (s === 'lv' ? r.rec.Qao[i] > 0 : r.rec.Qpv[i] > 0);
+    const inflow = (i) => (s === 'lv' ? r.rec.Ppv[i] > r.rec.Plv[i] : r.rec.Psv[i] > r.rec.Prv[i]);
+    let outOpen = n, outClose = n;
+    for (let i = 0; i < n; i++) if (out(i)) { outOpen = i; break; }
+    for (let i = outOpen; i < n; i++) if (!out(i)) { outClose = i; break; }
+    const ph = new Array(n);
+    for (let i = 0; i < n; i++) {
+      if (out(i)) ph[i] = 'eject';
+      else if (inflow(i)) ph[i] = 'fill';
+      else ph[i] = i < outOpen ? 'ivc' : 'ivr';
+    }
+    let inClose = 0, inOpen = n;
+    for (let i = 0; i < outOpen; i++) if (ph[i] === 'fill') inClose = i + 1;   // last filling sample before contraction
+    for (let i = outClose; i < n; i++) if (ph[i] === 'fill') { inOpen = i; break; }
+    res[s] = { ph, events: { inClose, outOpen, outClose, inOpen } };
+  }
+  return res;
+}

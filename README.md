@@ -10,10 +10,10 @@ The site is static HTML and JavaScript, so there is no server to maintain. It wo
 |---|---|
 | `index.html` | Overview and a suggested learning path |
 | `learn.html` | Concepts: the PV loop, Ees, Ea, Ea/Ees, stroke work and efficiency, RV vs LV, and how the model works |
-| `simulator.html` | LV and RV simulator: drag handles on the loop (Ees, afterload, preload), intervention buttons, animated transitions, beat cursor with valve/phase strip, step-by-step "why did it move?" replay, normal-reference overlay, in-range-disease overlay, snapshot comparison, shareable URLs |
+| `simulator.html` | LV, RV and side-by-side LV + RV simulator: valve-event marks (MVC/AVO/AVC/MVO, TVC/PVO/PVC/TVO) on loops and pressure strips, isovolumic phases slowed ×5, LA pressure strip (v wave, y descent), drag handles on the loop (Ees, afterload, preload), intervention buttons, animated transitions, beat cursor with valve/phase strip, step-by-step "why did it move?" replay, normal-reference overlay, in-range-disease overlay, snapshot comparison, shareable URLs |
 | `scenarios.html` | HFpEF, HFrEF, septic vasoplegia, septic cardiomyopathy, acute afterload rise, compensated and decompensated PAH, acute PE and CpcPH |
-| `echo.html` | Echo lab: model-generated PW Doppler (trace LVOT VTI), CW Doppler (TR peak velocity → PASP), M-mode (TAPSE) and RV volume frames (SV/ESV), with acquisition steps and pitfall toggles (Doppler angle, LVOT diameter, weak signal, IVC-based RAP) |
-| `pac.html` | PA catheter indices (TPG, DPG, PVR, PAC, RC time, PAPi, single-beat Ees/Ea), with a haemodynamic calculator |
+| `echo.html` | Echo lab: model-generated PW Doppler (trace LVOT VTI), CW Doppler (TR peak velocity → PASP), M-mode (TAPSE) and RV volume frames (SV/ESV), with acquisition steps and pitfall toggles (Doppler angle, LVOT diameter, weak signal, IVC-based RAP); pressure overlays on each echo screen and an overview of what each station contributes |
+| `pac.html` | Float-the-catheter tracing (RA → RV → PA → wedge, every scenario) with artifacts: over/underdamping, transducer height, spontaneous and positive-pressure breathing; PA catheter indices (TPG, DPG, PVR, PAC, RC time, PAPi, single-beat Ees/Ea), with a haemodynamic calculator |
 | `references.html` | Full bibliography with PubMed and DOI links |
 
 ## Model
