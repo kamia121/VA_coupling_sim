@@ -86,7 +86,8 @@ const METRICS = {
     ['Relaxation τ (fitted)', 'ms', (r) => r.lv.tau * 1000, [20, 48], 0],
     ['Ees (ESPVR slope)', 'mmHg/mL', (r) => r.lv.Ees, null, 2, true],
     ['Ea = Pes / SV', 'mmHg/mL', (r) => r.lv.Ea, null, 2, true],
-    ['Ea/Ees', '', (r) => r.lv.EaEes, [0.3, 1.3], 2, true],
+    // The broad canine near-optimal band is displayed on the gauge, not used as a clinical normal range.
+    ['Ea/Ees', '', (r) => r.lv.EaEes, null, 2, true],
     ['Ea ≈ 0.9·SBP / SV (bedside)', 'mmHg/mL', (r) => r.lv.EaClin, null, 2],
     ['Stroke work', 'J', (r) => r.lv.SWJ, null, 2],
     ['Efficiency SW/PVA', '', (r) => r.lv.eff, null, 2],
@@ -618,14 +619,14 @@ async function replay() {
 // ---------- panels ----------
 const TILES = {
   lv: [
-    [() => ratioName('lv'), (r) => r.lv.EaEes.toFixed(2), (r) => r.lv.EaEes < 0.3 || r.lv.EaEes > 1.3],
+    [() => ratioName('lv'), (r) => r.lv.EaEes.toFixed(2), () => false],
     [() => 'Stroke volume', (r) => `${r.lv.SV.toFixed(0)} mL`, (r) => r.lv.SV < 55],
     [() => 'BP (MAP)', (r) => `${r.hemo.SBP.toFixed(0)}/${r.hemo.DBP.toFixed(0)} (${r.hemo.MAP.toFixed(0)})`, (r) => r.hemo.MAP < 65 || r.hemo.MAP > 105],
     [() => 'LAP', (r) => `${r.hemo.LAP.toFixed(0)} mmHg`, (r) => r.hemo.LAP > 15],
     [() => 'Cardiac output', (r) => `${r.hemo.CO.toFixed(1)} L/min`, (r) => r.hemo.CO < 4],
   ],
   both: [
-    [() => 'LV Ea/Ees', (r) => r.lv.EaEes.toFixed(2), (r) => r.lv.EaEes < 0.3 || r.lv.EaEes > 1.3],
+    [() => 'LV Ea/Ees', (r) => r.lv.EaEes.toFixed(2), () => false],
     [() => 'RV Ees/Ea', (r) => r.rv.EesEa.toFixed(2), (r) => r.rv.EesEa < 0.805],
     [() => 'MAP / mPAP', (r) => `${r.hemo.MAP.toFixed(0)} / ${r.hemo.mPAP.toFixed(0)}`, (r) => r.hemo.MAP < 65 || r.hemo.mPAP > 20],
     [() => 'LAP / RAP', (r) => `${r.hemo.LAP.toFixed(0)} / ${r.hemo.RAP.toFixed(0)}`, (r) => r.hemo.LAP > 15 || r.hemo.RAP > 8],
@@ -809,7 +810,7 @@ function render(light = false) {
   document.querySelectorAll('.tabs button').forEach((b) => b.setAttribute('aria-selected', b.dataset.side === view));
   $('#pv-title').textContent = view === 'both' ? 'Pressure–volume loops: LV and RV' : `${side === 'lv' ? 'Left' : 'Right'} ventricular pressure–volume loop`;
   $('#clear').disabled = !snapshot;
-  $('#hidden-toggle').textContent = showHidden ? 'Hide in-range disease' : `Show disease with an in-range ${ratioName()}`;
+  $('#hidden-toggle').textContent = showHidden ? 'Hide disease examples' : 'Show disease examples';
 }
 
 // ---------- sliders (fine control) ----------

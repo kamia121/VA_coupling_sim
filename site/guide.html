@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script>try{var t=localStorage.getItem('vac-theme');if(t==='light'||t==='dark')document.documentElement.setAttribute('data-theme',t)}catch(e){}</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Code+Pro:wght@400;500&family=Source+Sans+3:ital,wght@0,400;0,600;1,400&family=Source+Serif+4:wght@600&display=swap">
+<link rel="stylesheet" href="css/tokens.css">
+<link rel="stylesheet" href="css/site.css">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='5' fill='%232F6E66'/%3E%3Cpath d='M8 24 V10 L24 8 V22 Z' fill='none' stroke='white' stroke-width='2.5' stroke-linejoin='round'/%3E%3C/svg%3E">
+<title>Guided Practice · Ventricular–Arterial Coupling</title>
+<meta name="description" content="Guided lessons that connect pressure–volume loops, simulated responses, and bedside monitoring of pressure, flow, congestion, and perfusion.">
+</head>
+<body>
+<main>
+<article class="prose">
+  <h1>Guided practice</h1>
+  <p class="lede">Start with the explanation on the <a href="learn.html">Concepts page</a>. Here, each lesson asks you to predict a change, make it in the simulator, and read the result before opening the answer. The last step asks what you could actually measure in a patient. You need not know a patient's Ees or Ea to start asking these questions.</p>
+  <p>The simulator reports Ees, Ea, and the full pressure–volume loop because its model knows them. At the bedside, those quantities are usually estimated indirectly and can be uncertain. The simulated drug responses are examples of mechanisms, not expected responses in an individual patient.</p>
+
+  <h2 id="reading-response">What counts as a response?</h2>
+  <p>Start by separating pressure, forward flow, filling or congestion, and tissue perfusion. They answer related questions, but one cannot stand in for all the others. Recheck the same measurements after an intervention and look at their direction together.</p>
+  <div class="table-wrap"><table class="data">
+    <thead><tr><th>Question</th><th>Bedside observation</th><th>What it cannot settle alone</th></tr></thead>
+    <tbody>
+      <tr><td>Did arterial pressure rise?</td><td>MAP and the arterial waveform</td><td>Whether stroke volume, cardiac output, or tissue perfusion improved</td></tr>
+      <tr><td>Did forward flow change?</td><td>LVOT VTI with heart rate and LVOT area, or a measured cardiac output</td><td>Whether every organ received adequate flow; VTI is volume per beat, not output per minute</td></tr>
+      <tr><td>What was the filling-pressure cost?</td><td>RAP/CVP, PAWP when available, and signs of venous congestion</td><td>Whether more fluid would increase flow; a filling pressure is not a fluid-responsiveness test</td></tr>
+      <tr><td>Are tissues doing better?</td><td>Serial capillary refill, mental status, urine output, and lactate in context</td><td>The mechanism from any single value; lactate may lag or rise for reasons beyond hypoperfusion</td></tr>
+    </tbody>
+  </table></div>
+  <p>The 2026 Surviving Sepsis Campaign recommends an initial MAP target of 65 mmHg in septic shock and suggests capillary refill time as an adjunct to other perfusion measures <cite data-ref="prescott2026"></cite>. A large randomized trial tested a personalized protocol using capillary refill alongside blood pressure, fluid-responsiveness assessment, and echocardiography; its benefit on a composite outcome came mainly from less time on vital support, without a mortality difference <cite data-ref="hernandez2025"></cite>. The table is a way to interpret a response, not a set of treatment targets for every patient.</p>
+
+  <h2 id="afterload">1. What happens when a weak LV faces afterload?</h2>
+  <p><b>Concept.</b> End-systolic elastance (Ees) is the slope of the ventricular end-systolic line. Effective arterial elastance (Ea) describes the pressure generated per milliliter ejected. In the simple two-line construction, their crossing locates the end-systolic volume. A shallow Ees line makes that volume more sensitive to a change in arterial load.</p>
+  <p><b>Predict.</b> At fixed end-diastolic volume, will raising Ea reduce stroke volume more when Ees is 2.3 or 0.8 mmHg/mL?</p>
+  <p><b>Try it.</b> On the <a href="learn.html#ratio">Concepts page</a>, set Ees to 2.3 and raise the Ea slider. Repeat with Ees at 0.8. Then open <a href="simulator.html#preset=normal&side=lv">Normal</a>, press <b>Arterial vasodilator</b> once, and note stroke volume. Reset by opening <a href="simulator.html#preset=hfref&side=lv">HFrEF</a>; press the same button once.</p>
+  <details class="panel"><summary>Reveal the model result and why it moved</summary>
+    <p>In the two-line figure, the weaker ventricle loses more stroke volume as Ea rises. In the full simulator, reducing SVR raises stroke volume from about 80 to 87 mL in Normal and from 53 to 61 mL in HFrEF. HFrEF end-systolic volume falls from about 184 to 173 mL. The button changes SVR, while the active baroreflex also changes heart rate and Ees, so the full-circulation result is not an isolated Ea experiment. Patients with HFrEF also had a larger flow response than those with HFpEF during nitroprusside infusion, although the simulator does not predict any patient's response <cite data-ref="schwartzenberg2012"></cite>.</p>
+  </details>
+  <p><b>At the bedside.</b> If MAP falls after vasodilation, ask how forward flow and perfusion changed alongside the pressure. A serial LVOT VTI or measured cardiac output can help; blood pressure alone cannot answer it. If heart rate changes, use it when converting stroke volume per beat to cardiac output per minute.</p>
+
+  <h2 id="same-ratio">2. Can a reassuring ratio hide a filling problem?</h2>
+  <p><b>Concept.</b> A ratio compares Ees with Ea. It does not show their absolute values or the pressure needed to fill the ventricle. Both elastances can rise together, leaving Ea/Ees near the resting reference even when the heart is stiff.</p>
+  <p><b>Predict.</b> Compare <a href="simulator.html#preset=normal&side=lv">Normal</a> with <a href="simulator.html#preset=hfpef&side=lv">HFpEF</a>. Which has the higher left atrial pressure (LAP)? Will the model's <b>Fluid bolus</b> button buy as much extra forward flow in HFpEF for the rise in LAP?</p>
+  <details class="panel"><summary>Reveal the model result and why it moved</summary>
+    <p>Normal has an Ea/Ees near 0.62 and LAP near 7 mmHg. HFpEF has a similar ratio, about 0.51, but LAP is 16 mmHg. The button adds 150 mL to <em>modeled stressed blood volume</em>: LAP rises to about 18.5 mmHg in HFpEF while stroke volume rises only from about 72 to 73 mL. In Normal, LAP rises from about 7 to 9 mmHg and stroke volume from about 80 to 83 mL. The modeled volume step is not an infusion of exactly 150 mL into a patient.</p>
+  </details>
+  <p><b>At the bedside.</b> An apparently preserved EF or coupling estimate cannot exclude high filling pressure. Compare flow with congestion after a volume intervention. A single RAP or PAWP describes pressure at that moment; it does not, by itself, tell you whether another bolus will increase cardiac output.</p>
+
+  <h2 id="map-flow">3. When MAP rises, did the circulation improve?</h2>
+  <p><b>Concept.</b> MAP is a pressure. It can rise because arterial tone rises even if the heart delivers less blood per minute. Septic shock can include both vasoplegia and depressed ventricular function, and the balance may be unknown when a patient arrives. Watch the response rather than assigning a mechanism from one pressure reading.</p>
+  <p><b>Predict.</b> In the <a href="shock.html#scenario=septicCM">Shock lab's septic shock with depressed Ees</a> case, what might happen to cardiac output when norepinephrine raises arterial pressure against a weak LV?</p>
+  <p><b>Try it.</b> Set norepinephrine to 0.1 µg/kg/min and advance the simulated clock by 15 minutes. Read MAP, cardiac output, LVOT VTI, ScvO₂, and the venous–arterial PCO₂ gap. Then add dobutamine at 5 µg/kg/min and advance another 15 minutes. Use the model's numbers to test your prediction; the rates and effects are illustrative.</p>
+  <details class="panel"><summary>Reveal the model result and what to monitor</summary>
+    <p>After norepinephrine, MAP rises from about 69 to 82 mmHg, while cardiac output falls from 6.0 to 5.5 L/min. ScvO₂ falls from about 68% to 66% and the PCO₂ gap widens from 4.5 to 4.9 mmHg. LVOT VTI barely changes, because it describes one beat while the reflex changes heart rate. After dobutamine is added in this model, cardiac output rises to about 6.7 L/min and ScvO₂ to about 71%. Those changes make the pressure-only interpretation incomplete. They do not establish which intervention a real patient needs.</p>
+  </details>
+  <p><b>At the bedside.</b> First confirm an adequate pressure for the patient. Then reassess forward flow, filling and congestion, and signs of perfusion. Repeat measurements with the same method when possible. The <a href="echo.html">Echo lab</a> shows how VTI estimates stroke volume; the <a href="pac.html">PA catheter page</a> shows invasive pressure and output measurements. For septic shock with cardiac dysfunction and persistent hypoperfusion despite adequate fluid resuscitation and arterial pressure, the 2026 guideline conditionally suggests an inotrope, with very-low-certainty evidence <cite data-ref="prescott2026"></cite>.</p>
+
+  <h2 id="rv">4. Can PA pressure look modest when RV load is severe?</h2>
+  <p><b>Concept.</b> A pressure is generated by a ventricle working against a load. If the RV begins to fail, flow may fall enough that PA pressure does not rise in proportion to pulmonary vascular resistance (PVR). Pressure and flow must be read together.</p>
+  <p><b>Predict and try it.</b> Open <a href="simulator.html#preset=acutePE&side=rv">Acute PE</a> and then <a href="simulator.html#preset=pahComp&side=rv">Compensated PAH</a>. The calculated PVRs are about 7.7 and 7.3 WU. Which RV maintains the higher output, and how do their Ees/Ea ratios differ?</p>
+  <details class="panel"><summary>Reveal the model comparison</summary>
+    <p>The acutely loaded RV delivers about 4.3 L/min with an Ees/Ea near 0.53. The adapted RV in compensated PAH delivers about 5.2 L/min with an Ees/Ea near 1.2. This comparison illustrates adaptation within the model; the two cases differ in more than one parameter. An Ees/Ea cutoff of 0.805 was associated with RV dilation and low EF in one 42-patient PH study, rather than established as a universal treatment target <cite data-ref="tello2019hf"></cite>.</p>
+  </details>
+  <p><b>At the bedside.</b> Interpret estimated PASP alongside RV size and function, RAP, cardiac output, and the clinical setting. A modest PA pressure does not rule out a severely loaded or failing RV.</p>
+
+  <h2 id="limits">Where the practice model stops</h2>
+  <p>The Shock lab computes lactate, capillary refill, and critical closing pressure from illustrative functions of the larger circulation. It cannot reproduce a microcirculation that fails while MAP and cardiac output both look normal <a href="interfaces.html#limits">(model limits)</a>. Bedside observations must therefore be interpreted independently of the simulator's answer.</p>
+  <div id="page-refs"></div>
+</article>
+</main>
+<script type="module">
+  import { initLayout } from './js/layout.js';
+  initLayout();
+</script>
+</body>
+</html>

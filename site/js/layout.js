@@ -4,6 +4,7 @@ import { REF_INDEX, REFS } from './refs.js';
 const PAGES = [
   ['index.html', 'Overview'],
   ['learn.html', 'Concepts'],
+  ['guide.html', 'Guided practice'],
   ['advanced.html', 'Advanced'],
   ['interfaces.html', 'Interfaces'],
   ['simulator.html', 'Simulator'],
@@ -31,7 +32,8 @@ function currentTheme() {
 }
 
 export function refText(r) {
-  return `${r.authors}. ${r.title}. ${r.journal} ${r.year};${r.volume}:${r.pages}.`;
+  const authors = r.authors.endsWith('.') ? r.authors : `${r.authors}.`;
+  return `${authors} ${r.title}. ${r.journal} ${r.year};${r.volume}:${r.pages}.`;
 }
 
 function header() {

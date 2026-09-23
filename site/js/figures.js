@@ -75,7 +75,7 @@ function drawRange() {
   ];
   const W = Math.max(340, Math.min(720, svg.parentElement.clientWidth || 640));
   drawPlot(svg, {
-    width: W, height: Math.round(W * 0.6), title: 'Three ventricles with in-range Ea/Ees',
+    width: W, height: Math.round(W * 0.6), title: 'Similar ratios, different physiology',
     x: { min: 0, max: 200, label: 'LV volume (mL)' }, y: { min: 0, max: 210, label: 'LV pressure (mmHg)' },
     series: cases.map(([r, color]) => ({ points: loop(r, 'lv'), color, width: 2.4 })),
     annotations: cases.map(([r, color, name], k) => ({
