@@ -36,7 +36,8 @@ const CHALLENGES = {
 
 const st = {
   preset: 'normal', pos: 'ra', damp: 'ok', level: 0, resp: 'none', atr: 'sinus', showLA: true, showLVEDP: true, labels: true, view: 'tip',
-  win: 6, rate: 0.5, guide: true, tipH: -5, peep: 0, scale: 'auto', challenge: null, t0: 0, last: null, playing: !reduce, tFrozen: 0,
+  // a phone shows 3 s so the waves are wide enough to read; wider screens show 6 s
+  win: typeof window !== 'undefined' && window.innerWidth < 600 ? 3 : 6, rate: 0.5, guide: true, tipH: -5, peep: 0, scale: 'auto', challenge: null, t0: 0, last: null, playing: !reduce, tFrozen: 0,
   quiz: { on: false, y: null, revealed: false },
 };
 let R = null, R0 = null, beat = null, ev = null, evs = null, BREATH = 4, TB = 1;   // TB: beat period as sampled
@@ -195,9 +196,9 @@ function report(arr, kind, ed = [], offset = 0) {
 // Live display sweeps like a bedside monitor: the sample at absolute time s is always drawn at the same
 // x, (s mod N), so nothing already on screen moves, and an erase bar runs ahead of the cursor. The slide
 // export scrolls instead, so that its frames loop.
-const GAP = 0.25;                     // s, erase bar
+const GAP = 0.25;                     // s, erase bar (shorter on short windows)
 function mapping(s0, N, x0, pw, sweep) {
-  const G = sweep ? Math.round(GAP * FS) : 0;
+  const G = sweep ? Math.round(Math.min(GAP, 0.06 * N / FS) * FS) : 0;
   const pos = sweep ? (j) => (((s0 + j) % N) + N) % N : (j) => j;
   return { G, pos, X: (j) => x0 + (pos(j) / N) * pw, visible: (j) => j >= G };
 }
@@ -226,10 +227,12 @@ function drawEcg(g, s0, map, N, x0, pw, base) {
   drawTrace(g, (j) => ecg((s0 + j) / FS), map, N, x0, pw, (v) => base - v);
 }
 
-function sizeCanvas(ratioWide, ratioNarrow) {
+// The tracing takes the full width of its panel; its height follows the width, up to a share of the window
+// (maxFrac) so a wide screen does not make it taller than the screen.
+function sizeCanvas(ratioWide, ratioNarrow, maxFrac, minH) {
   const c = $('#pac-scr'), cs = getComputedStyle(c.parentElement);
-  const w = Math.floor(Math.min(800, c.parentElement.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight)));
-  const h = Math.round(w * (w < 520 ? ratioNarrow : ratioWide));
+  const w = Math.floor(Math.min(1800, c.parentElement.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight)));
+  const h = Math.round(Math.min(w * (w < 520 ? ratioNarrow : ratioWide), Math.max(minH, window.innerHeight * maxFrac)));
   const dpr = window.devicePixelRatio || 1;
   // whole-pixel backing store: with a fractional devicePixelRatio (125%, 150%) w·dpr is not an integer,
   // so comparing it with c.width never matched and the canvas was cleared and resized on every frame
@@ -369,11 +372,11 @@ function lvedpLine(g, Y, x0, pw) {
 // the PA systolic pressure; RA and wedge share a lower one.
 const ALL_ROWS = [['ra', 'RA'], ['rv', 'RV'], ['pa', 'PA'], ['wedge', 'Wedge']];
 function drawAll(tEnd, target) {
-  const { g, w, h } = target || sizeCanvas(0.95, 1.6);
+  const { g, w, h } = target || sizeCanvas(0.95, 1.6, 0.9, 420);
   g.fillStyle = '#05090A'; g.fillRect(0, 0, w, h);
   const sig = Object.fromEntries(ALL_ROWS.map(([k]) => [k, signal(tEnd, k)]));
   const N = sig.ra.out.length, s0 = Math.round(tEnd * FS) - N;
-  const x0 = 40, pw = w - x0 - 12, ecgH = 44, rows = ALL_ROWS.length, rh = (h - ecgH - 8) / rows;
+  const x0 = w < 420 ? 30 : 40, pw = w - x0 - (w < 420 ? 6 : 12), ecgH = 44, rows = ALL_ROWS.length, rh = (h - ecgH - 8) / rows;
   const map = mapping(s0, N, x0, pw, !target && !reduce);
   const la = st.showLA ? Array.from({ length: N }, (_, j) => beat.la[(((s0 + j) % beat.n) + beat.n) % beat.n] + resp((s0 + j) / FS)) : null;
   const hiMax = Math.max(40, Math.ceil(Math.max(...sig.rv.out, ...sig.pa.out) * 1.12 / 10) * 10);
@@ -403,13 +406,13 @@ function drawAll(tEnd, target) {
 // target (export only): { g, w, h } of an off-page canvas; the page readout is left alone.
 function draw(tEnd, target) {
   if (st.view === 'all') return drawAll(tEnd, target);
-  const { g, w, h } = target || sizeCanvas(0.42, 0.75);
+  const { g, w, h } = target || sizeCanvas(0.42, 0.95, 0.55, 300);
   g.fillStyle = '#05090A'; g.fillRect(0, 0, w, h);
   const { out, raw, ed } = signal(tEnd);
   const N = out.length, s0 = Math.round(tEnd * FS) - N;
   const laTrue = st.pos === 'wedge' && st.showLA
     ? Array.from({ length: N }, (_, j) => beat.la[(((s0 + j) % beat.n) + beat.n) % beat.n] + resp((s0 + j) / FS)) : null;
-  const x0 = 40, pw = w - x0 - 12, top = 12, ph = h - top - 50;
+  const x0 = w < 420 ? 30 : 40, pw = w - x0 - (w < 420 ? 6 : 12), top = 12, ph = h - top - 50;
   const map = mapping(s0, N, x0, pw, !target && !reduce);
   // vertical scale: fitted to the site on screen (auto), or a fixed range
   const peak = Math.max(...out, ...raw, ...(laTrue || []), st.pos === 'wedge' && st.showLVEDP ? R.lv.EDP : 0), low = Math.min(...out, ...raw, ...(laTrue || []));
@@ -716,7 +719,7 @@ export function initPacSim() {
   seg('pac-tip', [['-5', '5 cm below the LA'], ['0', 'Level with the LA'], ['5', '5 cm above'], ['10', '10 cm above']], () => st.tipH, (v) => { st.tipH = +v; zonePanel(); });
   seg('pac-peep', [['0', '0'], ['5', '5'], ['10', '10'], ['15', '15'], ['20', '20 cmH₂O']], () => st.peep, (v) => { st.peep = +v; zonePanel(); });
   seg('pac-resp', [['none', 'Apneic'], ['spont', 'Spontaneous, 15/min'], ['tachy', 'Tachypnea, 30/min'], ['ppv', 'Positive-pressure breaths']], () => st.resp, (v) => { st.resp = v; setBreath(); zonePanel(); });
-  seg('pac-win', [['6', '6 s'], ['12', '12 s'], ['24', '24 s']], () => st.win, (v) => { st.win = +v; });
+  seg('pac-win', [['2', '2 s'], ['3', '3 s'], ['6', '6 s'], ['12', '12 s'], ['24', '24 s']], () => st.win, (v) => { st.win = +v; });
   seg('pac-scale', [['auto', 'Fit this site'], ['20', '0–20'], ['40', '0–40'], ['80', '0–80']], () => st.scale, (v) => { st.scale = v; });
   seg('pac-rate', [['0.25', '¼ speed'], ['0.5', '½ speed'], ['1', 'Real time']], () => st.rate, (v) => { st.rate = +v; });
   $('#pac-float').addEventListener('click', () => {

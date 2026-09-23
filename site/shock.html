@@ -33,7 +33,7 @@
   <div class="sim2">
     <div>
       <div class="monitor mon-bed">
-        <div class="mon-head"><h2>Bedside monitor</h2><label class="status mon-opt"><input type="checkbox" id="pa-toggle"> PA catheter</label></div>
+        <div class="mon-head"><h2>Bedside monitor</h2><span class="seg speed mon-win" id="mon-win" role="group" aria-label="Seconds on screen"><button type="button" data-v="3">3 s</button><button type="button" data-v="6">6 s</button><button type="button" data-v="12">12 s</button></span><label class="status mon-opt"><input type="checkbox" id="pa-toggle"> PA catheter</label></div>
         <canvas id="mon" role="img" aria-label="Bedside monitor with ECG, arterial and central venous pressure traces and numerics"></canvas>
       </div>
       <section class="panel">

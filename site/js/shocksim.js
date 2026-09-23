@@ -9,12 +9,13 @@ import { addExport, header, even } from './export.js';
 const $ = (s) => document.querySelector(s);
 const TICK = 500;                    // ms of real time per tick
 const MIN_PER_S = 1;                 // simulated minutes per real second at 1×
-const FS = 250, WIN = 6;             // monitor sample rate (Hz) and window (s)
+const FS = 250;                      // monitor sample rate (Hz); the window (s) is st.win
 const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 const NORM = simulate({});
 
 const st = { id: 'normal', speed: 1, running: false, timer: null, busy: false, pt: null, start: null, beat: null, t0: performance.now(), showPA: false,
-  sweep: null, scale: { abp: 0, cvp: 0, pa: 0 } };
+  sweep: null, scale: { abp: 0, cvp: 0, pa: 0 },
+  win: window.innerWidth < 600 ? 3 : 6 };   // a phone shows 3 s so the waves are wide enough to read
 const KEYS = ['ecg', 'abp', 'cvp', 'pa'];
 
 // ---------- monitor ----------
@@ -34,7 +35,7 @@ function ecg(ph, T) {
 // redrawn, and each new sample continues the beat phase, so a change of heart rate at a tick changes
 // only the beats still to come. The display does not scroll, so there is no aliasing shimmer.
 function sweepFill(now) {
-  const N = Math.round(WIN * FS), b = st.beat;
+  const N = Math.round(st.win * FS), b = st.beat;
   if (!st.sweep) st.sweep = { N, written: null, phase: 0, buf: Object.fromEntries(KEYS.map((k) => [k, new Float32Array(N).fill(NaN)])) };
   const sw = st.sweep, target = Math.floor(((now - st.t0) / 1000) * FS);
   if (sw.written == null || target - sw.written > N) sw.written = target - N;
@@ -48,7 +49,7 @@ function sweepFill(now) {
 }
 // Scrolling window from one fixed beat (slide export, where every frame is rendered from the model).
 function scrollFill(tEnd) {
-  const N = Math.round(WIN * FS), s0 = Math.round(tEnd * FS) - N, b = st.beat;
+  const N = Math.round(st.win * FS), s0 = Math.round(tEnd * FS) - N, b = st.beat;
   const buf = Object.fromEntries(KEYS.map((k) => [k, new Float32Array(N)]));
   for (let j = 0; j < N; j++) {
     const kk = (((s0 + j) % b.n) + b.n) % b.n;
@@ -70,7 +71,7 @@ function drawMonitor(tEnd, target) {
   else {
     const c = $('#mon'), box = c.parentElement, cs = getComputedStyle(box);
     w = Math.floor(box.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight));
-    h = Math.round(w < 560 ? w * 0.95 : w * 0.46);
+    h = Math.round(Math.min(w < 560 ? w * 0.95 : w * 0.46, Math.max(300, window.innerHeight * 0.6)));
     const dpr = window.devicePixelRatio || 1;
     // whole-pixel backing store: with a fractional devicePixelRatio (125%, 150%) w·dpr is not an integer,
     // so comparing it with c.width never matched and the canvas was cleared and resized on every frame
@@ -90,7 +91,7 @@ function drawMonitor(tEnd, target) {
   const col = { ecg: '#7CE38B', abp: '#F2706A', cvp: '#6FB7F2', pa: '#E8D35F' };
   const scale = {
     abp: range('abp', Math.max(...b.abp), 120, 20),
-    cvp: range('cvp', Math.max(...b.cvp), 20, 5),
+    cvp: range('cvp', Math.max(...b.cvp), 10, 5),
     pa: range('pa', Math.max(...b.pa), 40, 10),
   };
   const per = src.N / pw, gap = Math.round(0.25 * FS);   // erase bar ahead of the cursor, 250 ms
@@ -381,6 +382,13 @@ export function initShock() {
     st.speed = +b.dataset.v;
     $('#speed').querySelectorAll('button').forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
   });
+  const win = $('#mon-win');
+  const syncWin = () => win.querySelectorAll('button').forEach((x) => x.setAttribute('aria-pressed', String(+x.dataset.v === st.win)));
+  win.addEventListener('click', (e) => {
+    const b = e.target.closest('button'); if (!b) return;
+    st.win = +b.dataset.v; st.sweep = null; syncWin(); if (reduce) drawMonitor(0);
+  });
+  syncWin();
   $('#pa-toggle').addEventListener('change', (e) => { st.showPA = e.target.checked; if (reduce) drawMonitor(0); });
   drugPanel();
   $('#fluids').addEventListener('click', (e) => {

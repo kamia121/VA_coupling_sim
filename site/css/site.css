@@ -31,7 +31,14 @@ code, .mono { font-family: "Source Code Pro", ui-monospace, Menlo, monospace; fo
 .theme-btn { background: transparent; color: var(--header-text); border: 1px solid rgba(255,255,255,0.4); border-radius: 4px; padding: 4px 10px; font: inherit; font-size: 0.85rem; cursor: pointer; }
 
 main { max-width: 1240px; margin: 0 auto; padding: 20px 16px 48px; }
-.prose { max-width: 760px; }
+/* running text keeps a readable measure; panels, monitors and grids inside .prose use the full width */
+.prose { max-width: none; }
+.prose :is(p, h1, h2, h3, h4, ul, ol, dl, blockquote, .lede, #page-refs) { max-width: 760px; }
+.prose :is(.panel, .card, .monitor, .grid, figure, .pac-quiz, .tiles, td, th) :is(p, h2, h3, h4, ul, ol, dl) { max-width: none; }
+/* plots scale their text with their width, so they grow only moderately; paragraphs inside panels keep a measure */
+.prose :is(figure.fig, figure.plot-card) { max-width: 1000px; }
+.prose > .grid.cols-2 { max-width: 1000px; }
+.prose .panel > p { max-width: 900px; }
 .lede { font-size: 1.1rem; color: var(--text-muted); }
 
 .site-footer { border-top: 1px solid var(--border); color: var(--text-muted); font-size: 0.86rem; }
@@ -494,3 +501,12 @@ body[data-view="both"] .pv-card { position: static; }
 .pac-quiz { border: 1px solid var(--border); border-radius: 8px; padding: 6px 10px; margin: 6px 0 10px; background: var(--surface); }
 .pac-quiz .btn-row { align-items: center; margin: 0; }
 .pac-quiz #pac-quiz-out p { margin: 6px 0 0; }
+/* very wide screens: tools and monitors use the extra width; running text keeps its measure (.prose) */
+@media (min-width: 1500px) {
+  main, .site-header .inner, .site-footer .inner { max-width: min(1720px, 94vw); }
+}
+/* phones: give the PA tracing the full width of the screen */
+@media (max-width: 600px) {
+  #tracings.panel { padding: 10px 6px; margin-left: -8px; margin-right: -8px; }
+  #tracings .monitor { padding: 4px; }
+}
