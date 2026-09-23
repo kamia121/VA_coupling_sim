@@ -2,7 +2,8 @@
 // echocardiogram as volume, afterload and rhythm change), and the virtual cohort (precomputed by
 // tools/diastolic_cohort.mjs) for fluid, afterload and AF tolerance and the fluid-then-diuresis course.
 import { simulate, NORMAL } from './engine.js';
-import { GRADES, MV_AREA, CUT, LAP_WET, SURGE, COURSE, solveCond, readout, condParams } from './diastcore.js';
+import { GRADES, MV_AREA, CUT, LAP_WET, SURGE, COURSE, BSA, CONSEQ, solveCond, readout, condParams, consequences } from './diastcore.js';
+import { QUESTIONS } from './diastquiz.js';
 import { COHORT } from './diastdata.js';
 import { drawPlot, niceMax, swatch } from './plot.js';
 import { ecgWave } from './ecgwave.js';
@@ -45,17 +46,23 @@ const sgn = (v, f = f1) => (v >= 0 ? '+' : '−') + f(Math.abs(v));
 function tiles() {
   const o = st.cur, b = baseline(st.g).o;
   const T = [
-    ['Cardiac output', f1(o.CO), 'L/min', o.CO - b.CO, false],
-    ['Stroke volume', f0(o.SV), 'mL', o.SV - b.SV, false],
-    ['Heart rate', f0(o.HR), '/min', o.HR - b.HR, false],
-    ['MAP', f0(o.MAP), 'mmHg', o.MAP - b.MAP, o.MAP < 65],
-    ['LA pressure (PAWP)', f0(o.LAP), 'mmHg', o.LAP - b.LAP, o.LAP > LAP_WET],
-    ['LVEDP', f0(o.EDP), 'mmHg', o.EDP - b.EDP, o.EDP > 16],
-    ['Mean PA pressure', f0(o.mPAP), 'mmHg', o.mPAP - b.mPAP, o.mPAP > 20],
-    ['RA pressure', f0(o.RAP), 'mmHg', o.RAP - b.RAP, o.RAP > 12],
+    ['CO', 'Cardiac output', f1(o.CO), 'L/min', o.CO - b.CO, false],
+    ['SV', 'Stroke volume', f0(o.SV), 'mL', o.SV - b.SV, false],
+    ['HR', 'Heart rate', f0(o.HR), '/min', o.HR - b.HR, false],
+    ['MAP', 'Mean arterial pressure', f0(o.MAP), 'mmHg', o.MAP - b.MAP, o.MAP < 65],
+    ['LAP', 'LA pressure (PAWP)', f0(o.LAP), 'mmHg', o.LAP - b.LAP, o.LAP > LAP_WET],
+    ['LVEDP', 'LV end-diastolic pressure', f0(o.EDP), 'mmHg', o.EDP - b.EDP, o.EDP > 16],
+    ['mPAP', 'Mean PA pressure', f0(o.mPAP), 'mmHg', o.mPAP - b.mPAP, o.mPAP > 20],
+    ['RAP', 'RA pressure', f0(o.RAP), 'mmHg', o.RAP - b.RAP, o.RAP > 12],
   ];
-  $('#tiles').innerHTML = T.map(([k, v, u, d, off]) => `<div class="tile${off ? ' off' : ''}"><div class="tile-v">${v}</div>
-    <div class="tile-k">${k} <span>${u}${Math.abs(d) >= 0.05 ? ` · ${sgn(d, Math.abs(d) < 10 ? f1 : f0)}` : ''}</span></div></div>`).join('');
+  // compact tiles for the bar that stays at the top of the screen; the full name is in the tooltip
+  $('#tiles').innerHTML = T.map(([k, name, v, u, d, off]) => `<div class="tile${off ? ' off' : ''}" title="${name}${off ? ' (outside the usual range)' : ''}">
+    <div class="tile-k">${k} <span>${u}</span></div><div class="tile-v">${v}</div>
+    <div class="tile-d">${Math.abs(d) >= 0.05 ? sgn(d, Math.abs(d) < 10 ? f1 : f0) : '&nbsp;'}</div></div>`).join('');
+  // what has been done to the patient, since the controls scroll out of view
+  const parts = [st.vol ? `${st.vol > 0 ? '+' : '−'}${Math.abs(st.vol)} mL` : '', st.svrX !== 1 ? `SVR × ${st.svrX.toFixed(2)}` : '',
+    st.surge ? 'surge' : '', st.rhythm === 'af' ? `AF ${st.afRate}/min` : ''].filter(Boolean);
+  $('#cond-sum').innerHTML = parts.length ? `Now: ${parts.join(' · ')}<span class="g-long"> · change from as found below each value</span>` : 'As found';
 }
 
 function loopPts(r) {
@@ -140,6 +147,22 @@ function spectrum(g, x0, pw, yb, pxPerCm, v) {
     }
   }
 }
+// Tissue Doppler: the annulus moves as one solid body at low velocity with a strong echo, so the spectrum
+// is a narrow bright band that traces the velocity, with no fill between it and the baseline. The band
+// joins adjacent columns so the fast upstrokes stay continuous, and a little clutter sits at the baseline.
+function tdiSpectrum(g, x0, pw, yb, pxPerCm, v) {
+  for (let i = 0; i < pw; i++) {
+    const a = v[Math.max(0, i - 1)], b = v[i];
+    const w = (0.7 + 0.06 * Math.abs(b)) * pxPerCm;           // narrow spectral width, a little wider at speed
+    const top = yb - Math.max(a, b) * pxPerCm - w, bot = yb - Math.min(a, b) * pxPerCm + w;
+    for (let y = top; y < bot; y += 1) {
+      const edge = Math.min(y - top, bot - y) / w;               // brightest in the middle of the band
+      const al = Math.min(1, 0.35 + 0.65 * Math.min(1, edge)) * (0.65 + 0.35 * rand(i * 29 + Math.round(y)));
+      g.fillStyle = `rgba(232,244,240,${al.toFixed(3)})`; g.fillRect(x0 + i, y, 1, 1);
+    }
+    if (rand(i * 7) > 0.55) { g.fillStyle = 'rgba(200,220,215,0.25)'; g.fillRect(x0 + i, yb + (rand(i * 5) - 0.5) * 1.6 * pxPerCm, 1, 1); }
+  }
+}
 function axes(g, x0, pw, yb, pxPerCm, lo, hi, step, label) {
   g.strokeStyle = '#3B4E48'; g.lineWidth = 1; g.beginPath(); g.moveTo(x0, yb); g.lineTo(x0 + pw, yb); g.stroke();
   g.fillStyle = '#8FA39D'; g.font = '11px system-ui'; g.textAlign = 'right';
@@ -195,7 +218,7 @@ function drawTDI() {
   const cache = new Map();
   const s = sample(sw, pw, (b, i) => { if (!cache.has(b)) cache.set(b, shape(b)); return cache.get(b)(i); });
   axes(g, x0, pw, yb, px, -vmax, vmax, 8, 'Lateral mitral annulus, tissue Doppler (cm/s)');
-  spectrum(g, x0, pw, yb, px, s.v);
+  tdiSpectrum(g, x0, pw, yb, px, s.v);
   ecgRow(g, x0, pw, h - 14, s);
   const n0 = Math.round(sw.beats[0].T / sw.T * pw);
   const iS = peakIdx(s.v, 0, n0, 1), iE = peakIdx(s.v, 0, Math.round(n0 * 0.8), -1);
@@ -243,8 +266,14 @@ function echoTable() {
     <p class="interp"><b>Echo algorithm reads:</b> ${verdict}</p>`;
 }
 
+// Bedside consequences of the current state, shown under the values in the bar at the top.
+function conseqChips() {
+  const c = consequences(st.cur), icon = ['✓', '!', '!!'];
+  $('#conseq').innerHTML = `<span class="cq cq-sub" title="Forrester hemodynamic subset (cardiac index 2.2, PAWP 18)">${c.subset}</span>` +
+    c.items.map((x) => `<span class="cq cq-l${x.level}"><span class="cq-i" aria-hidden="true">${icon[x.level]}</span>${x.label}: ${x.text}</span>`).join('');
+}
 function drawLive() {
-  tiles(); drawLoop(); drawMitral(); drawTDI(); drawPV(); echoTable();
+  tiles(); conseqChips(); drawLoop(); drawMitral(); drawTDI(); drawPV(); echoTable();
   const c = cond(), q = condParams(GRADES[st.g].params, c);
   $('#vol-v').textContent = `${st.vol > 0 ? '+' : st.vol < 0 ? '−' : ''}${Math.abs(st.vol)} mL (stressed ${sgn(0.4 * st.vol, f0)} mL)`;
   $('#svr-v').textContent = `× ${st.svrX.toFixed(2)} (SVR ${f0((q.svr ?? NORMAL.svr) * 1333.22)} dyn·s·cm⁻⁵)`;
@@ -470,9 +499,135 @@ function echoSpec() {
   };
 }
 
+// ---------- concepts ----------
+// The in-vivo EDPVR of each grade: end-diastolic volume and pressure of the reference patient as volume
+// is removed or given (the volume protocol), so it includes the pericardium and the septum.
+function drawEDPVR() {
+  const svg = $('#c-edpvr'), vi = condIdx('volume', 0), v1 = condIdx('volume', 1000);
+  const W = Math.max(300, Math.min(760, svg.parentElement.clientWidth || 600)), H = Math.round(W * 0.55);
+  const curves = COHORT.grades.map((gr) => {
+    const ref = gr.patients.find((p) => p.ref);
+    return xs('volume').filter((x) => x <= 2000).map((x) => ref.rows[condIdx('volume', x)]).filter((r) => r[F.EDV] != null).map((r) => [r[F.EDV], r[F.EDP]]);
+  });
+  const refs = COHORT.grades.map((gr) => gr.patients.find((p) => p.ref).rows);
+  const xmax = niceMax(Math.max(...curves.flat().map((p) => p[0])) * 1.05), ymax = Math.min(50, niceMax(Math.max(...curves.flat().map((p) => p[1]))));
+  drawPlot(svg, {
+    width: W, height: H, xTicks: 6, yTicks: 5, title: 'End-diastolic pressure–volume relation of each grade',
+    x: { min: 40, max: xmax, label: 'LV end-diastolic volume (mL)' }, y: { min: 0, max: ymax, label: 'LV end-diastolic pressure (mmHg)' },
+    series: [
+      ...curves.map((c, g) => ({ points: c, color: GCOL[g], width: 2 })),
+      ...refs.map((r, g) => ({ points: [[r[vi][F.EDV], r[vi][F.EDP]]], color: GCOL[g], marker: 5 })),
+      ...refs.map((r, g) => ({ points: [[r[v1][F.EDV], r[v1][F.EDP]]], color: 'var(--surface)', marker: 4 })),
+    ],
+    annotations: [
+      ...refs.map((r, g) => ({ x: r[v1][F.EDV], y: r[v1][F.EDP], dx: 8, dy: 4, text: `${ROMAN[g]}: ${f0(r[vi][F.EDP])} → ${f0(r[v1][F.EDP])} mmHg`, color: 'var(--text-muted)' })),
+    ],
+  });
+  // open markers: redraw with a colored ring (drawPlot fills markers with the series color)
+  svg.querySelectorAll('circle').forEach((c) => { if (c.style.fill.includes('surface')) c.style.strokeWidth = '2'; });
+  const rings = [...svg.querySelectorAll('circle')].filter((c) => c.style.fill.includes('surface'));
+  rings.forEach((c, g) => { c.style.stroke = GCOL[g]; });
+}
+// One mitral inflow beat per grade, at the same scale.
+function drawMinis() {
+  const box = $('#minis');
+  if (!box.children.length) box.innerHTML = GRADES.map((g) => `<div class="mini"><canvas id="mini-${g.id}" role="img" aria-label="Mitral inflow, ${g.short}"></canvas><div class="mini-k"></div></div>`).join('');
+  GRADES.forEach((gr, g) => {
+    const c = document.getElementById(`mini-${g}`), r = baseline(g).sol.r, e = baseline(g).o.echo;
+    const w = Math.floor(c.parentElement.clientWidth || 160), h = Math.round(w * 0.62), dpr = window.devicePixelRatio || 1;
+    c.width = w * dpr; c.height = h * dpr; c.style.width = w + 'px'; c.style.height = h + 'px';
+    const gx = c.getContext('2d'); gx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    gx.fillStyle = '#05090A'; gx.fillRect(0, 0, w, h);
+    const yb = h - 8, px = (h - 26) / 140, n = w - 8, m = r.rec.t.length;
+    const v = Array.from({ length: n }, (_, i) => r.rec.Qmv[Math.floor(i / n * m)] / MV_AREA);
+    spectrum(gx, 4, n, yb, px, v);
+    gx.fillStyle = '#D5E2DE'; gx.font = '600 12px system-ui'; gx.textAlign = 'left'; gx.fillText(gr.short, 6, 15);
+    c.nextElementSibling.textContent = `E/A ${f2(e.EA)} · DT ${Number.isFinite(e.DT) ? f0(e.DT) + ' ms' : '–'} · e′ ${f1(e.ep)}`;
+  });
+}
+function gradeTable() {
+  const win = (g) => quant(COHORT.grades[g].patients.filter((p) => !p.ref).map((p) => p.tol.window), 0.5);
+  const cols = [
+    ['τ (ms)', (o) => f0(o.echo.tauMs), () => false],
+    ['LAP (mmHg)', (o) => f0(o.LAP), (o) => o.LAP > LAP_WET],
+    ['E/A', (o) => f2(o.echo.EA), (o) => o.echo.EA <= CUT.EA_low || o.echo.EA >= CUT.EA_high],
+    ['DT (ms)', (o) => f0(o.echo.DT), () => false],
+    ['IVRT (ms)', (o) => f0(o.echo.IVRT), () => false],
+    ['e′ (cm/s)', (o) => f1(o.echo.ep), (o) => o.echo.ep < CUT.ep],
+    ['E/e′', (o) => f1(o.echo.Eep), (o) => o.echo.Eep > CUT.Eep],
+    ['LAVI', (o) => f0(o.echo.LAVI), (o) => o.echo.LAVI > CUT.LAVI],
+    ['TR (m/s)', (o) => f2(o.echo.TRv), (o) => o.echo.TRv > CUT.TR],
+    ['PV S/D', (o) => f2(o.echo.SD), (o) => o.echo.SD < 1],
+    ['ASE grade', (o) => ['Normal', 'I', 'II', 'III'][o.echo.grade] ?? '–', () => false],
+    ['Volume window', (o, g) => `${f0(win(g))} mL`, () => false],
+  ];
+  $('#grade-table').innerHTML = `<table class="data metrics"><thead><tr><th></th>${cols.map(([k]) => `<th class="num">${k}</th>`).join('')}</tr></thead><tbody>${
+    GRADES.map((gr, g) => { const o = baseline(g).o; return `<tr><td>${gr.short}</td>${cols.map(([, f, fl]) => `<td class="num${fl(o) ? ' flagged' : ''}">${f(o, g)}${fl(o) ? ' *' : ''}</td>`).join('')}</tr>`; }).join('')}</tbody></table>`;
+}
+
+// ---------- predict, then test ----------
+const quiz = { i: 0, picked: {} };
+function quizNav() {
+  $('#quiz-nav').innerHTML = QUESTIONS.map((q, i) => `<button type="button" data-q="${i}" aria-pressed="${i === quiz.i}" title="${q.topic}">${i + 1}${quiz.picked[q.id] ? (quiz.picked[q.id].ok ? ' ✓' : ' ✗') : ''}</button>`).join('');
+}
+function quizCard() {
+  const q = QUESTIONS[quiz.i], p = quiz.picked[q.id];
+  $('#quiz-card').innerHTML = `<p class="k">${q.topic} · question ${quiz.i + 1} of ${QUESTIONS.length}</p>
+    <p class="quiz-q">${q.prompt}</p>
+    <div class="quiz-choices">${q.choices.map(([k, t]) => `<button type="button" class="give quiz-c${p ? (k === p.key ? ' right' : k === p.pick ? ' wrong' : '') : ''}" data-k="${k}"${p ? ' disabled' : ''}>${t}${p && k === p.key ? '<small>correct</small>' : p && k === p.pick ? '<small>your answer</small>' : ''}</button>`).join('')}</div>
+    ${p ? `<div class="interp quiz-a"><p><b>${p.ok ? 'Correct.' : 'Not quite.'}</b> ${p.explain}</p></div>
+      <div class="btn-row"><button type="button" class="btn primary" id="quiz-show">Show it in the simulator</button>${quiz.i < QUESTIONS.length - 1 ? '<button type="button" class="btn" id="quiz-next">Next question</button>' : ''}</div>` : ''}`;
+}
+function applySetup(su) {
+  Object.assign(st, { g: su.g, vol: su.vol ?? 0, svrX: su.svrX ?? 1, surge: !!su.surge, rhythm: su.rhythm ?? 'sinus', afRate: su.afRate ?? 110 });
+  $('#vol').value = st.vol; $('#svr').value = st.svrX; $('#afrate').value = st.afRate; $('#surge').checked = st.surge;
+  $('#rhythm').querySelectorAll('button').forEach((x) => x.setAttribute('aria-pressed', String(x.dataset.v === st.rhythm)));
+  $('#grades').querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', String(+b.dataset.g === st.g)));
+  update();
+  document.getElementById('sim').scrollIntoView({ behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+}
+function initQuiz() {
+  $('#quiz-nav').addEventListener('click', (e) => { const b = e.target.closest('button[data-q]'); if (!b) return; quiz.i = +b.dataset.q; quizNav(); quizCard(); });
+  $('#quiz-card').addEventListener('click', (e) => {
+    const q = QUESTIONS[quiz.i];
+    const c = e.target.closest('button[data-k]');
+    if (c && !quiz.picked[q.id]) {
+      $('#quiz-card').insertAdjacentHTML('beforeend', '<p class="status">Running the model…</p>');
+      setTimeout(() => { const r = q.run(); quiz.picked[q.id] = { pick: c.dataset.k, key: r.key, ok: c.dataset.k === r.key, explain: r.explain }; quizNav(); quizCard(); }, 20);
+    }
+    if (e.target.closest('#quiz-show')) applySetup(q.setup);
+    if (e.target.closest('#quiz-next')) { quiz.i++; quizNav(); quizCard(); }
+  });
+  quizNav(); quizCard();
+}
+
+// ---------- clinical consequences across the cohort ----------
+const CQ = [
+  ['wet', `Congested (PAWP > ${CONSEQ.wet})`, (r) => r[F.LAP] > CONSEQ.wet],
+  ['edema', `Alveolar edema range (PAWP > ${CONSEQ.edema})`, (r) => r[F.LAP] > CONSEQ.edema],
+  ['cold', `Low output (CI < ${CONSEQ.ci})`, (r) => r[F.CO] / BSA < CONSEQ.ci],
+  ['hypo', `Hypotensive (MAP < ${CONSEQ.map})`, (r) => r[F.MAP] < CONSEQ.map],
+];
+const CQ_ROWS = [['As found', 'volume', 0], ['+500 mL', 'volume', 500], ['+1 L', 'volume', 1000], ['+2 L', 'volume', 2000], ['−1 L', 'volume', -1000], ['−1.5 L', 'volume', -1500],
+  ['SVR × 1.5', 'afterload', 1.5], ['Sympathetic surge', 'surge', 1], ['AF 110/min', 'af', 110], ['AF 130/min', 'af', 130]];
+let cqPick = 'wet';
+function cqTable() {
+  const [, , f] = CQ.find(([k]) => k === cqPick);
+  const cell = (g, kind, x) => {
+    const j = condIdx(kind, x), pts = COHORT.grades[g].patients.filter((p) => !p.ref), ok = pts.filter((p) => p.rows[j][F.LAP] != null);
+    if (ok.length < 0.75 * pts.length) return '<td class="num">–</td>';
+    const pc = Math.round(100 * ok.filter((p) => f(p.rows[j])).length / ok.length);
+    return `<td class="num${pc >= 50 ? ' flagged' : ''}">${pc}%</td>`;
+  };
+  $('#cq-pick').innerHTML = CQ.map(([k, t]) => `<button type="button" data-k="${k}" aria-pressed="${k === cqPick}">${t}</button>`).join('');
+  $('#cq-table').innerHTML = `<table class="data metrics"><thead><tr><th></th>${GRADES.map((g) => `<th class="num">${g.short}</th>`).join('')}</tr></thead><tbody>${
+    CQ_ROWS.map(([t, kind, x]) => `<tr><td>${t}</td>${GRADES.map((_, g) => cell(g, kind, x)).join('')}</tr>`).join('')}</tbody></table>`;
+}
+
 // ---------- controls ----------
 export function initDiastolic() {
-  $('#grades').innerHTML = GRADES.map((g) => `<button type="button" data-g="${g.id}" aria-pressed="false">${g.short}</button>`).join('');
+  // on phones the buttons show only the numeral (0, I–IV) so the bar fits on one line
+  $('#grades').innerHTML = GRADES.map((g) => `<button type="button" data-g="${g.id}" aria-pressed="false" aria-label="${g.short}"><span class="g-long">${g.short}</span><span class="g-short" aria-hidden="true">${g.roman}</span></button>`).join('');
   const syncGrade = () => $('#grades').querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', String(+b.dataset.g === st.g)));
   $('#grades').addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; st.g = +b.dataset.g; syncGrade(); update(); });
   const vol = $('#vol'), svr = $('#svr'), afr = $('#afrate');
@@ -499,10 +654,13 @@ export function initDiastolic() {
   const m = /grade=(\d)/.exec(location.hash);
   if (m) st.g = Math.min(4, +m[1]);
   syncGrade();
-  solveNow(); drawLive(); drawCohort();
+  $('#cq-pick').addEventListener('click', (e) => { const b = e.target.closest('button[data-k]'); if (!b) return; cqPick = b.dataset.k; cqTable(); });
+  solveNow(); drawLive(); drawCohort(); drawEDPVR(); cqTable(); initQuiz();
+  // the other grades' reference beats, for the mitral strips (about a second of model time)
+  setTimeout(() => { drawMinis(); gradeTable(); }, 50);
   let rt;
-  window.addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(() => { drawLive(); drawCohort(); }, 200); });
-  document.addEventListener('themechange', () => { drawLive(); drawCohort(); });
+  window.addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(() => { drawLive(); drawCohort(); drawEDPVR(); drawMinis(); }, 200); });
+  document.addEventListener('themechange', () => { drawLive(); drawCohort(); drawEDPVR(); });
 }
 
 export const _diast = { st, solveNow, cond };

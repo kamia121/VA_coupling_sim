@@ -1283,6 +1283,17 @@ export const REFS = [
   "pages": "1051-1064",
   "pmid": "32854840",
   "doi": "10.1016/j.jacc.2020.07.009"
+ },
+ {
+  "key": "guyton1959",
+  "authors": "Guyton AC, Lindsey AW",
+  "title": "Effect of elevated left atrial pressure and decreased plasma protein concentration on the development of pulmonary edema",
+  "journal": "Circ Res",
+  "year": 1959,
+  "volume": "7",
+  "pages": "649-57",
+  "pmid": "13663218",
+  "doi": "10.1161/01.res.7.4.649"
  }
 ];
 
