@@ -106,9 +106,13 @@ function ecg(t) {
   let d = u < 0.03 ? Math.sin(u / 0.03 * Math.PI) * 12 * (u < 0.015 ? 1 : -0.4) : u > 0.3 && u < 0.45 ? Math.sin((u - 0.3) / 0.15 * Math.PI) * 3.5 : 0;
   const tp = ph - (TB - PR);                         // P wave: 0–0.09 s after its onset
   if ((st.atr === 'sinus' || st.atr === 'mr' || st.atr === 'tr') && tp >= 0 && tp < 0.09) d += 2 * Math.sin(tp / 0.09 * Math.PI);
-  if (st.atr === 'af') {                             // fibrillatory baseline; frequencies fit the beat so the loop repeats
-    const f1 = Math.round(6.3 * TB) / TB, f2 = Math.round(8.7 * TB) / TB;
-    d += 0.9 * Math.sin(2 * Math.PI * f1 * t) + 0.6 * Math.sin(2 * Math.PI * f2 * t + 1);
+  if (st.atr === 'af') {
+    // fibrillatory baseline, 4.7–8.9 Hz with a slowly varying amplitude. The frequencies fit the breath cycle
+    // (a whole number of beats, about 4 s), so the loop still repeats, but no pattern recurs from beat to
+    // beat, which would read as an organized atrial wave.
+    const fit = (f) => Math.round(f * BREATH) / BREATH, mod = 0.7 + 0.3 * Math.sin(2 * Math.PI * fit(1.3) * t);
+    d += mod * (0.55 * Math.sin(2 * Math.PI * fit(4.7) * t) + 0.45 * Math.sin(2 * Math.PI * fit(6.1) * t + 1.1)
+      + 0.35 * Math.sin(2 * Math.PI * fit(7.3) * t + 2.3) + 0.3 * Math.sin(2 * Math.PI * fit(8.9) * t + 0.4));
   }
   return d;
 }
@@ -222,9 +226,9 @@ function drawTrace(g, vals, map, N, x0, pw, Y) {
   }
   g.stroke();
 }
-function drawEcg(g, s0, map, N, x0, pw, base) {
+function drawEcg(g, s0, map, N, x0, pw, base, gain = 2) {
   g.strokeStyle = '#7CE38B'; g.lineWidth = 1.2;
-  drawTrace(g, (j) => ecg((s0 + j) / FS), map, N, x0, pw, (v) => base - v);
+  drawTrace(g, (j) => ecg((s0 + j) / FS), map, N, x0, pw, (v) => base - gain * v);
 }
 
 // The tracing takes the full width of its panel; its height follows the width, up to a share of the window
@@ -397,7 +401,7 @@ function drawAll(tEnd, target) {
     g.textAlign = 'left'; g.font = '600 12px system-ui'; g.fillStyle = '#E6EFEC';
     g.fillText(`${name}  ${read[k]}${k === 'wedge' && la ? '   (lavender: true LA)' : ''}`, x0 + 6, top + 4);
   });
-  drawEcg(g, s0, map, N, x0, pw, h - 18);
+  drawEcg(g, s0, map, N, x0, pw, h - 14, 1.6);
   if (target) return { all: true, ...read };
   $('#pac-read').innerHTML = ALL_ROWS.map(([k, name]) => `<div class="tile"><div class="tile-v">${read[k]}</div><div class="tile-k">${name}, last 2 beats</div></div>`).join('');
 }
@@ -457,7 +461,7 @@ function draw(tEnd, target) {
     g.fillStyle = '#FFFFFF'; g.font = '600 12px system-ui'; g.fillText(`your reading ${st.quiz.y.toFixed(0)}`, x0 + 6, y - 6);
   }
   if (st.challenge) { g.fillStyle = '#E8B962'; g.font = '600 12px system-ui'; g.fillText(`after: ${CHALLENGES[st.challenge].name}`, x0 + 60, top + 14); }
-  drawEcg(g, s0, map, N, x0, pw, h - 18);
+  drawEcg(g, s0, map, N, x0, pw, h - 12);
   // readout
   const lastBeats = out.slice(-beat.n * 2), trueBeats = raw.slice(-beat.n * 2);
   const label = POS.find((p) => p[0] === st.pos)[1];
