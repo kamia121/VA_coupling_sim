@@ -510,3 +510,7 @@ body[data-view="both"] .pv-card { position: static; }
   #tracings.panel { padding: 10px 6px; margin-left: -8px; margin-right: -8px; }
   #tracings .monitor { padding: 4px; }
 }
+/* PA catheter notes: cards of very different lengths flow in balanced columns (at most 3, each at least
+   22rem wide) instead of a grid, whose rows would leave gaps under the short cards on a wide screen */
+.grid.pac-notes { display: block; columns: 3 22rem; column-gap: 16px; }
+.grid.pac-notes > .card { break-inside: avoid; margin: 0 0 16px; }
