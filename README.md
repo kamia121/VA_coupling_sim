@@ -14,6 +14,7 @@ The site is static HTML and JavaScript, so there is no server to maintain. It wo
 | `interfaces.html` | Shock as four interfaces (LV–arterial, arteriole–capillary, capillary–venular, RV–PA; Rola et al. 2025): critical closing pressure and tissue perfusion pressure, capillary refill, PCO₂ gap and the DO₂–VO₂ relation, Pmsf and venous return (Guyton figure from the model), congestion, and bedside calculators |
 | `simulator.html` | LV, RV and side-by-side LV + RV simulator: valve-event marks (MVC/AVO/AVC/MVO, TVC/PVO/PVC/TVO) on loops and pressure strips, isovolumic phases slowed ×5, LA pressure strip (v wave, y descent), drag handles on the loop (Ees, afterload, preload), intervention buttons, animated transitions, beat cursor with valve/phase strip, step-by-step "why did it move?" replay, normal-reference overlay, in-range-disease overlay, snapshot comparison, shareable URLs |
 | `shock.html` | Shock lab: an accelerated clock (1 simulated minute per second, ×2, ×5) on which vasopressors, inotropes, vasodilators, pulmonary vasodilators and esmolol are infused with first-order kinetics, and crystalloid, red cells, bleeding and fluid removal change blood volume; bedside monitor, four-interface panel, live LV and RV loops, oxygen transport, trends and a flow–congestion (VTI–CVP) diagram, for nine patients including hemorrhagic, cardiogenic and obstructive shock and dynamic LVOT obstruction |
+| `diastolic.html` | Diastolic lab: LV diastolic dysfunction from normal to grade IV (impaired relaxation, pseudonormal, reversible and fixed restrictive), with a live model-generated Doppler echo (mitral inflow E/A and deceleration time, lateral tissue Doppler e′ and E/e′, pulmonary venous S/D, TR velocity, LA volume index, ASE/EACVI 2016 algorithm) as volume, afterload and rhythm change; a virtual cohort of 40 patients per grade run through fluid and diuresis (−2 to +2 L), afterload (SVR × 0.7–1.75), a sympathetic surge and AF at 70–150/min, with the volume window of each patient; and a fluid-then-diuresis time course |
 | `scenarios.html` | HFpEF, HFrEF, septic vasoplegia, septic cardiomyopathy, acute afterload rise, compensated and decompensated PAH, acute PE and CpcPH |
 | `echo.html` | Echo lab: model-generated PW Doppler (trace LVOT VTI), CW Doppler (TR peak velocity → PASP), M-mode (TAPSE) and RV volume frames (SV/ESV), with acquisition steps and pitfall toggles (Doppler angle, LVOT diameter, weak signal, IVC-based RAP); pressure overlays on each echo screen and an overview of what each station contributes |
 | `pac.html` | Float-the-catheter tracing (RA → RV → PA → wedge, every scenario) or all four positions at once, on a sweep display with a catheter diagram; dotted guides for where each pressure is read and where that falls on the ECG; a question mode (drag a horizontal line to where you would read it); fluid (500 mL) and inhaled NO challenges with before/after tables; 6, 12 or 24 s on screen, slowed playback, and a vertical scale fitted to the site; artifacts: over/underdamping, transducer height, spontaneous, tachypneic and positive-pressure breathing; PA catheter indices (TPG, DPG, PVR, PAC, RC time, PAPi, single-beat Ees/Ea), with a hemodynamic calculator |
@@ -73,16 +74,30 @@ The Shock lab adds three modules on top of the engine. `pharm.js` gives each dru
 
 Scenario parameter sets are synthetic. They were chosen to reproduce the direction and approximate size of the changes reported in the cited studies. They are not patient data or treatment targets.
 
+### Diastolic lab and its virtual cohort
+
+`diastcore.js` defines grades 0–IV as parameter sets on the same engine: grade by grade, a longer relaxation time constant, a steeper EDPVR, a larger and stiffer LA (whose contraction first strengthens and then fails), more stressed volume, stiffer arteries and, in the late grades, a higher PVR. The engine gains one opt-in parameter, `mvArea`, a Bernoulli orifice on mitral inflow (0 by default, so every other page is unchanged); the lab sets it to 4 cm², which gives a normal E of 90 cm/s and a deceleration time of 226 ms. Mitral and pulmonary venous velocities are model flows divided by an orifice area. The lateral e′ is not simulated: it is scaled from the fitted τ (12 × 36/τ cm/s). The echo is graded with the ASE/EACVI 2016 algorithm, applied to lateral e′ and lateral E/e′.
+
+The cohort is generated offline, because each patient takes about 2 s to run through its 30 conditions:
+
+```sh
+node tools/diastolic_cohort.mjs 40 2026   # N per grade, seed; about 100 s on 4 cores
+Rscript R/diastolic_microsim.R            # figures and tables from the CSVs, in R/outputs/
+```
+
+The generator writes `site/js/diastdata.js` (read by the page) and `R/diastolic_cohort_long.csv`, `R/diastolic_cohort_summary.csv` and `R/diastolic_course.csv`. `tests/diastolic.test.mjs` fails if the shipped data no longer match the code, so rerun the generator after changing `diastcore.js` or the engine.
+
 ## Verifying the numbers
 
 ```sh
 node tests/engine.test.mjs          # calibration, conservation, ESPVR recovery, mechanisms, scenario and quoted-number checks
 node tests/shock.test.mjs           # drug directions and kinetics, Fick identities, venous return, LVOT obstruction, course of each shock case
+node tests/diastolic.test.mjs       # echo pattern of each grade, reversibility, tolerance directions, quoted numbers, cohort data current
 ```
 
 ## Evidence
 
-Every reference was checked against its PubMed record: PMID, title, authors, journal, year, pages and DOI. Every number quoted from a source was checked against its abstract or PMC full text. A few statements could only be checked against the bibliographic record, because the source has no open abstract or text. These are the ESC/ERS 2022 hemodynamic definitions and TAPSE/sPAP risk thresholds, the ASE recommendations and the ESC 2019 PE guideline. They are flagged on `references.html`.
+Every reference was checked against its PubMed record: PMID, title, authors, journal, year, pages and DOI. Every number quoted from a source was checked against its abstract or PMC full text. A few statements could only be checked against the bibliographic record, because the source has no open abstract or text. These are the ESC/ERS 2022 hemodynamic definitions and TAPSE/sPAP risk thresholds, the ASE recommendations, the ASE/EACVI 2016 diastolic cutoffs, the four-grade scheme with a fixed restrictive grade IV (Nishimura 1997, whose abstract does not list the grades) and the ESC 2019 PE guideline. They are flagged on `references.html`.
 
 ## Running locally
 

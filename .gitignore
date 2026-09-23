@@ -2,3 +2,4 @@ tests/presets_js.csv
 .Rhistory
 .DS_Store
 node_modules/
+R/outputs/

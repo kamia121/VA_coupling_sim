@@ -84,6 +84,8 @@ export const NORMAL = Object.freeze({
   corL0: 48.15, corR0: 86.55, pvaL0: 10963, pvaR0: 1572,   // perfusion and PVA of the normal heart
   // Valve lesions: stenotic orifice area (cm², 0 = normal) and regurgitant orifice (EROA, cm²)
   avArea: 0, mrEroa: 0, trEroa: 0, arEroa: 0,
+  // Effective mitral inflow orifice (cm²) for the Bernoulli term in diastole; 0 = resistance only
+  mvArea: 0,
   // Dynamic LVOT obstruction: the outflow orifice narrows as the LV empties below lvoto mL
   // during contraction (0 = off). Area runs from lvotAmax to lvotAmin (cm²) over a width lvotW mL.
   lvoto: 0, lvotW: 5, lvotAmax: 3.5, lvotAmin: 0.2,
@@ -104,8 +106,9 @@ function seriesArea(a, b) {
 // Double-Hill activation (Stergiopulos et al. 1996), with the time to peak
 // elastance scaled to the cardiac period: Tmax = 0.2 + 0.15·T. With `relax` on, the falling
 // limb is replaced by a monoexponential decay with time constant τ, smoothed at the peak,
-// and the tail that has not decayed by the next beat carries into it.
-function makeActivation(T, p) {
+// and the tail that has not decayed by the next beat carries into it. Tprev is the length of the beat
+// before (it differs from T only in an irregular rhythm), which sets how far that tail has decayed.
+function makeActivation(T, p, Tprev = T) {
   const tmax = 0.2 + 0.15 * T;
   const tau1 = 0.67 * tmax, tau2 = 1.13 * tmax, m1 = 1.32, m2 = 27.4;
   const raw = (t) => {
@@ -120,8 +123,9 @@ function makeActivation(T, p) {
   if (!p.relax) return { e: (t) => raw(t) / peak, tPeak };
   const d = 0.25 * p.tau;
   const decay = (x) => Math.exp(-(Math.sqrt(x * x + d * d) - d) / p.tau);
+  const tPeakPrev = Tprev === T ? tPeak : makeActivation(Tprev, { ...p, relax: 0 }).tPeak;
   const e = (t) => {
-    const carry = decay(t + T - tPeak);            // previous beat's tail
+    const carry = decay(t + Tprev - tPeakPrev);    // previous beat's tail
     if (t < tPeak) { const r = raw(t) / peak; return r + (1 - r) * carry; }
     return decay(t - tPeak);
   };
@@ -222,7 +226,7 @@ function pressures(s, e, ea, p, ctx) {
   const Pla = Ela * (VlaE - p.laV0) + Ppcd;
   const Qao = valveFlow(Plv - Psa, p.zcAo, seriesArea(p.avArea, lvotArea(s[0], e, p)));   // aortic valve + Zc (+ stenotic or dynamic LVOT orifice)
   const Qar = leak(Psa - Plv, p.arEroa);                 // aortic regurgitation
-  const Qmv = valveFlow(Pla - Plv, p.rMv, 0);            // mitral inflow
+  const Qmv = valveFlow(Pla - Plv, p.rMv, p.mvArea);     // mitral inflow (+ Bernoulli orifice when mvArea > 0)
   const Qmr = leak(Plv - Pla, p.mrEroa);                 // mitral regurgitation
   const Qpv = valveFlow(Prv - Ppa, p.zcPa, 0);           // pulmonic valve + Zc
   const Qtv = valveFlow(Pra - Prv, p.rTv, 0);            // tricuspid inflow
@@ -440,7 +444,7 @@ function dist(a, b) { return Math.max(...a.map((x, i) => Math.abs(x - b[i]))); }
 /**
  * Run the model to beat-to-beat steady state and return the last beat.
  * @param {object} params  parameter set (see NORMAL); missing keys fall back to NORMAL
- * @param {object} [opt]   { dt, maxBeats, tol, state, slow }
+ * @param {object} [opt]   { dt, maxBeats, tol, state, slow, holdSlow, prevT }
  */
 export function simulate(params, opt = {}) {
   const p = { ...NORMAL, ...params };
@@ -473,7 +477,8 @@ export function simulate(params, opt = {}) {
   const dV = q.vStressed - stressed(s, q);
   s[2] += dV * 0.8; s[5] += dV * 0.2;
   const T = 60 / q.hr;
-  const act = makeActivation(T, q);
+  // opt.prevT: length of the beat before this one, for irregular sequences run beat by beat
+  const act = makeActivation(T, q, beats === 0 && opt.prevT ? opt.prevT : T);
   act.a = makeAtrialActivation(T, q);
   const startState = s.slice();
   const { s: endState, rec, acc } = simulateBeat(s, q, act, T, dt, true, ctx);

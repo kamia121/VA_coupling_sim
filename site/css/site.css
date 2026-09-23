@@ -514,3 +514,15 @@ body[data-view="both"] .pv-card { position: static; }
    22rem wide) instead of a grid, whose rows would leave gaps under the short cards on a wide screen */
 .grid.pac-notes { display: block; columns: 3 22rem; column-gap: 16px; }
 .grid.pac-notes > .card { break-inside: avoid; margin: 0 0 16px; }
+
+/* ---------- diastolic lab ---------- */
+.dia-controls .slider { margin: 6px 0 10px; }
+.dia-controls .give-row { grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); margin: 4px 0 10px; }
+.dia-screens canvas { display: block; border-radius: 4px; max-width: 100%; margin-bottom: 6px; }
+.tip { position: absolute; z-index: 5; pointer-events: none; background: var(--surface); color: var(--text); border: 1px solid var(--border);
+  border-radius: 6px; padding: 6px 10px; font-size: 0.8rem; line-height: 1.45; box-shadow: 0 2px 10px rgba(0,0,0,0.15); white-space: nowrap; }
+.tip svg { width: 18px; height: 8px; margin-right: 4px; vertical-align: middle; }
+.plot-card .legend.g-legend { margin: 0 0 6px; }
+.dia-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 400px), 1fr)); gap: 16px; align-items: start; }
+table.data caption { text-align: left; caption-side: top; padding: 4px 0; }
+#c-table td.num { white-space: nowrap; }
