@@ -35,8 +35,8 @@ const CHALLENGES = {
 };
 
 const st = {
-  preset: 'normal', pos: 'ra', damp: 'ok', level: 0, resp: 'none', atr: 'sinus', showLA: true, labels: true, view: 'tip',
-  win: 6, rate: 1, guide: true, scale: 'auto', challenge: null, t0: 0, last: null, playing: !reduce, tFrozen: 0,
+  preset: 'normal', pos: 'ra', damp: 'ok', level: 0, resp: 'none', atr: 'sinus', showLA: true, showLVEDP: true, labels: true, view: 'tip',
+  win: 6, rate: 0.5, guide: true, scale: 'auto', challenge: null, t0: 0, last: null, playing: !reduce, tFrozen: 0,
   quiz: { on: false, y: null, revealed: false },
 };
 let R = null, R0 = null, beat = null, ev = null, evs = null, BREATH = 4, TB = 1;   // TB: beat period as sampled
@@ -238,7 +238,8 @@ const READ = {
   pa: { name: 'PADP', how: 'end-diastole, just before the systolic upstroke', ecg: 'end of QRS', ecgLong: 'at the end of the QRS' },
   wedge: { name: 'PAWP', how: 'the mean of the a wave, at end-expiration', ecg: 'a wave just after QRS', ecgLong: 'just after the QRS, because the a wave reaches the tip through the capillary bed' },
 };
-function reading(pos, out, s0, minJ = 0) {
+// Reading point on every complete beat on screen (with its value), newest first.
+function readPoints(pos, out, s0, minJ = 0) {
   const n = beat.n, N = out.length, A = st.atr;
   const beats = [];
   for (let bi = 1; bi <= Math.ceil(N / n) + 1; bi++) beats.push((Math.floor((s0 + N) / n) - bi) * n - s0);
@@ -259,42 +260,71 @@ function reading(pos, out, s0, minJ = 0) {
     return { j: Math.round((band[0] + band[1]) / 2), band, ...(A === 'af' ? { how: '130–160 ms after QRS onset, at end-expiration, because there is no a wave in AF', ecg: '130–160 ms after QRS', ecgLong: '130–160 ms after the onset of the QRS' } : {}) };
   };
   const cands = beats.map(one).filter((r) => r && (r.band ? r.band[0] >= minJ && r.band[1] < N : r.j >= minJ && r.j < N));
-  if (!cands.length) return null;
-  let pick = cands[0];                                       // latest beat
-  if (st.resp !== 'none') {
-    const ends = [];
-    for (let t = Math.floor(s0 / FS / BREATH) * BREATH; t <= (s0 + N) / FS; t += BREATH) ends.push(Math.round((t + endExp()) * FS) - s0);
+  const pts = cands.map((r) => ({ ...READ[pos], ...r, value: r.band ? stats(out.slice(r.band[0], r.band[1] + 1)).mean : out[r.j] }));
+  if (st.resp === 'none') return pts;
+  // with breathing, only the beat read at each end-expiration: the last one before the marker
+  const keep = new Set();
+  for (let t = Math.floor(s0 / FS / BREATH) * BREATH; t <= (s0 + N) / FS; t += BREATH) {
+    const je = Math.round((t + endExp()) * FS) - s0;
     let best = null;
-    for (const r of cands) for (const je of ends) { const d = je - r.j; if (d >= 0 && (!best || d < best.d)) best = { d, r }; }
-    if (best) pick = best.r;
+    for (const r of pts) { const d = je - r.j; if (d >= 0 && d < BREATH * FS && (!best || d < best.d)) best = { d, r }; }
+    if (best) keep.add(best.r);
   }
-  const value = pick.band ? stats(out.slice(pick.band[0], pick.band[1] + 1)).mean : out[pick.j];
-  return { ...READ[pos], ...pick, value };
+  return pts.filter((r) => keep.has(r));
+}
+function reading(pos, out, s0, minJ = 0) { return readPoints(pos, out, s0, minJ)[0] || null; }
+// The value to read, which changes only when the patient or a setting changes: taken from a reference
+// window that ends on a whole breath, so it does not move as the sweep advances.
+const stableCache = new Map();
+function stableReading(pos) {
+  const key = JSON.stringify([st.preset, st.atr, st.resp, st.damp, st.level, st.challenge, pos]);
+  if (!stableCache.has(key)) {
+    const tRef = Math.ceil(60 / BREATH) * BREATH, win = st.win;
+    st.win = 6; const { out } = signal(tRef, pos); st.win = win;
+    stableCache.set(key, reading(pos, out, Math.round(tRef * FS) - out.length));
+  }
+  return stableCache.get(key);
 }
 function dotted(g, x1, y1, x2, y2, color, width = 1.2) {
   g.save(); g.setLineDash([3, 4]); g.strokeStyle = color; g.lineWidth = width;
   g.beginPath(); g.moveTo(x1, y1); g.lineTo(x2, y2); g.stroke(); g.restore();
 }
-// Vertical line from the reading point through the ECG, a horizontal line at the value, and labels.
-function drawGuide(g, rd, map, Y, x0, pw, yTop, yEcg, label = true) {
+// A horizontal line at the value to read, fixed unless a setting changes, and on each beat that is read
+// a marker at its reading point carried down to the ECG. Beats do not move on the sweep, so neither do
+// the markers.
+function drawGuide(g, rd, pts, map, Y, x0, pw, yTop, yEcg, label = true) {
   const col = '#F2C66D';
-  if (rd.band) {
-    const xa = map.X(rd.band[0]), xb = map.X(rd.band[1]);
-    if (xb > xa) { g.fillStyle = 'rgba(242,198,109,0.16)'; g.fillRect(xa, yTop, xb - xa, yEcg - yTop); }
+  for (const p of pts) {
+    if (p.band) {
+      const xa = map.X(p.band[0]), xb = map.X(p.band[1]);
+      if (xb > xa) { g.fillStyle = 'rgba(242,198,109,0.16)'; g.fillRect(xa, Y(p.value) - 14, xb - xa, yEcg - Y(p.value) + 14); }
+    }
+    const x = map.X(p.j), y = Y(p.value);
+    dotted(g, x, y, x, yEcg + 10, col);
+    g.fillStyle = col; g.beginPath(); g.arc(x, y, 3.5, 0, 2 * Math.PI); g.fill();
   }
-  const x = map.X(rd.j), y = Y(rd.value);
-  dotted(g, x, yTop, x, yEcg + 10, col);
+  if (!rd) return;
+  const y = Y(rd.value);
   dotted(g, x0, y, x0 + pw, y, col, 1.4);
-  g.fillStyle = col; g.beginPath(); g.arc(x, y, 3.5, 0, 2 * Math.PI); g.fill();
   if (!label) return;
-  const right = x > x0 + pw * 0.6;
-  const tag = (text, tx, ty, font, color) => {                   // text on a dark backing, so it stays legible over traces
+  const tag = (text, tx, ty, font, right) => {                    // text on a dark backing, so it stays legible over traces
     g.font = font; const wT = g.measureText(text).width, lx = right ? tx - wT : tx;
     g.fillStyle = 'rgba(5,9,10,0.85)'; g.fillRect(lx - 3, ty - 11, wT + 6, 15);
-    g.fillStyle = color; g.textAlign = 'left'; g.fillText(text, lx, ty);
+    g.fillStyle = col; g.textAlign = 'left'; g.fillText(text, lx, ty);
   };
-  tag(`${rd.name} ${rd.value.toFixed(0)} mmHg`, x + (right ? -8 : 8), y - 7, '600 12px system-ui', col);
-  tag(`ECG: ${rd.ecg}`, x + (right ? -6 : 6), yEcg - 12, '11px system-ui', col);
+  tag(`${rd.name} ${rd.value.toFixed(0)} mmHg`, x0 + pw - 6, y - 7, '600 12px system-ui', true);
+  tag(`Read at: ${rd.ecg} on the ECG`, x0 + 6, yEcg - 12, '11px system-ui', false);
+}
+
+// The model's true LVEDP (LV pressure at the QRS), which the end-diastolic wedge estimates.
+function lvedpLine(g, Y, x0, pw) {
+  const v = R.lv.EDP, y = Y(v), col = '#F08CB4';
+  g.save(); g.setLineDash([8, 4]); g.strokeStyle = col; g.lineWidth = 1.4;
+  g.beginPath(); g.moveTo(x0, y); g.lineTo(x0 + pw, y); g.stroke(); g.restore();
+  const text = `LVEDP ${v.toFixed(0)} mmHg (model)`;
+  g.font = '600 12px system-ui'; const wT = g.measureText(text).width;
+  g.fillStyle = 'rgba(5,9,10,0.85)'; g.fillRect(x0 + 4, y + 3, wT + 6, 15);
+  g.fillStyle = col; g.textAlign = 'left'; g.fillText(text, x0 + 7, y + 14);
 }
 
 // ---------- all four positions ----------
@@ -320,9 +350,10 @@ function drawAll(tEnd, target) {
     for (const p of [0, ymax / 2, ymax]) { g.beginPath(); g.moveTo(x0, Y(p)); g.lineTo(x0 + pw, Y(p)); g.stroke(); g.fillText(p, x0 - 6, Y(p) + 4); }
     const { out, ed } = sig[k];
     if (k === 'wedge' && la) { g.strokeStyle = 'rgba(169,188,242,0.75)'; g.lineWidth = 1.3; drawTrace(g, (j) => la[j], map, N, x0, pw, Y); }
+    if (k === 'wedge' && st.showLVEDP) lvedpLine(g, Y, x0, pw);
     g.strokeStyle = '#E8D35F'; g.lineWidth = 1.8; drawTrace(g, (j) => out[j], map, N, x0, pw, Y);
     if (st.labels && (k === 'ra' || k === 'wedge')) labelWaves(g, out, s0, map, Y, k);
-    if (st.guide) { const rd = reading(k, out, s0, map.G); if (rd) drawGuide(g, rd, map, Y, x0, pw, top, bot, false); }
+    if (st.guide) drawGuide(g, stableReading(k), readPoints(k, out, s0, map.G), map, Y, x0, pw, top, bot, false);
     read[k] = report(out.slice(-beat.n * 2), k, ed, N - beat.n * 2);
     g.textAlign = 'left'; g.font = '600 12px system-ui'; g.fillStyle = '#E6EFEC';
     g.fillText(`${name}  ${read[k]}${k === 'wedge' && la ? '   (lavender: true LA)' : ''}`, x0 + 6, top + 4);
@@ -345,7 +376,7 @@ function draw(tEnd, target) {
   const x0 = 40, pw = w - x0 - 12, top = 12, ph = h - top - 50;
   const map = mapping(s0, N, x0, pw, !target && !reduce);
   // vertical scale: fitted to the site on screen (auto), or a fixed range
-  const peak = Math.max(...out, ...raw, ...(laTrue || [])), low = Math.min(...out, ...raw, ...(laTrue || []));
+  const peak = Math.max(...out, ...raw, ...(laTrue || []), st.pos === 'wedge' && st.showLVEDP ? R.lv.EDP : 0), low = Math.min(...out, ...raw, ...(laTrue || []));
   const ymax = st.scale === 'auto' ? Math.max(10, Math.ceil(peak * 1.15 / 5) * 5) : +st.scale;
   const ymin = low < 0 ? Math.floor(low / 5) * 5 : 0;
   const Y = (p) => top + ph - ((Math.max(ymin, p) - ymin) / (ymax - ymin)) * ph;
@@ -363,15 +394,18 @@ function draw(tEnd, target) {
   }
   g.strokeStyle = '#E8D35F'; g.lineWidth = 2; drawTrace(g, (j) => out[j], map, N, x0, pw, Y);
   if (laTrue) {
-    g.font = '12px system-ui'; g.textAlign = 'right';
-    g.fillStyle = '#E8D35F'; g.fillText('— wedge (catheter)', x0 + pw - 6, top + 14);
-    g.fillStyle = '#A9BCF2'; g.fillText('— true LA pressure', x0 + pw - 6, top + 30);
-    g.textAlign = 'left';
+    // legend top left, clear of the end-expiration labels along the top edge
+    const lx = x0 + 46;
+    g.font = '12px system-ui'; g.textAlign = 'left';
+    g.fillStyle = 'rgba(5,9,10,0.8)'; g.fillRect(lx - 4, top + 2, 128, 34);
+    g.fillStyle = '#E8D35F'; g.fillText('— PAWP (catheter)', lx, top + 14);
+    g.fillStyle = '#A9BCF2'; g.fillText('— true LA pressure', lx, top + 30);
   }
+  if (st.pos === 'wedge' && st.showLVEDP && !(st.quiz.on && !st.quiz.revealed)) lvedpLine(g, Y, x0, pw);
   if (st.labels && (st.pos === 'ra' || st.pos === 'wedge')) labelWaves(g, out, s0, map, Y);
-  const rd = reading(st.pos, out, s0, map.G);
+  const rd = stableReading(st.pos);
   const showGuide = st.quiz.on ? st.quiz.revealed : st.guide;
-  if (rd && showGuide) drawGuide(g, rd, map, Y, x0, pw, top, h - 30);
+  if (showGuide) drawGuide(g, rd, readPoints(st.pos, out, s0, map.G), map, Y, x0, pw, top, h - 30);
   if (st.quiz.on && st.quiz.y != null) {                                // the learner's line
     const y = Y(st.quiz.y);
     g.strokeStyle = '#FFFFFF'; g.lineWidth = 1.6; g.beginPath(); g.moveTo(x0, y); g.lineTo(x0 + pw, y); g.stroke();
@@ -391,7 +425,7 @@ function draw(tEnd, target) {
   const quizHide = st.quiz.on && !st.quiz.revealed;
   $('#pac-read').innerHTML = quizHide ? '<div class="tile"><div class="tile-v">?</div><div class="tile-k">Readings hidden during the question</div></div>'
     : (rd ? `<div class="tile"><div class="tile-v">${rd.value.toFixed(0)}</div><div class="tile-k">${rd.name}, read at ${rd.how}</div></div>` : '')
-    + (read.ed ? `<div class="tile"><div class="tile-v">${read.ed.value.toFixed(0)}</div><div class="tile-k">Wedge at end-diastole (${read.ed.how}). Model LVEDP ${R.lv.EDP.toFixed(0)}</div></div>` : '')
+    + (read.ed ? `<div class="tile"><div class="tile-v">${read.ed.value.toFixed(0)}</div><div class="tile-k">PAWP at end-diastole (${read.ed.how}). Model LVEDP ${R.lv.EDP.toFixed(0)}</div></div>` : '')
     + (laTrue ? `<div class="tile la"><div class="tile-v">${read.la}</div><div class="tile-k">True LA pressure (model), last 2 beats</div></div>` : '') + `<div class="tile"><div class="tile-v">${report(out, st.pos, ed)}</div><div class="tile-k">Monitor reads (${label}, whole ${st.win}-s screen)</div></div>
     <div class="tile"><div class="tile-v">${report(trueBeats, st.pos, ed, off)}</div><div class="tile-k">True tip pressure, no artifact (model)</div></div>`;
   drawMap();
@@ -563,7 +597,7 @@ function pacSpec() {
           header(g, W, `${label} · ${patient}`, [rhythm, faults.length ? fault : ''].filter(Boolean).join(' · ') || 'no artifact');
           g.drawImage(c, 0, top);
           g.font = '600 17px system-ui, sans-serif'; g.textAlign = 'left';
-          const items = all ? ALL_ROWS.map(([k, n]) => [n, r[k], '#E8D35F']) : [['Monitor reads', r.monitor, '#E8D35F'], ...(r.ed ? [[r.ed.how === 'mean of the a wave' ? 'At the a wave (end-diastole)' : 'End-diastole (AF)', r.ed.value.toFixed(0), '#E8D35F']] : []),
+          const items = all ? ALL_ROWS.map(([k, n]) => [n, r[k], '#E8D35F']) : [['Monitor reads', r.monitor, '#E8D35F'], ...(r.ed ? [[r.ed.how === 'mean of the a wave' ? 'PAWP at the a wave (end-diastole)' : 'End-diastole (AF)', r.ed.value.toFixed(0), '#E8D35F']] : []),
             [r.la ? 'True LA' : 'True pressure (model)', r.la || r.truth, '#A7B8B2'], [r.ed ? 'Model LVEDP' : 'Last 2 beats', r.ed ? R.lv.EDP.toFixed(0) : r.last, '#A7B8B2']];
           let x = 20;
           for (const [k, v, col] of items) {
@@ -603,12 +637,13 @@ export function initPacSim() {
   seg('pac-atr', Object.entries(ATRIAL), () => st.atr, (v) => { st.atr = v; buildBeat(); challengePanel(); });
   seg('pac-view', [['tip', 'Catheter tip'], ['all', 'All four positions']], () => st.view, (v) => { st.view = v; syncSegs(); mapPos = null; drawMap(); drawHeart(); });
   seg('pac-lbl', [['1', 'Label waves'], ['0', 'No labels']], () => (st.labels ? '1' : '0'), (v) => { st.labels = v === '1'; });
-  seg('pac-guide', [['1', 'Show where to read'], ['0', 'Hide']], () => (st.guide ? '1' : '0'), (v) => { st.guide = v === '1'; });
-  seg('pac-la', [['1', 'Show true LA at wedge'], ['0', 'Hide']], () => (st.showLA ? '1' : '0'), (v) => { st.showLA = v === '1'; });
+  seg('pac-guide', [['1', 'Where to read'], ['0', 'Off']], () => (st.guide ? '1' : '0'), (v) => { st.guide = v === '1'; });
+  seg('pac-la', [['1', 'True LA at wedge'], ['0', 'Off']], () => (st.showLA ? '1' : '0'), (v) => { st.showLA = v === '1'; });
+  seg('pac-lvedp', [['1', 'LVEDP at wedge'], ['0', 'Off']], () => (st.showLVEDP ? '1' : '0'), (v) => { st.showLVEDP = v === '1'; });
   seg('pac-resp', [['none', 'Apnoeic'], ['spont', 'Spontaneous, 15/min'], ['tachy', 'Tachypnea, 30/min'], ['ppv', 'Positive-pressure breaths']], () => st.resp, (v) => { st.resp = v; setBreath(); });
   seg('pac-win', [['6', '6 s'], ['12', '12 s'], ['24', '24 s']], () => st.win, (v) => { st.win = +v; });
   seg('pac-scale', [['auto', 'Fit this site'], ['20', '0–20'], ['40', '0–40'], ['80', '0–80']], () => st.scale, (v) => { st.scale = v; });
-  seg('pac-rate', [['1', 'Real time'], ['0.5', '½ speed'], ['0.25', '¼ speed']], () => st.rate, (v) => { st.rate = +v; });
+  seg('pac-rate', [['0.25', '¼ speed'], ['0.5', '½ speed'], ['1', 'Real time']], () => st.rate, (v) => { st.rate = +v; });
   $('#pac-float').addEventListener('click', () => {
     const order = POS.map((p) => p[0]);
     st.pos = order[(order.indexOf(st.pos) + 1) % order.length];
