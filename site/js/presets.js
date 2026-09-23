@@ -17,7 +17,7 @@ export const PRESETS = [
     refs: ['kawaguchi2003', 'borlaug2008'],
     detail: {
       mech: 'Concentric remodeling stiffens the ventricle in both systole and diastole. Ees and Ea increase in parallel, so Ea/Ees and EF remain normal <cite data-ref="kawaguchi2003"></cite>. Relaxation is prolonged, with a τ of 59 ± 14 ms in HFpEF against 35 ± 10 ms in controls <cite data-ref="zile2004"></cite>, and the EDPVR is steep, so a given filling volume requires a higher diastolic pressure and the ventricle depends more on atrial contraction to complete filling. In the model, loss of atrial contraction reduces stroke volume by 16% in this scenario and by 11% in the normal heart; setting the atrial contraction slider to zero in the simulator reproduces this loss. The baroreflex set point is moved to the prevailing pressure, a simplification of the partial resetting seen in chronic hypertension <cite data-ref="lohmeier2015"></cite>.',
-      see: 'Because EF is normal on echo, the estimate (1 − EF)/EF, and the Ea/Ees derived from it, are also normal, whereas the absolute Ees, Ea, and filling pressure are increased. Right heart catheterization shows an increased wedge pressure (see table). Ventricular–arterial stiffening amplifies the rise in blood pressure during stress <cite data-ref="kawaguchi2003"></cite>.',
+      see: 'Because EF is normal on echo, the estimate (1 − EF)/EF, and the Ea/Ees derived from it, are also normal, whereas the absolute Ees, Ea, and filling pressure are increased. Right heart catheterization shows an increased PAWP (see table). Ventricular–arterial stiffening amplifies the rise in blood pressure during stress <cite data-ref="kawaguchi2003"></cite>.',
       manage: 'With nitroprusside, blood pressure fell 2.6-fold more in HFpEF than in HFrEF, patients with HFpEF were four times more likely to have a fall in stroke volume, and the increases in stroke volume and cardiac output were about 60% smaller <cite data-ref="schwartzenberg2012"></cite>. Applying the arterial vasodilator to this scenario and then to HFrEF reproduces the direction of these differences, with the baroreflex buffering both. MAP falls by 10 mmHg here and by 6 mmHg in HFrEF, and stroke volume rises by 7% here and by 15% in HFrEF.',
       note: 'A normal ratio does not exclude disease. With the baroreflex switched off, the same vasodilator lowers MAP by 30 mmHg in this scenario.',
     },
@@ -29,7 +29,7 @@ export const PRESETS = [
     refs: ['borlaug2008', 'burkhoff1986'],
     detail: {
       mech: 'A reduced Ees and a rightward-shifted ESPVR (V₀ of 40 mL in this scenario) leave a large end-systolic volume, and neurohormonal activation increases Ea. Ea/Ees is therefore well above the normal range, EF is low, and SW/PVA is reduced <cite data-ref="burkhoff1986"></cite>. Because the ESPVR is flat, a small change in Ea moves the end-systolic point a long way along the volume axis, which the afterload handle on the dashed line of the simulator shows directly. The failing myocardium also loses the positive force–frequency relation <cite data-ref="hasenfuss1994"></cite>, so Ees does not rise with heart rate in this scenario.',
-      see: 'EF is low on echo. The estimate (1 − EF)/EF equals ESV/SV, whereas the true ratio is (ESV − V₀)/SV, so with a V₀ of 40 mL the estimate overstates the degree of uncoupling (see table). Right heart catheterization shows a low cardiac output and an increased wedge pressure.',
+      see: 'EF is low on echo. The estimate (1 − EF)/EF equals ESV/SV, whereas the true ratio is (ESV − V₀)/SV, so with a V₀ of 40 mL the estimate overstates the degree of uncoupling (see table). Right heart catheterization shows a low cardiac output and an increased PAWP.',
       manage: 'In acute heart failure, vasodilators reduce Ea and inotropes increase Ees <cite data-ref="guarracino2013"></cite>. Vasodilation increased stroke volume and cardiac output more in HFrEF than in HFpEF <cite data-ref="schwartzenberg2012"></cite>. In the simulator, the inotrope raises cardiac output from 4.4 to 5.6 L/min and lowers Ea/Ees from 2.74 to 1.83, whereas removing 150 mL of volume lowers LAP from 13.4 to 10.8 mmHg at the cost of 6% of stroke volume.',
       note: 'Therapy guided by coupling has not been tested in outcome trials <cite data-ref="guarracino2013"></cite>.',
     },
@@ -65,7 +65,7 @@ export const PRESETS = [
     refs: ['sunagawa1983', 'chirinos2014'],
     detail: {
       mech: 'An acute rise in SVR and arterial stiffness increases Ea without changing the intrinsic Ees. The end-systolic point moves up the ESPVR, so end-systolic volume increases and stroke volume falls. The baroreflex, which has not reset to an acute rise, slows the heart and lowers Ees and venous tone, and MAP settles at 109 mmHg. Dragging the afterload handle on the dashed line of the simulator reproduces the same movement continuously.',
-      see: 'Echo shows a fall in stroke volume and EF and an increase in Ea, estimated as 0.9 × SBP/SV. Blood pressure is high, and the wedge pressure rises with the end-systolic and end-diastolic volumes.',
+      see: 'Echo shows a fall in stroke volume and EF and an increase in Ea, estimated as 0.9 × SBP/SV. Blood pressure is high, and the PAWP rises with the end-systolic and end-diastolic volumes.',
       manage: 'In acute heart failure, vasodilators reduce Ea, and rapid reduction of an elevated blood pressure restores Ea and reverses the myocardial dysfunction <cite data-ref="guarracino2013"></cite>. When Ees is low, the same relative increase in afterload produces a larger fall in stroke volume, about 26% in the HFrEF scenario compared with 16% in the normal heart. In this scenario, the arterial vasodilator returns stroke volume from 67 to 75 mL and MAP from 109 to 101 mmHg.',
       note: '',
     },
@@ -162,7 +162,7 @@ export const PRESETS = [
     refs: ['zile2004'],
     detail: {
       mech: 'Isovolumic pressure decline takes about three to four time constants to complete. With a τ of 59 ± 14 ms in HFpEF, compared with 35 ± 10 ms in controls <cite data-ref="zile2004"></cite>, the ventricle needs about 200 ms to relax, which a resting cycle provides but a fast one does not. The residual activation raises diastolic pressure throughout filling, so less volume enters the ventricle at a higher pressure. At 70/min the same change in τ alters LAP by less than 1 mmHg; at 102/min it raises LAP by 3 mmHg and lowers stroke volume by 12 mL.',
-      see: 'Echo shows a small LV cavity, a high E/e′ pattern, and fused E and A waves at the fast rate. Right heart catheterization shows a raised wedge pressure that rises further with the heart rate.',
+      see: 'Echo shows a small LV cavity, a high E/e′ pattern, and fused E and A waves at the fast rate. Right heart catheterization shows a raised PAWP that rises further with the heart rate.',
       manage: 'Slowing the heart rate lengthens diastole and allows relaxation to complete. In the simulator, lowering the intrinsic heart rate back to 70/min returns stroke volume to 72 mL.',
       note: 'The model represents slow relaxation as a longer activation decay and does not include calcium handling or the effect of ischemia on relaxation.',
     },
@@ -198,7 +198,7 @@ export const PRESETS = [
     refs: ['spodick2003'],
     detail: {
       mech: 'The pericardium encloses all four chambers, and its pressure–volume relation is flat until its reserve volume is used and then rises steeply. Fluid occupies that reserve, so the pressure outside the heart rises and adds to the pressure inside every chamber. Filling requires a venous pressure above the pericardial pressure, and the chambers fill only to the volume at which their pressures equal it, which equalizes the diastolic pressures <cite data-ref="spodick2003"></cite>.',
-      see: 'Echo shows the effusion, small ventricles, and diastolic collapse of the right-sided chambers. Right heart catheterization shows equalization of RAP, RV diastolic pressure, and wedge pressure <cite data-ref="spodick2003"></cite>. Pulsus paradoxus depends on breathing, which the model does not include.',
+      see: 'Echo shows the effusion, small ventricles, and diastolic collapse of the right-sided chambers. Right heart catheterization shows equalization of RAP, RV diastolic pressure, and PAWP <cite data-ref="spodick2003"></cite>. Pulsus paradoxus depends on breathing, which the model does not include.',
       manage: 'Drainage removes the constraint. In the simulator, the pericardial fluid slider shows the steep part of the relation: 100 mL raises pericardial pressure to 3 mmHg with a cardiac output of 4.9 L/min, and 230 mL raises it to 9 mmHg with a cardiac output of 3.1 L/min. A 150-mL fluid bolus raises RAP to 13 mmHg and cardiac output by only 3%.',
       note: 'The model has no breathing, so it cannot show the respiratory variation of ventricular filling that underlies pulsus paradoxus.',
     },
