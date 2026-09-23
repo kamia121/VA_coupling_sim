@@ -195,7 +195,7 @@ function trOut() {
     ['Catheter RAP (model)', `${R.hemo.RAP.toFixed(0)} mmHg`],
   ]) + (st.ov.tr ? (() => {
     const i = R.rec.Prv.indexOf(Math.max(...R.rec.Prv)), grad = R.rec.Prv[i] - R.rec.Psv[i], v = Math.sqrt(grad / 4);
-    return `<p class="status">At peak systole: RV ${R.rec.Prv[i].toFixed(0)} − RA ${R.rec.Psv[i].toFixed(0)} = ${grad.toFixed(0)} mmHg = 4 × ${v.toFixed(2)}² (the Doppler peak).</p>`;
+    return `<p class="status">At peak systole, the RV–RA pressure difference is ${R.rec.Prv[i].toFixed(0)} − ${R.rec.Psv[i].toFixed(0)} = ${grad.toFixed(0)} mmHg, which equals 4 × ${v.toFixed(2)}², where ${v.toFixed(2)} m/s is the Doppler peak velocity.</p>`;
   })() : '');
   tapOut();
 }
@@ -358,7 +358,7 @@ function cplOut() {
     [`EF ${src(false)} (biplane in practice)`, `${(ef * 100).toFixed(0)}%`],
     ['Ea/Ees ≈ (1 − EF)/EF', ratio.toFixed(2), ratio > 1.36],
     ['Implied Ees = Ea ÷ ratio', `${ees.toFixed(2)} mmHg/mL`],
-  ]) + `<p class="truth">Catheter truth: Ea ${R.lv.Ea.toFixed(2)}, Ees ${R.lv.Ees.toFixed(2)} mmHg/mL, Ea/Ees <b>${R.lv.EaEes.toFixed(2)}</b> · normal 1.43, 2.30, 0.62</p>`;
+  ]) + `<p class="truth">The catheter values are an Ea of ${R.lv.Ea.toFixed(2)} and an Ees of ${R.lv.Ees.toFixed(2)} mmHg/mL, for an Ea/Ees of <b>${R.lv.EaEes.toFixed(2)}</b>. The normal values are 1.43, 2.30, and 0.62.</p>`;
   const tapse = st.tapseEcho ?? TAPSE_K * R.rv.SV, pasp = st.paspEcho ?? R.hemo.PASP, tp = tapse / pasp;
   const svEsv = st.svEsvEcho ?? R.rv.svEsv;
   $('#cpl-rv').innerHTML = row([
@@ -366,7 +366,7 @@ function cplOut() {
     [`PASP ${src(st.paspEcho != null)}`, `${pasp.toFixed(0)} mmHg`],
     ['TAPSE/PASP', `${tp.toFixed(2)} mm/mmHg`, tp < 0.31],
     [`SV/ESV ${src(st.svEsvEcho != null)}`, svEsv.toFixed(2), svEsv <= 0.515],
-  ]) + `<p class="truth">Catheter truth: RV Ees/Ea <b>${R.rv.EesEa.toFixed(2)}</b>${R.rv.EesEa < 0.805 ? ' (below 0.805)' : ''} · normal 2.00</p>`;
+  ]) + `<p class="truth">The catheter value of RV Ees/Ea is <b>${R.rv.EesEa.toFixed(2)}</b>${R.rv.EesEa < 0.805 ? ', which is below 0.805' : ''}. The normal value is 2.00.</p>`;
 }
 
 export function initEcho() {
@@ -434,16 +434,16 @@ export function initEcho() {
 // Static screens export as one frame; the RV station exports one beat at quarter speed.
 const EXPORTS = {
   'scr-lvot': { draw: () => drawLVOT(), name: 'lvot', title: 'LVOT pulsed-wave Doppler',
-    caption: () => `Pulsed-wave Doppler in the LVOT, two beats, generated from the model. VTI × LVOT area = stroke volume; Ea ≈ 0.9 × SBP / SV.${st.ov.lvot ? ' Overlay: LV (solid), aortic (dashed) and LA (dotted) pressure, right-hand scale: flow runs only while LV pressure exceeds aortic pressure.' : ''}`,
+    caption: () => `Pulsed-wave Doppler in the LVOT over two beats, generated from the model. The VTI multiplied by the LVOT area gives the stroke volume, and Ea is approximately 0.9 × SBP / SV.${st.ov.lvot ? ' The overlay shows LV (solid), aortic (dashed), and LA (dotted) pressure on the right-hand scale. Flow occurs only while LV pressure exceeds aortic pressure.' : ''}`,
     notes: () => `Model SV ${R.lv.SV.toFixed(0)} mL, BP ${R.hemo.SBP.toFixed(0)}/${R.hemo.DBP.toFixed(0)} mmHg, model Ea ${R.lv.Ea.toFixed(2)} mmHg/mL.` },
   'scr-tr': { draw: () => drawTR(), name: 'tr', title: 'TR continuous-wave Doppler',
-    caption: () => `Continuous-wave Doppler of the tricuspid regurgitant jet, generated from the model. Peak velocity v gives the RV–RA gradient 4v²; PASP ≈ 4v² + RAP.${st.ov.tr ? ' Overlay: RV (solid), PA (dashed) and RA (dotted) pressure: the jet velocity follows the RV–RA difference.' : ''}`,
+    caption: () => `Continuous-wave Doppler of the tricuspid regurgitant jet, generated from the model. The peak velocity v gives the RV–RA gradient as 4v², and PASP is approximately 4v² + RAP.${st.ov.tr ? ' The overlay shows RV (solid), PA (dashed), and RA (dotted) pressure. The jet velocity follows the RV–RA pressure difference.' : ''}`,
     notes: () => `Catheter (model) PASP ${R.hemo.PASP.toFixed(0)} mmHg, RAP ${R.hemo.RAP.toFixed(0)} mmHg.` },
   'scr-tap': { draw: () => drawTAPSE(), name: 'tapse', title: 'TAPSE M-mode',
-    caption: () => `M-mode through the lateral tricuspid annulus, generated from the model. TAPSE = annular excursion from end-diastole to peak systole; TAPSE/PASP is a coupling surrogate.${st.ov.tap ? ' Overlay: RV volume: the annulus moves toward the apex as the RV empties.' : ''}`,
+    caption: () => `M-mode through the lateral tricuspid annulus, generated from the model. TAPSE is the annular excursion from end-diastole to peak systole, and TAPSE/PASP is a surrogate for coupling.${st.ov.tap ? ' The overlay shows RV volume. The annulus moves toward the apex as the RV empties.' : ''}`,
     notes: () => `Model TAPSE ${(R.rv.SV * TAPSE_K).toFixed(1)} mm, PASP ${R.hemo.PASP.toFixed(0)} mmHg, RV Ees/Ea ${R.rv.EesEa.toFixed(2)}.` },
   'scr-rv': { draw: () => drawRV(), name: 'rv', title: 'RV volumes through one beat', animated: true,
-    caption: () => 'RV in an apical four-chamber view, one beat at quarter speed, generated from the model. Right: the RV pressure–volume loop; the white dot is the current frame. SV/ESV approximates Ees/Ea if V₀ ≈ 0.',
+    caption: () => 'The RV in an apical four-chamber view over one beat at quarter speed, generated from the model. The RV pressure–volume loop is on the right, and the white dot marks the current frame. SV/ESV approximates Ees/Ea when V₀ is close to zero.',
     notes: () => `RV EDV ${R.rv.EDV.toFixed(0)} mL, ESV ${R.rv.ESV.toFixed(0)} mL, SV/ESV ${R.rv.svEsv.toFixed(2)}, true Ees/Ea ${R.rv.EesEa.toFixed(2)} (V₀ = ${R.params.rvV0} mL).` },
 };
 function echoSpec(id) {

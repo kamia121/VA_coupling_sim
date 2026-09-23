@@ -167,7 +167,7 @@ export function addExport(host, getSpec, { still = false } = {}) {
       <button type="button" class="pb-btn" data-f="pptx">PowerPoint slide (.pptx)</button>
       <button type="button" class="pb-btn" data-f="gif">Animated GIF</button>
       <button type="button" class="pb-btn" data-f="mp4" hidden>MP4 video</button>
-      <p class="export-note">${still ? 'This screen as it is now, including your measurements.' : 'One cycle of the current view, rendered from the model; it loops. The slide and the GIF play in PowerPoint without a click.'}</p>
+      <p class="export-note">${still ? 'Exports this screen as it is now, including your measurements.' : 'Exports one cycle of the current view, rendered from the model, as a repeating loop. The slide and the GIF play in PowerPoint without a click.'}</p>
       <p class="export-status" aria-live="polite"></p>
     </div>`;
   host.append(box);

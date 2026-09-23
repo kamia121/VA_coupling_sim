@@ -196,7 +196,7 @@ function loopExportSpec() {
   return {
     file: 'va-coupling-pv-loop-normal-lv',
     title: 'The left ventricular pressure–volume loop',
-    caption: 'Simulated normal LV, one beat at quarter speed. Solid line: ESPVR, slope Ees. Dashed: Ea line, slope −Ea. Dotted: EDPVR. The loop runs counter-clockwise; width = stroke volume, area = stroke work.',
+    caption: 'Simulated normal left ventricle over one beat at quarter speed. The solid line is the ESPVR (slope Ees), the dashed line is the Ea line (slope −Ea), and the dotted line is the EDPVR. The loop runs counter-clockwise, its width is the stroke volume, and its area is the stroke work.',
     notes: `EDV ${loopFig.r.lv.EDV.toFixed(0)} mL, ESV ${loopFig.r.lv.ESV.toFixed(0)} mL, EF ${(loopFig.r.lv.EF * 100).toFixed(0)}%, Ees ${loopFig.r.lv.Ees.toFixed(2)} and Ea ${loopFig.r.lv.Ea.toFixed(2)} mmHg/mL (Ea/Ees ${loopFig.r.lv.EaEes.toFixed(2)}).`,
     async prepare() {
       exporting = true;
@@ -233,7 +233,7 @@ export function initLearnFigures() {
 
 const ratioLbl = (s) => (s === 'lv' ? 'Ea/Ees' : 'Ees/Ea');
 
-// Scenario thumbnails: normal loop (grey) against the scenario loop (green).
+// Scenario thumbnails: normal loop (gray) against the scenario loop (green).
 // Details panel: mechanism, bedside findings, management evidence, caveat, then model values vs normal.
 function scenarioDetail(p, r, ref, side) {
   const d = p.detail || {};
@@ -254,7 +254,7 @@ function scenarioDetail(p, r, ref, side) {
   const order = side === 'rv' ? [3, 4, 5, 7, 8, 9, 10, 0, 1, 6] : [0, 1, 2, 6, 8, 9, 3, 4, 7];
   const table = `<table class="data scen-table"><thead><tr><th>Model</th><th class="num">This</th><th class="num">Normal</th></tr></thead><tbody>${
     order.map((i) => `<tr><td>${rows[i][0]}</td><td class="num">${rows[i][1](r)}</td><td class="num">${rows[i][1](ref)}</td></tr>`).join('')}</tbody></table>`;
-  return `${d.mech ? '' : `<p>${p.text}</p>`}${sec('Mechanism', d.mech)}${sec('What echo and the catheter show', d.see)}${sec('Management: what the evidence says', d.manage)}${sec('Caveat', d.note)}${table}`;
+  return `${d.mech ? '' : `<p>${p.text}</p>`}${sec('Mechanism', d.mech)}${sec('What echo and the catheter show', d.see)}${sec('What the evidence says about management', d.manage)}${sec('Caveat', d.note)}${table}`;
 }
 
 export function initScenarioCards() {

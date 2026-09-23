@@ -46,7 +46,7 @@ function makeActivation(T) {
     const g1 = Math.pow(t / tau1, m1), g2 = Math.pow(t / tau2, m2);
     return (g1 / (1 + g1)) * (1 / (1 + g2));
   };
-  // normalise so that max e(t) = 1 and record the time of peak (= end-systole)
+  // normalize so that max e(t) = 1 and record the time of peak (= end-systole)
   let peak = 0, tPeak = 0;
   for (let t = 0; t <= T; t += T / 4000) {
     const v = raw(t);

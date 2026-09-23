@@ -32,7 +32,7 @@ export function initPacCalc() {
     const papi = pp / Math.max(v['p-rap'], 1);
     const ea = mpap / sv;
     let cls;
-    if (mpap <= 20) cls = 'mPAP ≤ 20 mmHg: does not meet the haemodynamic definition of PH';
+    if (mpap <= 20) cls = 'An mPAP of 20 mmHg or less does not meet the hemodynamic definition of PH';
     else if (v['p-pawp'] <= 15) cls = pvr > 2 ? 'Pre-capillary PH profile (PAWP ≤ 15, PVR > 2 WU)' : 'mPAP > 20 with PAWP ≤ 15 and PVR ≤ 2 WU: unclassified PH profile';
     else cls = pvr > 2 ? 'Combined post- and pre-capillary PH profile (PAWP > 15, PVR > 2 WU)' : 'Isolated post-capillary PH profile (PAWP > 15, PVR ≤ 2 WU)';
     const bad = pp <= 0 || v['p-padp'] >= v['p-pasp'];
@@ -46,6 +46,6 @@ export function initPacCalc() {
       row('RC time', `${rc.toFixed(2)} s`),
       row('PAPi', `${papi.toFixed(1)}`, '(PASP − PADP)/RAP', papi <= 0.9),
       row('PA elastance ≈ mPAP/SV', `${ea.toFixed(2)} mmHg/mL`),
-    ]) + `<p><strong>${cls}.</strong></p><p class="status">Definitions from the 2022 ESC/ERS guidelines. A haemodynamic profile is not a diagnosis.</p>`;
+    ]) + `<p><strong>${cls}.</strong></p><p class="status">The definitions are those of the 2022 ESC/ERS guidelines. A hemodynamic profile is not a diagnosis.</p>`;
   });
 }

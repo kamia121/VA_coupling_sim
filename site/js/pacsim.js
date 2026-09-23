@@ -167,7 +167,7 @@ function draw(tEnd, target) {
     g.strokeStyle = '#A9BCF2'; g.lineWidth = 1.6; g.setLineDash([5, 4]); g.beginPath();
     laTrue.forEach((p, j) => { const x = x0 + (j / N) * pw; j ? g.lineTo(x, Y(p)) : g.moveTo(x, Y(p)); }); g.stroke(); g.setLineDash([]);
   }
-  g.strokeStyle = '#E8D35F'; g.lineWidth = 2; g.beginPath();                 // monitor PA/RA trace colour
+  g.strokeStyle = '#E8D35F'; g.lineWidth = 2; g.beginPath();                 // monitor PA/RA trace color
   out.forEach((p, j) => { const x = x0 + (j / out.length) * pw; j ? g.lineTo(x, Y(p)) : g.moveTo(x, Y(p)); }); g.stroke();
   if (laTrue) {
     g.font = '12px system-ui'; g.textAlign = 'right';
@@ -191,7 +191,7 @@ function draw(tEnd, target) {
   if (laTrue) read.la = `${stats(laTrue.slice(-beat.n * 2)).mean.toFixed(0)} mean`;
   if (st.pos === 'wedge') read.ed = endDiastolicWedge(out, s0);
   if (target) return read;
-  $('#pac-read').innerHTML = (read.ed ? `<div class="tile"><div class="tile-v">${read.ed.value.toFixed(0)}</div><div class="tile-k">Wedge at end-diastole: ${read.ed.how} · model LVEDP ${R.lv.EDP.toFixed(0)}</div></div>` : '')
+  $('#pac-read').innerHTML = (read.ed ? `<div class="tile"><div class="tile-v">${read.ed.value.toFixed(0)}</div><div class="tile-k">Wedge at end-diastole (${read.ed.how}). Model LVEDP ${R.lv.EDP.toFixed(0)}</div></div>` : '')
     + (laTrue ? `<div class="tile la"><div class="tile-v">${read.la}</div><div class="tile-k">True LA pressure (model), last 2 beats</div></div>` : '') + `<div class="tile"><div class="tile-v">${report(out, st.pos, ed)}</div><div class="tile-k">Monitor reads (${label}, whole ${WIN}-s screen)</div></div>
     <div class="tile"><div class="tile-v">${report(lastBeats, st.pos, ed, off)}</div><div class="tile-k">Last 2 beats on screen</div></div>
     <div class="tile"><div class="tile-v">${report(trueBeats, st.pos, ed, off)}</div><div class="tile-k">True tip pressure, no artifact (model)</div></div>`;
@@ -264,7 +264,7 @@ function pacSpec() {
   return {
     file: `va-coupling-pac-${st.pos}-${st.preset}${st.atr === 'sinus' ? '' : '-' + st.atr}${faults.length ? '-artifact' : ''}`,
     title: `PA catheter, ${label} tracing · ${patient}`,
-    caption: `Pressure at the catheter tip (${label}), generated from the model beat${rhythm ? `, ${rhythm}` : ''}; ${fault}.${st.pos === 'ra' || st.pos === 'wedge' ? ' Atrial a, c and x waves come from a template timed to the model beat (illustrative).' : ''}${st.pos === 'wedge' && st.showLA ? ' Dashed: true LA pressure.' : ''}${faults.length ? ' Grey: true tip pressure without the artifact.' : ''}${st.resp !== 'none' ? ' Shaded: inspiration; read at end-expiration (marked).' : ''}`,
+    caption: `Pressure at the catheter tip in the ${label} position, generated from the model beat${rhythm ? ` with ${rhythm}` : ''} (${fault}).${st.pos === 'ra' || st.pos === 'wedge' ? ' The atrial a, c, and x waves come from an illustrative template timed to the model beat.' : ''}${st.pos === 'wedge' && st.showLA ? ' The dashed line is the true LA pressure.' : ''}${faults.length ? ' The gray line is the true tip pressure without the artifact.' : ''}${st.resp !== 'none' ? ' The shaded bands mark inspiration, and pressures are read at end-expiration, which is marked.' : ''}`,
     notes: '',
     async prepare() {
       const W = 1100, h = Math.round(W * 0.42), top = 56, band = 44, H = even(top + h + band);

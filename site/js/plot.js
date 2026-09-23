@@ -1,4 +1,4 @@
-// Minimal SVG line plotting. Colours are CSS variables so plots follow the theme.
+// Minimal SVG line plotting. Colors are CSS variables so plots follow the theme.
 const NS = 'http://www.w3.org/2000/svg';
 
 export function niceTicks(lo, hi, n = 5) {

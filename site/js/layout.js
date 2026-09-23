@@ -57,8 +57,8 @@ function footer() {
   f.className = 'site-footer';
   f.innerHTML = `<div class="inner">
     Educational model for teaching only. It does not use patient data and does not make diagnostic or treatment recommendations.
-    Simulated values come from a lumped time-varying elastance model; see <a href="learn.html#model">model assumptions</a>
-    and <a href="references.html">references</a>. Colours follow the Medical College of Wisconsin palette; this site is not an official MCW publication.
+    Simulated values come from a lumped time-varying elastance model, described under <a href="learn.html#model">model assumptions</a>, with sources listed under
+    <a href="references.html">references</a>. The colors follow the Medical College of Wisconsin palette, but this site is not an official MCW publication.
   </div>`;
   document.body.append(f);
 }
