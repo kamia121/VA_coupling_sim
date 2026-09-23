@@ -82,8 +82,19 @@ export function drawPlot(svg, spec) {
     const t = el('text', { x: sx(a.x) + (a.dx ?? 0), y: sy(a.y) + (a.dy ?? 0), 'text-anchor': a.anchor ?? 'start', style: `fill:${a.color ?? 'var(--text-muted)'}`, 'font-size': 12 }, svg);
     t.textContent = a.text;
   }
-  return { sx, sy };
+  const ix = (px) => spec.x.min + ((px - m.l) / pw) * (spec.x.max - spec.x.min);
+  const iy = (py) => spec.y.min + ((m.t + ph - py) / ph) * (spec.y.max - spec.y.min);
+  return { sx, sy, ix, iy, svg };
 }
+
+// Pointer event → SVG user coordinates (accounts for CSS scaling).
+export function svgPoint(svg, ev) {
+  const pt = svg.createSVGPoint();
+  pt.x = ev.clientX; pt.y = ev.clientY;
+  return pt.matrixTransform(svg.getScreenCTM().inverse());
+}
+
+export function svgEl(name, attrs, parent) { return el(name, attrs, parent); }
 
 // Small legend swatch for a line style.
 export function swatch(color, dash, width = 2) {

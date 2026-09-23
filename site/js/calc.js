@@ -2,13 +2,12 @@
 const $ = (id) => document.getElementById(id);
 
 function bind(ids, units, digits, update) {
-  const read = () => Object.fromEntries(ids.map((id) => [id, parseFloat($(id).value)]));
+  const read = () => Object.fromEntries(ids.map((id) => [id, parseFloat($(id).value) || 0]));
   const paint = () => {
     const v = read();
     ids.forEach((id, i) => {
-      const txt = `${v[id].toFixed(digits[i])} ${units[i]}`;
+      const txt = units[i];
       document.querySelector(`[data-for="${id}"]`).textContent = txt;
-      $(id).setAttribute('aria-valuetext', txt);
     });
     update(v);
   };
@@ -19,37 +18,6 @@ function bind(ids, units, digits, update) {
 const row = (k, v, note = '', flag = false) =>
   `<tr class="${flag ? 'flag' : ''}"><td>${k}</td><td class="num cur">${v}</td><td class="status">${note}</td></tr>`;
 const table = (rows) => `<table class="data metrics"><tbody>${rows.join('')}</tbody></table>`;
-
-export function initEchoCalcs() {
-  bind(['lv-sbp', 'lv-d', 'lv-vti', 'lv-ef', 'lv-hr'], ['mmHg', 'mm', 'cm', '%', '/min'], [0, 1, 1, 0, 0], (v) => {
-    const csa = Math.PI * Math.pow(v['lv-d'] / 20, 2);          // cm²
-    const sv = csa * v['lv-vti'];                               // mL
-    const ea = 0.9 * v['lv-sbp'] / sv;
-    const ef = v['lv-ef'] / 100;
-    const ratio = (1 - ef) / ef;
-    const ees = ea / ratio;
-    $('lv-out').innerHTML = table([
-      row('LVOT area', `${csa.toFixed(2)} cm²`, 'π(D/2)²'),
-      row('Stroke volume', `${sv.toFixed(0)} mL`, 'area × VTI', sv < 50),
-      row('Cardiac output', `${(sv * v['lv-hr'] / 1000).toFixed(1)} L/min`),
-      row('Ea ≈ 0.9·SBP/SV', `${ea.toFixed(2)} mmHg/mL`),
-      row('Ea/Ees ≈ (1 − EF)/EF', `${ratio.toFixed(2)}`, 'assumes V₀ ≈ 0', ratio > 1.3),
-      row('Implied Ees', `${ees.toFixed(2)} mmHg/mL`, 'Ea ÷ ratio; same assumption'),
-    ]) + '<p class="status">Ees here is implied by the EF-based ratio, not measured. It overestimates Ees when V₀ is large (dilated ventricle).</p>';
-  });
-
-  bind(['rv-tapse', 'rv-trv', 'rv-rap'], ['mm', 'm/s', 'mmHg'], [1, 2, 0], (v) => {
-    const pasp = 4 * v['rv-trv'] ** 2 + v['rv-rap'];
-    const r = v['rv-tapse'] / pasp;
-    let band = r > 0.32 ? 'above 0.32 (lower-risk tertile)' : r >= 0.19 ? '0.19–0.32 (intermediate tertile)' : 'below 0.19 (higher-risk tertile)';
-    $('rv-out').innerHTML = table([
-      row('PASP = 4v² + RAP', `${pasp.toFixed(0)} mmHg`),
-      row('TAPSE/PASP', `${r.toFixed(2)} mm/mmHg`, band, r < 0.19),
-      row('Below 0.31?', r < 0.31 ? 'yes' : 'no', 'Tello 2019: predicted Ees/Ea < 0.805 in PAH', r < 0.31),
-      row('Below 0.36?', r < 0.36 ? 'yes' : 'no', 'Guazzi 2013: higher risk in heart failure', r < 0.36),
-    ]) + '<p class="status">The thresholds come from different populations (PAH vs heart failure) and are not interchangeable.</p>';
-  });
-}
 
 export function initPacCalc() {
   bind(['p-rap', 'p-pasp', 'p-padp', 'p-pawp', 'p-co', 'p-hr', 'p-mpap'], ['mmHg', 'mmHg', 'mmHg', 'mmHg', 'L/min', '/min', 'mmHg'], [0, 0, 0, 0, 1, 0, 0], (v) => {

@@ -1,6 +1,6 @@
 // Engine tests. Run with: node tests/engine.test.mjs  (no dependencies)
 import { simulate, NORMAL, WU } from '../site/js/engine.js';
-import { PRESETS } from '../site/js/presets.js';
+import { PRESETS, INTERVENTIONS } from '../site/js/presets.js';
 
 let failed = 0;
 function check(name, cond, detail = '') {
@@ -69,6 +69,28 @@ check('PAH compensated: RV Ees/Ea 0.9–1.5, mPAP > 20', within(byId.pahComp.rv.
 check('PAH decompensated: RV Ees/Ea < 0.805, RAP > 10, SV/ESV < 0.515', byId.pahDecomp.rv.EesEa < 0.805 && byId.pahDecomp.hemo.RAP > 10 && byId.pahDecomp.rv.svEsv < 0.515);
 check('Acute PE: RV Ees/Ea < 1, CO < normal', byId.acutePE.rv.EesEa < 1 && byId.acutePE.hemo.CO < n.hemo.CO);
 check('CpcPH: LAP > 15, PVR > 2 WU, mPAP > 20', byId.cpcph.hemo.LAP > 15 && byId.cpcph.hemo.PVR_WU > 2 && byId.cpcph.hemo.mPAP > 20);
+
+// 7. Echo lab quantities derived from the model beat
+for (const id of ['normal', 'pahDecomp', 'hfref']) {
+  const r = byId[id];
+  const A = Math.PI * 1.1 ** 2;                                   // LVOT 2.2 cm
+  const vti = r.rec.Qao.reduce((a, q) => a + q * r.dt, 0) / A;
+  check(`${id}: LVOT area × VTI = SV (±3%)`, Math.abs(A * vti / r.lv.SV - 1) < 0.03, `${(A * vti).toFixed(1)} vs ${r.lv.SV.toFixed(1)}`);
+  const v = Math.max(...r.rec.Prv.map((p, i) => (p > r.rec.Psv[i] ? Math.sqrt((p - r.rec.Psv[i]) / 4) : 0)));
+  const i = r.rec.Prv.indexOf(Math.max(...r.rec.Prv));
+  const est = 4 * v * v + r.rec.Psv[i];
+  check(`${id}: 4v² + RAP = PASP (±3 mmHg)`, Math.abs(est - r.hemo.PASP) < 3, `${est.toFixed(1)} vs ${r.hemo.PASP.toFixed(1)}`);
+}
+
+// 8. Interventions move the expected variables
+const I = Object.fromEntries(INTERVENTIONS.map((x) => [x.id, simulate({ ...NORMAL, ...x.apply(NORMAL) })]));
+check('fluid → ↑EDV, ↑LAP', I.fluid.lv.EDV > n.lv.EDV && I.fluid.hemo.LAP > n.hemo.LAP);
+check('remove volume → ↓EDV', I.diurese.lv.EDV < n.lv.EDV);
+check('norepinephrine → ↑Ea, ↑MAP', I.norepi.lv.Ea > n.lv.Ea && I.norepi.hemo.MAP > n.hemo.MAP);
+check('arterial vasodilator → ↓Ea, ↑SV', I.dilate.lv.Ea < n.lv.Ea && I.dilate.lv.SV > n.lv.SV);
+check('inotrope → ↓ESV, ↓Ea/Ees', I.dobut.lv.ESV < n.lv.ESV && I.dobut.lv.EaEes < n.lv.EaEes);
+const pah = simulate(byId.pahDecomp.params), pahV = simulate({ ...pah.params, ...INTERVENTIONS.find((x) => x.id === 'pvd').apply(pah.params) });
+check('pulmonary vasodilator in PAH → ↑RV Ees/Ea, ↑CO', pahV.rv.EesEa > pah.rv.EesEa && pahV.hemo.CO > pah.hemo.CO);
 
 console.log(failed ? `\n${failed} test(s) failed` : '\nall tests passed');
 process.exit(failed ? 1 : 0);

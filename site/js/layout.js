@@ -6,7 +6,7 @@ const PAGES = [
   ['learn.html', 'Concepts'],
   ['simulator.html', 'Simulator'],
   ['scenarios.html', 'Scenarios'],
-  ['echo.html', 'Echocardiography'],
+  ['echo.html', 'Echo lab'],
   ['pac.html', 'PA catheter'],
   ['references.html', 'References'],
 ];
