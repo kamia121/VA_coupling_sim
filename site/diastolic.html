@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script>try{var t=localStorage.getItem('vac-theme');if(t==='light'||t==='dark')document.documentElement.setAttribute('data-theme',t)}catch(e){}</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Code+Pro:wght@400;500&family=Source+Sans+3:ital,wght@0,400;0,600;1,400&family=Source+Serif+4:wght@600&display=swap">
+<link rel="stylesheet" href="css/tokens.css">
+<link rel="stylesheet" href="css/site.css">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='5' fill='%232F6E66'/%3E%3Cpath d='M8 24 V10 L24 8 V22 Z' fill='none' stroke='white' stroke-width='2.5' stroke-linejoin='round'/%3E%3C/svg%3E">
+<title>Diastolic Lab</title>
+<meta name="description" content="Grades 0 to IV of LV diastolic dysfunction on the circulation model: the Doppler echo of each grade, and a virtual cohort that shows how each grade tolerates fluid, diuresis, afterload and atrial fibrillation.">
+</head>
+<body>
+<main>
+  <div class="sim-head">
+    <h1>Diastolic lab</h1>
+    <div class="toolbar">
+      <span class="k">Grade</span>
+      <span class="seg speed" id="grades" role="group" aria-label="Grade of diastolic dysfunction"></span>
+    </div>
+  </div>
+  <div id="grade-text" class="prose preset-text"></div>
+  <p class="status">The same circulation model as the rest of the site, with slower relaxation, a stiffer LV, atrial remodeling and volume retention added grade by grade. The screens and numbers below are solved again every time a control moves. The grades are synthetic teaching cases, not patient data.</p>
+
+  <div class="sim2">
+    <div>
+      <div class="tiles" id="tiles" aria-live="polite"></div>
+      <section class="monitor" id="echo-panel">
+        <div class="mon-head"><h2>Doppler echocardiogram</h2><span class="status" id="live-status" aria-live="polite"></span></div>
+        <div class="dia-screens">
+          <canvas id="scr-mv" role="img" aria-label="Mitral inflow pulsed-wave Doppler with E and A waves"></canvas>
+          <canvas id="scr-tdi" role="img" aria-label="Lateral mitral annular tissue Doppler with s′, e′ and a′ waves"></canvas>
+          <canvas id="scr-pv" role="img" aria-label="Pulmonary venous pulsed-wave Doppler with S, D and atrial reversal waves"></canvas>
+        </div>
+        <p class="hint-line">The mitral and pulmonary venous velocities are the model's flows divided by an orifice area. The tissue Doppler is drawn from the model's timing, and its <b>e′</b> peak is scaled from the fitted relaxation constant τ (see <a href="#limits" style="color:inherit">limits</a>).</p>
+      </section>
+    </div>
+    <div class="side-col">
+      <section class="panel dia-controls">
+        <h2>Interventions</h2>
+        <div class="slider">
+          <div class="row"><label for="vol">Volume given (+) or removed (−)</label><span class="val" id="vol-v"></span></div>
+          <input type="range" id="vol" min="-2000" max="2000" step="250" value="0">
+        </div>
+        <div class="give-row" id="quick">
+          <button type="button" class="give" data-dv="500">IV fluid<small>+500 mL</small></button>
+          <button type="button" class="give" data-dv="-500">Diurese<small>−500 mL</small></button>
+        </div>
+        <div class="slider">
+          <div class="row"><label for="svr">Afterload</label><span class="val" id="svr-v"></span></div>
+          <input type="range" id="svr" min="0.7" max="1.75" step="0.05" value="1">
+          <div class="hint">Moving afterload opens the baroreflex, as in a hypertensive crisis.</div>
+        </div>
+        <label class="status"><input type="checkbox" id="surge"> Sympathetic surge: venoconstriction moves 200 mL into the stressed volume</label>
+        <p class="k" style="margin:10px 0 4px">Rhythm</p>
+        <div class="seg" id="rhythm" role="group" aria-label="Rhythm"><button type="button" data-v="sinus" aria-pressed="true">Sinus</button><button type="button" data-v="af" aria-pressed="false">Atrial fibrillation</button></div>
+        <div class="slider" id="af-row" hidden>
+          <div class="row"><label for="afrate">Mean ventricular rate</label><span class="val" id="af-v"></span></div>
+          <input type="range" id="afrate" min="70" max="150" step="10" value="110">
+        </div>
+        <button type="button" class="btn" id="reset">Back to the patient as found</button>
+      </section>
+      <section class="panel">
+        <h2>Echo measurements</h2>
+        <div id="echo-table"></div>
+        <p class="status">* Beyond the ASE/EACVI 2016 cutoff <cite data-ref="nagueh2016"></cite>, applied to the lateral e′ and lateral E/e′ because the model has one e′.</p>
+      </section>
+      <figure class="monitor fig">
+        <svg id="pv"></svg>
+        <figcaption>LV loop now (green), before the intervention (dashed navy) and in the normal heart (gray). The dotted curves are the passive EDPVR of this grade and of the normal heart.</figcaption>
+      </figure>
+    </div>
+  </div>
+
+  <article class="prose">
+    <h2 id="grades-h">The grades on echo</h2>
+    <div id="prose-grades">
+    <p>Diastolic dysfunction is graded by the pattern of LV filling, which is set by two things that change at different rates: how fast the LV relaxes and how high the LA pressure has to be to fill it <cite data-ref="appleton1988,nishimura1997"></cite>. In the normal heart of the model, most filling occurs early, driven by relaxation. E is 90 cm/s, A is 77 cm/s (E/A 1.17), the deceleration time is 226 ms, the lateral e′ is 11.8 cm/s and E/e′ is 7.6, with a mean LA pressure of 7 mmHg.</p>
+    <p>In grade I, relaxation is slow (fitted τ 68 ms against 36 ms), so the early gradient is small and the atrium does more of the work. E falls to 72 cm/s, A rises to 104 cm/s (E/A 0.69), IVRT lengthens from 92 to 173 ms and e′ falls to 6.4 cm/s. The LA pressure is still normal, at 8 mmHg. The E of this patient is above the 50 cm/s that the ASE/EACVI algorithm uses to call grade I without supporting criteria, and the algorithm reaches grade I here only because E/e′, TR velocity and LA volume are normal <cite data-ref="nagueh2016"></cite>.</p>
+    <p>In grade II, relaxation is still slow but the LA pressure has risen to 16 mmHg, which restores the early gradient, so E/A returns to 1.39 and looks normal. The clues are those that do not depend on the gradient: e′ stays low at 5.9 cm/s, so E/e′ rises to 14.0, and the LA has enlarged (LA volume index 38 mL/m²). When 1.5 L is removed, LA pressure falls to 7 mmHg and E/A falls to 0.76, the impaired-relaxation pattern that the higher pressure had masked <cite data-ref="appleton1988"></cite>.</p>
+    <p>In grade III, the LV is stiff and fills from a stiff, high-pressure LA. E/A is 2.26 and the deceleration time is 141 ms, because LV pressure rises steeply after a small volume enters. LA pressure is 21 mmHg. Removing 1.5 L lowers E/A to 1.45, so the pattern is reversible. In grade IV, E/A is 5.35, the deceleration time is 125 ms, the pulmonary vein S/D ratio is below 1 (0.93), the TR velocity is 3.13 m/s, mean PA pressure is 39 mmHg and LA pressure is 29 mmHg. After 1.5 L is removed, E/A is still 2.10, which makes this the fixed restrictive pattern that the older four-grade scheme called grade IV <cite data-ref="nishimura1997"></cite>. The 2016 algorithm has no grade IV and grades both patients as grade III <cite data-ref="nagueh2016"></cite>.</p>
+    <p>The virtual cohort shows how well the algorithm separates the grades once patients vary. As found, it grades 32 of the 40 grade II patients as grade II and 8 as grade I. It grades 22 of the 40 grade III patients as grade III and 17 as grade II, because many of them sit near the E/A cutoff of 2. After 1.5 L is removed, 28 of the 40 grade III patients leave the restrictive pattern and 12 do not, and 19 of the 40 grade IV patients leave it and 21 do not. Reversibility is a continuum across patients, not a property of a grade <cite data-ref="appleton1988"></cite>.</p>
+    <p>E/e′ tracks LA pressure only loosely. With the regression of Nagueh and colleagues (PAWP = 1.24 × E/e′ + 1.9) <cite data-ref="nagueh1997"></cite>, the estimate is 19 mmHg in grade III, where the model LA pressure is 21 mmHg, and 20 mmHg in grade IV, where it is 29 mmHg. Part of the gap in grade IV is the model's (see below), but the direction is the one to teach: once E is limited by a stiff ventricle, E/e′ stops rising with pressure.</p>
+  </div>
+
+    <h2 id="cohort">Virtual cohort: fluid, afterload and AF tolerance</h2>
+    <p>Each grade holds <span id="c-n"></span> virtual patients. Each patient has the grade's parameters, each multiplied by its own log-normal factor (τ, EDPVR, Ees, atrial function and size, blood volume, SVR, arterial compliance, PVR and heart rate, with coefficients of variation of 6% to 20%). Every patient then goes through the same protocols: volume from 2 L removed to 2 L given, SVR from 0.7 to 1.75 times baseline, a sympathetic surge, and AF at mean ventricular rates of 70 to 150/min. The lines are medians and the bands are interquartile ranges. Hover over a chart to read the values.</p>
+  </article>
+
+  <div class="dia-grid">
+    <figure class="plot-card"><h3>Fluid and diuresis: LA pressure</h3><div class="legend g-legend"></div><svg id="c-lap-vol"></svg>
+      <figcaption>The dashed line is 18 mmHg, the wedge pressure above which a patient is congested <cite data-ref="forrester1976"></cite>.</figcaption></figure>
+    <figure class="plot-card"><h3>Fluid and diuresis: cardiac output</h3><div class="legend g-legend"></div><svg id="c-co-vol"></svg>
+      <figcaption>Volume is intravascular volume at the end of a rapid infusion, or removed by diuresis; 40% of it changes the stressed volume.</figcaption></figure>
+  </div>
+  <figure class="plot-card"><h3>Volume window</h3><svg id="c-window"></svg>
+    <figcaption>For each patient, the range of volume change over which LA pressure stays below 18 mmHg and cardiac output stays within 10% of its plateau. Thin lines are patients and the thick line is the median edge of the window for the grade. Zero is the patient as found.</figcaption></figure>
+  <div class="dia-grid">
+    <figure class="plot-card"><h3>Afterload: LA pressure</h3><div class="legend g-legend"></div><svg id="c-lap-svr"></svg></figure>
+    <figure class="plot-card"><h3>Afterload: stroke volume</h3><div class="legend g-legend"></div><svg id="c-sv-svr"></svg></figure>
+    <figure class="plot-card"><h3>AF: cardiac output</h3><div class="legend g-legend"></div><svg id="c-co-af"></svg>
+      <figcaption>Change from the same patient in sinus rhythm at the patient's own rate. At 70/min only the atrial kick and the regular rhythm are lost.</figcaption></figure>
+    <figure class="plot-card"><h3>AF: LA pressure</h3><div class="legend g-legend"></div><svg id="c-lap-af"></svg></figure>
+  </div>
+  <section class="panel">
+    <h2>Tolerance by grade <span class="status">median [interquartile range]</span></h2>
+    <div class="table-wrap" id="c-table"></div>
+    <button type="button" class="btn" id="csv">Download the cohort (CSV, one row per patient per condition)</button>
+    <p class="status">The same data, with each patient's parameters, are in <code>R/diastolic_cohort_long.csv</code>, <code>R/diastolic_cohort_summary.csv</code> and <code>R/diastolic_course.csv</code> in the repository, and <code>R/diastolic_microsim.R</code> draws the figures and tables in R.</p>
+  </section>
+  <section class="panel">
+    <h2>How the echo algorithm grades the virtual patients</h2>
+    <div class="dia-grid" id="c-conf"></div>
+    <p class="status">Each row is the grade the patients were built as; each column is the grade that the ASE/EACVI 2016 algorithm assigns from the patient's model echo <cite data-ref="nagueh2016"></cite>. The algorithm has no grade IV, which is grade III that stays restrictive after preload reduction <cite data-ref="nishimura1997"></cite>.</p>
+  </section>
+
+  <article class="prose">
+    <h2 id="course">Give fluid, then diurese</h2>
+    <p>The reference patient of each grade receives two 500-mL crystalloid boluses over 30 minutes. From the first hour, diuresis removes 500 mL/h of intravascular volume for three hours. Crystalloid follows the Shock lab kinetics, in which 18% of the fluid stays in the vessels and the rest moves to the interstitium with a time constant of 10 minutes <cite data-ref="hahn2020"></cite>.</p>
+  </article>
+  <div class="dia-grid">
+    <figure class="plot-card"><h3>LA pressure</h3><div class="legend g-legend"></div><svg id="t-lap"></svg></figure>
+    <figure class="plot-card"><h3>Cardiac output</h3><div class="legend g-legend"></div><svg id="t-co"></svg></figure>
+    <figure class="plot-card"><h3>Mitral E/A</h3><div class="legend g-legend"></div><svg id="t-ea"></svg>
+      <figcaption>The dashed line is E/A 2, the restrictive cutoff.</figcaption></figure>
+  </div>
+
+  <article class="prose">
+    <h2 id="teaching">Teaching points</h2>
+    <div id="prose-teach">
+    <p><b>Fluid.</b> In every grade, a liter of fluid raises LA pressure. The rise is 5.3 mmHg in the normal heart and 7.9 mmHg in grade IV. What changes across the grades is what the liter buys. Five hundred milliliters raise cardiac output by 0.11 L/min in the normal heart and 0.17 L/min in grade I. They raise it by 0.01 L/min in grade II, and in grades III and IV by nothing at all. From grade II onward, the ventricle is on the flat part of its output curve and the steep part of its pressure curve, so fluid adds congestion without flow. The normal rise matches the saline-loading study of Fujimoto and colleagues, in which wedge pressure rose from 10 to 16 mmHg after about 1 L in healthy adults. In the same study the rise in HFpEF was 25 mmHg per L/m², about 13 mmHg per liter at a body surface area of 1.9 m² <cite data-ref="fujimoto2013"></cite>. The model's late grades rise about half as steeply, so they understate the problem.</p>
+    <p><b>Diuresis.</b> The mirror image holds. Removing 1 L lowers LA pressure by 7.7 mmHg in grade III and 9.5 mmHg in grade IV while cardiac output falls by only 0.1 L/min, so diuresis is the treatment that works for the late grades. Grade I is the exception worth remembering: it starts with a normal LA pressure, and the same liter removed lowers cardiac output by 1.27 L/min, more than in the normal heart (1.01 L/min), because a slowly relaxing ventricle depends on its filling pressure and its atrial kick.</p>
+    <p><b>The volume window narrows.</b> Define the window as the range of volume over which LA pressure stays below 18 mmHg and cardiac output stays within 10% of its plateau. It is 2,510 mL wide in the normal heart (from 570 mL removed to 1,940 mL given), 2,050 mL in grade I and 1,440 mL in grade II. Grade III must lose between 440 and 1,500 mL to be in its window (1,060 mL wide), and grade IV must lose between 1,190 and 1,560 mL (370 mL wide). A grade IV patient has no fluid challenge that helps and a narrow margin between decongestion and underfilling. Three of the 40 virtual grade IV patients have no window at all.</p>
+    <p><b>Afterload.</b> A 50% rise in SVR, with the baroreflex open, lowers stroke volume by 11% to 13% in every grade. It raises LA pressure by 0.4 mmHg in the normal heart and 1.6 mmHg in grade IV. Afterload alone is not what floods the lungs. When the same rise in SVR comes with the venoconstriction of a sympathetic surge, which moves 200 mL into the stressed volume, LA pressure rises by 3.6 mmHg in the normal heart, 4.9 mmHg in grade II and 6.4 mmHg in grade IV. The stiff ventricle turns a modest shift of volume into a large rise in pressure. This is the mechanism usually proposed for hypertensive pulmonary edema in these patients, and the model reproduces its direction, not its size.</p>
+    <p><b>Atrial fibrillation.</b> At the same rate, losing the atrial kick lowers cardiac output by 10% to 14% in every grade. Rate is where the grades part company. At 130/min the normal heart keeps its output, and its LA pressure rises by 2.9 mmHg. Grade I loses 27% of its output and its LA pressure rises by 7.8 mmHg; grade II loses 15% and rises by 6.4 mmHg. Their filling depends on relaxation, which a short RR interval cuts off, and on the atrial kick. In grades III and IV the atrium was already contributing little and the stroke volume is fixed by the stiff ventricle, so a moderate rise in rate raises output: at 110/min, by 4% in grade III and 3% in grade IV. At 130/min both lose 4% to 5%, and LA pressure rises by 1.7 mmHg in grade III and falls in grade IV. These are acute hemodynamics only. Patients with HFpEF and permanent AF are more congested and have more pulmonary vascular disease, largely through the atrial remodeling that AF causes over years <cite data-ref="reddy2020"></cite>, and that chronic process is not in the model.</p>
+    <p><b>Fluid, then diuresis.</b> In the time course, a liter of crystalloid over 30 minutes raises LA pressure from 21 to 24 mmHg in grade III and from 29 to 33 mmHg in grade IV, and cardiac output does not change. By 60 minutes only 194 mL of the liter remains in the vessels, and LA pressure has fallen back to 23 and 31 mmHg. The rest has gone to the interstitium, which in these patients includes the lungs. Diuresis at 500 mL/h then lowers LA pressure to 11 mmHg in grade III and 17 mmHg in grade IV by 4 hours, at a cost of about 0.2 L/min of output. The mitral pattern follows: grade III falls from E/A 2.26 to 1.70, below the restrictive cutoff, while grade IV falls from 5.35 to 2.74 and stays restrictive. In grade II, E/A falls from 1.39 to 0.85, back to a relaxation pattern. The normal and grade I patients have too little volume to spare for the full three hours, and their lines stop when the stressed volume reaches the model's floor.</p>
+  </div>
+    <h2 id="limits">What the lab leaves out</h2>
+    <div id="prose-limits">
+    <p>The model has no long axis, so e′ is not simulated. It is scaled from the fitted τ (e′ = 12 × 36/τ cm/s), because e′ tracks relaxation and changes little with preload <cite data-ref="sohn1997,nagueh1997"></cite>. In reality, e′ also depends on restoring forces and on the LV pressure at mitral opening <cite data-ref="opdahl2009"></cite>, and the model ignores both. The tissue Doppler display draws the timing of the waves from the model and sizes e′ and a′ this way.</p>
+    <p>The mitral E wave responds less to LA pressure in the model than in patients. The model has a mitral orifice but no inertance, so a rise in LA pressure shifts E/A only modestly, and a restrictive E stays near 80 cm/s instead of the 100 cm/s or more seen at the bedside. For the same reason, the reversibility test in the model needs 1.5 L removed, much more than a Valsalva maneuver removes. The grades are set mainly by the disease parameters, not by preload alone.</p>
+    <p>The late grades rise in LA pressure about half as steeply with fluid as patients with HFpEF do <cite data-ref="fujimoto2013"></cite>, so the model understates how poorly they tolerate volume. Crystalloid that leaves the vessels simply disappears: there is no lung water, no oxygenation, no kidney and no natriuresis, and diuresis is entered as net intravascular removal, with refill already subtracted. An afterload rise is run with the baroreflex open. The surge's 200 mL of venous recruitment is an illustrative size. AF is modeled as the loss of atrial contraction with a fixed, irregular ventricular rate. When a beat follows a short one, the model's AV-plane term gives a brief jump in mitral flow at the QRS, and the Doppler display holds the first 40 ms of such a beat to the flow before it. There is no atrial remodeling, no tachycardia-mediated dysfunction and no rate-dependent change in relaxation beyond what the elastance model gives. The LA volume index is the model's LA volume scaled by 0.6, so that the normal heart reads 25 mL/m². Every patient is synthetic, and none of the numbers here is a treatment threshold.</p>
+  </div>
+    <div id="page-refs"></div>
+  </article>
+</main>
+<script type="module">
+  import { initLayout } from './js/layout.js';
+  import { initDiastolic } from './js/diastsim.js';
+  initLayout();
+  initDiastolic();
+</script>
+</body>
+</html>

@@ -1,5 +1,5 @@
 // Bibliography. Every entry was checked against its PubMed record (PMID, title, authors,
-// journal, year, pages, DOI) on 2026-09-22 (entries from guarracino2013 onward on 2026-09-23; rola2025 onward also on 2026-09-23). Page text cites entries by key.
+// journal, year, pages, DOI) on 2026-09-22 (entries from guarracino2013 onward on 2026-09-23; rola2025 onward also on 2026-09-23; nagueh2016 onward on 2026-09-23). Page text cites entries by key.
 export const REFS = [
  {
   "key": "suga1973",
@@ -1195,6 +1195,94 @@ export const REFS = [
   "volume": "59",
   "pages": "281-6",
   "pmid": "21200335"
+ },
+ {
+  "key": "nagueh2016",
+  "authors": "Nagueh SF, Smiseth OA, Appleton CP, et al.",
+  "title": "Recommendations for the Evaluation of Left Ventricular Diastolic Function by Echocardiography: An Update from the American Society of Echocardiography and the European Association of Cardiovascular Imaging",
+  "journal": "J Am Soc Echocardiogr",
+  "year": 2016,
+  "volume": "29",
+  "pages": "277-314",
+  "pmid": "27037982",
+  "doi": "10.1016/j.echo.2016.01.011"
+ },
+ {
+  "key": "nishimura1997",
+  "authors": "Nishimura RA, Tajik AJ",
+  "title": "Evaluation of diastolic filling of left ventricle in health and disease: Doppler echocardiography is the clinician's Rosetta Stone",
+  "journal": "J Am Coll Cardiol",
+  "year": 1997,
+  "volume": "30",
+  "pages": "8-18",
+  "pmid": "9207615",
+  "doi": "10.1016/s0735-1097(97)00144-7"
+ },
+ {
+  "key": "nagueh1997",
+  "authors": "Nagueh SF, Middleton KJ, Kopelen HA, et al.",
+  "title": "Doppler tissue imaging: a noninvasive technique for evaluation of left ventricular relaxation and estimation of filling pressures",
+  "journal": "J Am Coll Cardiol",
+  "year": 1997,
+  "volume": "30",
+  "pages": "1527-33",
+  "pmid": "9362412",
+  "doi": "10.1016/s0735-1097(97)00344-6"
+ },
+ {
+  "key": "sohn1997",
+  "authors": "Sohn DW, Chai IH, Lee DJ, et al.",
+  "title": "Assessment of mitral annulus velocity by Doppler tissue imaging in the evaluation of left ventricular diastolic function",
+  "journal": "J Am Coll Cardiol",
+  "year": 1997,
+  "volume": "30",
+  "pages": "474-80",
+  "pmid": "9247521",
+  "doi": "10.1016/s0735-1097(97)88335-0"
+ },
+ {
+  "key": "opdahl2009",
+  "authors": "Opdahl A, Remme EW, Helle-Valle T, et al.",
+  "title": "Determinants of left ventricular early-diastolic lengthening velocity: independent contributions from left ventricular relaxation, restoring forces, and lengthening load",
+  "journal": "Circulation",
+  "year": 2009,
+  "volume": "119",
+  "pages": "2578-86",
+  "pmid": "19414640",
+  "doi": "10.1161/CIRCULATIONAHA.108.791681"
+ },
+ {
+  "key": "appleton1988",
+  "authors": "Appleton CP, Hatle LK, Popp RL",
+  "title": "Relation of transmitral flow velocity patterns to left ventricular diastolic function: new insights from a combined hemodynamic and Doppler echocardiographic study",
+  "journal": "J Am Coll Cardiol",
+  "year": 1988,
+  "volume": "12",
+  "pages": "426-40",
+  "pmid": "3392336",
+  "doi": "10.1016/0735-1097(88)90416-0"
+ },
+ {
+  "key": "fujimoto2013",
+  "authors": "Fujimoto N, Borlaug BA, Lewis GD, et al.",
+  "title": "Hemodynamic responses to rapid saline loading: the impact of age, sex, and heart failure",
+  "journal": "Circulation",
+  "year": 2013,
+  "volume": "127",
+  "pages": "55-62",
+  "pmid": "23172838",
+  "doi": "10.1161/CIRCULATIONAHA.112.111302"
+ },
+ {
+  "key": "reddy2020",
+  "authors": "Reddy YNV, Obokata M, Verbrugge FH, et al.",
+  "title": "Atrial Dysfunction in Patients With Heart Failure With Preserved Ejection Fraction and Atrial Fibrillation",
+  "journal": "J Am Coll Cardiol",
+  "year": 2020,
+  "volume": "76",
+  "pages": "1051-1064",
+  "pmid": "32854840",
+  "doi": "10.1016/j.jacc.2020.07.009"
  }
 ];
 

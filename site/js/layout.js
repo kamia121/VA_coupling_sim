@@ -8,6 +8,7 @@ const PAGES = [
   ['interfaces.html', 'Interfaces'],
   ['simulator.html', 'Simulator'],
   ['shock.html', 'Shock lab'],
+  ['diastolic.html', 'Diastolic lab'],
   ['scenarios.html', 'Scenarios'],
   ['echo.html', 'Echo lab'],
   ['pac.html', 'PA catheter'],
