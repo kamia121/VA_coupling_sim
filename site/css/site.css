@@ -472,3 +472,20 @@ body[data-view="both"] .pv-card { position: static; }
 .log li.log-new { animation: log-new 2s ease-out; }
 @keyframes log-new { from { background: var(--flag-bg); } to { background: transparent; } }
 @media (prefers-reduced-motion: reduce) { .log li.log-new { animation: none; } }
+/* PA catheter: diagram beside the readouts, challenge and question panels */
+.pac-row { display: grid; grid-template-columns: minmax(180px, 240px) minmax(0, 1fr); gap: 12px; align-items: start; margin-top: 10px; }
+@media (max-width: 600px) { .pac-row { grid-template-columns: minmax(0, 1fr); } }
+.pac-heart-fig { margin: 0; }
+.pac-heart-fig svg { width: 100%; height: auto; display: block; background: var(--surface-2); border-radius: 6px; }
+.pac-heart-fig figcaption { font-size: 0.8rem; margin-top: 4px; }
+#pac-heart .ch { fill: none; stroke: var(--text-muted); stroke-width: 2; }
+#pac-heart .ch.lh { stroke-dasharray: 3 3; opacity: 0.7; }
+#pac-heart text { font-size: 11px; fill: var(--text-muted); font-family: inherit; }
+#pac-heart .cath { fill: none; stroke: #C9A227; stroke-width: 2.5; stroke-linejoin: round; stroke-linecap: round; }
+#pac-heart .tip { fill: #C9A227; }
+#pac-heart .tip.on { fill: #E0B84A; stroke: var(--text); stroke-width: 1.2; }
+#pac-heart .balloon { fill: none; stroke: #E0B84A; stroke-width: 1.8; }
+.pac-row .pac-tiles { margin-top: 0; }
+.pac-extra { margin-top: 14px; }
+.pac-extra .card p { font-size: 0.92rem; }
+#pac-scr { touch-action: pan-y; }
