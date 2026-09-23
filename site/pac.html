@@ -21,7 +21,7 @@
 
   <section class="panel" id="tracings">
     <h2>Float the catheter</h2>
-    <p>The tracing is the pressure at the catheter tip, generated from the model beat of the selected patient. The tip can be advanced from the RA through the RV and PA to the wedge position, where the dashed line shows the true left atrial pressure. The atrial rhythm and valve lesion controls change the a, c, x, v, and y waves, and the artifact controls show the difference between the monitor reading and the true pressure, which is drawn as a faint gray line.</p>
+    <p>The tracing is the pressure at the catheter tip, generated from the model beat of the selected patient. The tip can be advanced from the RA through the RV and PA to the wedge position, where a thin lavender line shows the true left atrial pressure. The atrial rhythm and valve lesion controls change the a, c, x, v, and y waves, and the artifact controls show the difference between the monitor reading and the true pressure, which is drawn as a faint gray line.</p>
     <div class="toolbar">
       <label for="pac-case">Patient</label><select id="pac-case"></select>
       <button class="btn primary" id="pac-float" type="button">Advance tip ▶</button>
@@ -33,7 +33,7 @@
     <div class="pac-controls">
       <div class="wide"><p class="k">Atrial rhythm or valve lesion (RA and wedge tracings)</p><div class="seg" id="pac-atr"></div></div>
       <div><p class="k">Wave letters on the RA and wedge trace</p><div class="seg" id="pac-lbl"></div></div>
-      <div><p class="k">Left atrial pressure (dashed) with the wedge</p><div class="seg" id="pac-la"></div></div>
+      <div><p class="k">Left atrial pressure (lavender line) with the wedge</p><div class="seg" id="pac-la"></div></div>
       <div><p class="k">Damping of the fluid-filled system</p><div class="seg" id="pac-damp"></div></div>
       <div><p class="k">Transducer height</p><div class="seg" id="pac-level"></div></div>
       <div><p class="k">Breathing</p><div class="seg" id="pac-resp"></div></div>
