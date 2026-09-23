@@ -522,9 +522,21 @@ function setupDrag() {
 }
 
 // ---------- "why did it move?" replay ----------
+// The replay holds `busy` (cursor hidden, buttons locked) while it waits for "Next step".
+// Any change of view or state cancels it, so nothing stays frozen.
+let replayRun = 0, replaying = false;
+function cancelReplay() {
+  if (!replaying) return;
+  replayRun++; replaying = false; busy = false;
+  if (nextStepResolve) { const r = nextStepResolve; nextStepResolve = null; r(); }
+  $('#why').textContent = 'Replay: why did it move?';
+  $('#why-label').innerHTML = '';
+}
+
 async function replay() {
   if (!prev || busy) return;
-  busy = true;
+  busy = true; replaying = true;
+  const run = ++replayRun;
   const { xmax } = axes();
   const A = rel(prev, xmax), B = rel(result, xmax);
   const a = prev[side], b = result[side];
@@ -556,6 +568,7 @@ async function replay() {
         { points: [cur.es], color: 'var(--flag)', marker: 6 },
       ], { noCurrent: true });
       await frame();
+      if (run !== replayRun) return;
       if (reduceMotion) break;
     }
     espvr = st.k === 'espvr' ? B.espvr : espvr; ea = st.k === 'ea' ? B.ea : ea; es = st.k === 'es' ? B.es : es;
@@ -563,10 +576,11 @@ async function replay() {
       const btn = $('#why');
       btn.disabled = false; btn.textContent = `Next step (${si + 2}/4) ▶`;
       await new Promise((r) => { nextStepResolve = r; });
+      if (run !== replayRun) return;
       btn.disabled = true;
     }
   }
-  busy = false;
+  busy = false; replaying = false;
   $('#why').textContent = 'Replay: why did it move?';
   render();
   lbl.innerHTML = steps.map((s, i) => `<b>${i + 1}</b> ${s.text}`).join('<br>');
@@ -778,6 +792,7 @@ function buildControls() {
       inp.addEventListener('pointerdown', markChange);
       inp.addEventListener('keydown', markChange);
       inp.addEventListener('input', () => {
+        cancelReplay();
         const upd = sl.to(parseFloat(inp.value), params);
         if (typeof upd === 'object') Object.assign(params, upd); else params[sl.key] = upd;
         $('#preset').value = '';
@@ -843,27 +858,31 @@ export function initSimulator() {
   sel.innerHTML = '<option value="">Custom</option>' +
     `<optgroup label="Left heart">${PRESETS.filter((p) => p.side !== 'rv').map((p) => `<option value="${p.id}">${p.label}</option>`).join('')}</optgroup>` +
     `<optgroup label="Right heart / pulmonary">${PRESETS.filter((p) => p.side === 'rv').map((p) => `<option value="${p.id}">${p.label}</option>`).join('')}</optgroup>`;
-  sel.addEventListener('change', () => { if (sel.value) loadPreset(sel.value); });
+  sel.addEventListener('change', () => { cancelReplay(); if (sel.value) loadPreset(sel.value); });
   $('#give').innerHTML = INTERVENTIONS.map((x) => `<button type="button" class="give" data-x="${x.id}" title="${x.note}">${x.label}<small>${x.note}</small></button>`).join('');
   $('#give-m').innerHTML = INTERVENTIONS.map((x) => `<button type="button" class="give" data-x="${x.id}" title="${x.note}">${x.label}</button>`).join('');
   $('#give-m').addEventListener('click', (e) => {
     const b = e.target.closest('.give');
-    if (!b || busy) return;
+    if (!b) return;
+    cancelReplay();
+    if (busy) return;
     animateTo(INTERVENTIONS.find((i) => i.id === b.dataset.x).apply(params));
   });
   $('#give').addEventListener('click', (e) => {
     const b = e.target.closest('.give');
-    if (!b || busy) return;
+    if (!b) return;
+    cancelReplay();
+    if (busy) return;
     const x = INTERVENTIONS.find((i) => i.id === b.dataset.x);
     animateTo(x.apply(params));
   });
-  $('#reset').addEventListener('click', () => loadPreset('normal', true));
-  $('#pin').addEventListener('click', () => { snapshot = result; render(); });
-  $('#clear').addEventListener('click', () => { snapshot = null; render(); });
+  $('#reset').addEventListener('click', () => { cancelReplay(); loadPreset('normal', true); });
+  $('#pin').addEventListener('click', () => { cancelReplay(); snapshot = result; render(); });
+  $('#clear').addEventListener('click', () => { cancelReplay(); snapshot = null; render(); });
   $('#why').addEventListener('click', () => { if (nextStepResolve) { const r = nextStepResolve; nextStepResolve = null; r(); } else replay(); });
   buildPlayback();
-  $('#hidden-toggle').addEventListener('click', () => { showHidden = !showHidden; render(); });
-  document.querySelectorAll('.tabs button').forEach((b) => b.addEventListener('click', () => { view = b.dataset.side; if (view !== 'both') side = view; render(); writeHash(); }));
+  $('#hidden-toggle').addEventListener('click', () => { cancelReplay(); showHidden = !showHidden; render(); });
+  document.querySelectorAll('.tabs button').forEach((b) => b.addEventListener('click', () => { cancelReplay(); view = b.dataset.side; if (view !== 'both') side = view; render(); writeHash(); }));
   let rt;
   window.addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(() => result && render(), 150); });
   setupDrag();
