@@ -13,26 +13,26 @@ const S = (o) => ({ step: 0.01, digits: 2, to: (v) => v, from: (p) => p[o.key], 
 const SLIDERS = [
   S({ group: 'global', key: 'hr', label: 'Heart rate', unit: '/min', min: 40, max: 160, step: 1, digits: 0, range: [60, 100] }),
   S({ group: 'global', key: 'aKick', label: 'Atrial contraction', unit: '× normal', min: 0, max: 1.5, step: 0.05,
-    hint: 'Zero removes atrial contraction, as in atrial fibrillation, and with it the a wave and the late-diastolic filling it provides.' }),
+    hint: 'A value of zero removes atrial contraction, as in atrial fibrillation, together with the a wave and late-diastolic filling.' }),
   S({ group: 'global', key: 'vStressed', label: 'Stressed blood volume (preload)', unit: 'mL', min: 450, max: 1400, step: 10, digits: 0,
-    hint: 'The volume that distends the vessels. It changes the filling pressures and EDV.' }),
+    hint: 'Stressed volume distends the vessels and determines the filling pressures and EDV.' }),
 
   S({ group: 'lv', key: 'lvEes', label: 'LV Ees (contractility)', unit: 'mmHg/mL', min: 0.3, max: 7, step: 0.05, range: [1.2, 3.0],
-    hint: 'The slope of the ESPVR. Normal controls had 2.1 ± 0.9 mmHg/mL (Kawaguchi 2003).' }),
+    hint: 'Ees is the slope of the ESPVR; normal controls had 2.1 ± 0.9 mmHg/mL (Kawaguchi 2003).' }),
   S({ group: 'lv', key: 'lvBeta', label: 'LV diastolic stiffness β', unit: '1/mL', min: 0.012, max: 0.07, step: 0.001, digits: 3,
-    hint: 'The exponent of the EDPVR. A higher value means a stiffer, less compliant chamber, as in HFpEF or hypertrophy.' }),
+    hint: 'β is the exponent of the EDPVR, and a higher value indicates a stiffer chamber, as in HFpEF or hypertrophy.' }),
   S({ group: 'lv', key: 'lvV0', label: 'LV V₀ (ESPVR intercept)', unit: 'mL', min: 0, max: 100, step: 1, digits: 0, advanced: true,
     hint: 'A larger value shifts the ESPVR to the right, as in a dilated ventricle.' }),
 
   S({ group: 'sys', key: 'svrTot', label: 'Systemic vascular resistance', unit: 'dyn·s·cm⁻⁵', min: 250, max: 3000, step: 10, digits: 0, range: [800, 1600],
     to: (v, p) => ({ svr: Math.max(0.05, v * DYN - p.zcAo) }), from: (p) => (p.svr + p.zcAo) / DYN,
-    hint: 'The steady, resistive part of afterload and the main determinant of Ea.' }),
+    hint: 'SVR is the steady, resistive component of afterload and the main determinant of Ea.' }),
   S({ group: 'sys', key: 'cSys', label: 'Systemic arterial compliance', unit: 'mL/mmHg', min: 0.3, max: 3, step: 0.05,
-    hint: 'The pulsatile part of afterload. A lower value means stiffer arteries and a wider pulse pressure.' }),
+    hint: 'Compliance is the pulsatile component of afterload, and a lower value indicates stiffer arteries and a wider pulse pressure.' }),
   S({ group: 'sys', key: 'zcAo', label: 'Aortic characteristic impedance', unit: 'mmHg·s/mL', min: 0.01, max: 0.15, step: 0.005, digits: 3, advanced: true }),
 
   S({ group: 'rv', key: 'rvEes', label: 'RV Ees (contractility)', unit: 'mmHg/mL', min: 0.15, max: 3, step: 0.05, range: [0.2, 0.8],
-    hint: 'The normal value is about 0.4 ± 0.2 mmHg/mL, and it rises with homeometric adaptation (Naeije 2014).' }),
+    hint: 'RV Ees is normally about 0.4 ± 0.2 mmHg/mL and increases with homeometric adaptation (Naeije 2014).' }),
   S({ group: 'rv', key: 'rvBeta', label: 'RV diastolic stiffness β', unit: '1/mL', min: 0.01, max: 0.06, step: 0.001, digits: 3 }),
   S({ group: 'rv', key: 'rvV0', label: 'RV V₀ (ESPVR intercept)', unit: 'mL', min: 0, max: 120, step: 1, digits: 0, advanced: true,
     hint: 'A larger value shifts the ESPVR to the right, as in RV dilation.' }),
@@ -545,10 +545,10 @@ async function replay() {
   const lbl = $('#why-label');
   const f2 = (x) => x.toFixed(2), f0 = (x) => x.toFixed(0);
   const steps = [
-    { text: Math.abs(b.Ees / a.Ees - 1) > 0.02 ? `ESPVR ${b.Ees > a.Ees ? 'steeper' : 'flatter'}: Ees ${f2(a.Ees)} → ${f2(b.Ees)} mmHg/mL` : `ESPVR unchanged: Ees ${f2(b.Ees)}`, k: 'espvr' },
-    { text: `Ea line: slope ${f2(a.Ea)} → ${f2(b.Ea)} mmHg/mL; EDV ${f0(a.EDV)} → ${f0(b.EDV)} mL`, k: 'ea' },
-    { text: `End-systole where they cross: ESV ${f0(a.ESV)} → ${f0(b.ESV)} mL, Pes ${f0(a.Pes)} → ${f0(b.Pes)} mmHg`, k: 'es' },
-    { text: `New loop: SV ${f0(a.SV)} → ${f0(b.SV)} mL, ${ratioName()} ${f2(ratioOf(prev))} → ${f2(ratioOf(result))}`, k: 'loop' },
+    { text: Math.abs(b.Ees / a.Ees - 1) > 0.02 ? `The ESPVR becomes ${b.Ees > a.Ees ? 'steeper' : 'flatter'}, and Ees changes from ${f2(a.Ees)} to ${f2(b.Ees)} mmHg/mL.` : `The ESPVR is unchanged, with Ees at ${f2(b.Ees)} mmHg/mL.`, k: 'espvr' },
+    { text: `The Ea line changes slope from ${f2(a.Ea)} to ${f2(b.Ea)} mmHg/mL, and EDV changes from ${f0(a.EDV)} to ${f0(b.EDV)} mL.`, k: 'ea' },
+    { text: `End-systole moves to the new intersection, with ESV changing from ${f0(a.ESV)} to ${f0(b.ESV)} mL and Pes from ${f0(a.Pes)} to ${f0(b.Pes)} mmHg.`, k: 'es' },
+    { text: `The new loop has a stroke volume of ${f0(b.SV)} mL (previously ${f0(a.SV)} mL) and a ${ratioName()} of ${f2(ratioOf(result))} (previously ${f2(ratioOf(prev))}).`, k: 'loop' },
   ];
   const n = reduceMotion ? 1 : Math.round(24 / play.speed ** 0.6);
   let espvr = A.espvr, ea = A.ea, es = A.es;

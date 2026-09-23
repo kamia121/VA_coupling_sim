@@ -359,7 +359,7 @@ function cplOut() {
     [`EF ${src(false)} (biplane in practice)`, `${(ef * 100).toFixed(0)}%`],
     ['Ea/Ees ≈ (1 − EF)/EF', ratio.toFixed(2), ratio > 1.36],
     ['Implied Ees = Ea ÷ ratio', `${ees.toFixed(2)} mmHg/mL`],
-  ]) + `<p class="truth">The catheter values are an Ea of ${R.lv.Ea.toFixed(2)} and an Ees of ${R.lv.Ees.toFixed(2)} mmHg/mL, for an Ea/Ees of <b>${R.lv.EaEes.toFixed(2)}</b>. The normal values are ${NORM.lv.Ea.toFixed(2)}, ${NORM.lv.Ees.toFixed(2)}, and ${NORM.lv.EaEes.toFixed(2)}.</p>`;
+  ]) + `<p class="truth">Catheter values are Ea ${R.lv.Ea.toFixed(2)} and Ees ${R.lv.Ees.toFixed(2)} mmHg/mL, with an Ea/Ees of <b>${R.lv.EaEes.toFixed(2)}</b>; the normal values are ${NORM.lv.Ea.toFixed(2)}, ${NORM.lv.Ees.toFixed(2)}, and ${NORM.lv.EaEes.toFixed(2)}.</p>`;
   const tapse = st.tapseEcho ?? TAPSE_K * R.rv.SV, pasp = st.paspEcho ?? R.hemo.PASP, tp = tapse / pasp;
   const svEsv = st.svEsvEcho ?? R.rv.svEsv;
   $('#cpl-rv').innerHTML = row([
@@ -367,7 +367,7 @@ function cplOut() {
     [`PASP ${src(st.paspEcho != null)}`, `${pasp.toFixed(0)} mmHg`],
     ['TAPSE/PASP', `${tp.toFixed(2)} mm/mmHg`, tp < 0.31],
     [`SV/ESV ${src(st.svEsvEcho != null)}`, svEsv.toFixed(2), svEsv <= 0.515],
-  ]) + `<p class="truth">The catheter value of RV Ees/Ea is <b>${R.rv.EesEa.toFixed(2)}</b>${R.rv.EesEa < 0.805 ? ', which is below 0.805' : ''}. The normal value is ${NORM.rv.EesEa.toFixed(2)}.</p>`;
+  ]) + `<p class="truth">The catheter RV Ees/Ea is <b>${R.rv.EesEa.toFixed(2)}</b>${R.rv.EesEa < 0.805 ? ', below the 0.805 threshold' : ''}; the normal value is ${NORM.rv.EesEa.toFixed(2)}.</p>`;
 }
 
 export function initEcho() {
