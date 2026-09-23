@@ -352,7 +352,7 @@ function drawPVFor(sd, sel, extraSeries = [], opts = {}) {
   maps[sd] = m;
   if (!opts.noCurrent) {
     addEventMarks(m, sd);
-    if (view !== 'both') addHandles(xmax, ymax);
+    if (view !== 'both') addHandles(m, xmax, ymax);
     svgEl('circle', { id: 'cursor-' + sd, r: 6, class: 'beat-cursor', cx: -20, cy: -20 }, m.svg);
   }
   return m;
@@ -375,7 +375,7 @@ function addEventMarks(m, sd) {
 }
 
 // Drag handles: ESPVR (Ees), Ea line (afterload), end-diastolic volume (preload).
-function addHandles(xmax, ymax) {
+function addHandles(pm, xmax, ymax) {
   const m = result[side], V0 = V0of(params);
   const Ph = Math.min(m.Ees * (xmax - V0), ymax * 0.9);
   const hs = [
@@ -384,9 +384,9 @@ function addHandles(xmax, ymax) {
     { id: 'edv', x: m.EDV, y: 0, label: 'Drag to change stressed volume (preload)' },
   ];
   for (const h of hs) {
-    const g = svgEl('g', { class: 'handle', tabindex: 0, role: 'slider', 'aria-label': h.label, 'data-h': h.id }, map.svg);
-    svgEl('circle', { cx: map.sx(h.x), cy: map.sy(h.y), r: 16, class: 'hit' }, g);
-    svgEl('circle', { cx: map.sx(h.x), cy: map.sy(h.y), r: 7.5, class: 'knob' }, g);
+    const g = svgEl('g', { class: 'handle', tabindex: 0, role: 'slider', 'aria-label': h.label, 'data-h': h.id }, pm.svg);
+    svgEl('circle', { cx: pm.sx(h.x), cy: pm.sy(h.y), r: 16, class: 'hit' }, g);
+    svgEl('circle', { cx: pm.sx(h.x), cy: pm.sy(h.y), r: 7.5, class: 'knob' }, g);
     const t = svgEl('title', {}, g); t.textContent = h.label;
   }
 }
@@ -672,12 +672,12 @@ function renderMetrics() {
 }
 
 function render(light = false) {
+  document.body.dataset.view = view;   // before drawing: the RV cell must be laid out to size its plot
   drawPV();
   renderTiles(); renderChips();
   if (light) return;
   renderLegend(); renderGauge(); renderPT(); renderMetrics();
   document.querySelectorAll('.tabs button').forEach((b) => b.setAttribute('aria-selected', b.dataset.side === view));
-  document.body.dataset.view = view;
   $('#pv-title').textContent = view === 'both' ? 'Pressure–volume loops: LV and RV' : `${side === 'lv' ? 'Left' : 'Right'} ventricular pressure–volume loop`;
   $('#clear').disabled = !snapshot;
   $('#hidden-toggle').textContent = showHidden ? 'Hide in-range disease' : `Show disease with an in-range ${ratioName()}`;
