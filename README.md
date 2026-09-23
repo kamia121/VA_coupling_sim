@@ -34,9 +34,21 @@ The model is a closed-loop lumped circulation with eight compartments, including
 P(V,t) = e(t)·Ees·(V − V0) + [1 − e(t)]·A·(exp(β(V − V0)) − 1)
 ```
 
-Activation e(t) is a normalized double-Hill function, and time to peak is 0.2 + 0.15·T s. The systemic and pulmonary arterial beds are three-element Windkessels (Zc, C, R). Each atrium is a time-varying elastance whose contraction starts at the P wave, 160 ms before ventricular activation, and lasts 140 ms. Atrial contraction can be switched off, as in atrial fibrillation, or moved into ventricular systole, as in AV dissociation. The venous compartments are passive compliances, and the valves are ideal diodes. The equations are integrated with fixed-step RK4 (0.5 ms) until the state changes by less than 0.05 mL per beat. Ea is measured from the simulated beat as Pes/SV, with Pes taken at peak elastance. It is not an input.
+Activation e(t) rises as a normalized double-Hill function, with time to peak 0.2 + 0.15·T s, and falls as a monoexponential with the relaxation time constant τ. The systemic and pulmonary arterial beds are three-element Windkessels (Zc, C, R). Each atrium is a time-varying elastance whose contraction starts at the P wave, 160 ms before ventricular activation, and lasts 140 ms. The venous compartments are passive compliances. The equations are integrated with fixed-step RK4 until the state changes by less than 0.05 mL per beat, and the recorded beat uses 0.5 ms steps. Ea is measured from the simulated beat as Pes/SV, with Pes taken at peak elastance. It is not an input.
 
-The model deliberately leaves out ventricular interdependence and the pericardium, valve disease, baroreflexes, the force–frequency relation and coronary perfusion.
+Seven mechanisms are on by default and each can be switched off (`site/advanced.html` explains each):
+
+| Mechanism | Representation |
+|---|---|
+| Pericardium | Exponential pressure–volume relation of the whole heart, added to all four chambers; pericardial fluid for tamponade |
+| Septal interdependence | Time-varying septal elastance between the ventricles, solved by Newton iteration at every step (after Smith et al. 2004) |
+| c wave and base descent | Effective atrial volume changes with leaflet bulging and with AV-plane descent during ventricular activation |
+| Relaxation time constant | Monoexponential fall of activation with τ; the reported τ is fitted to the isovolumic pressure decline |
+| Force–frequency relation | Ees × (1 + kFFR·(HR − 70)/70), flat in the HFrEF scenario |
+| Baroreflex | Sigmoid on MAP acting on HR, Ees, SVR and venous tone (after Ursino 1998); set point is the normal MAP, reset in chronic hypertension |
+| Coronary perfusion | Supply (perfusion-pressure integral × flow reserve) against demand (Suga's PVA); a deficit depresses Ees |
+
+Valve lesions (aortic stenosis, and mitral, aortic and tricuspid regurgitation) are orifice flows from ΔP = 4v².
 
 ### Normal calibration (tests/engine.test.mjs checks each)
 
@@ -56,17 +68,7 @@ Scenario parameter sets are synthetic. They were chosen to reproduce the directi
 ## Verifying the numbers
 
 ```sh
-node tests/engine.test.mjs          # calibration, conservation, ESPVR recovery, directional and scenario checks
-node tests/export_presets.mjs       # writes tests/presets_js.csv
-Rscript R/validate.R                # runs the same model in base R and compares (agreement < 1%)
-```
-
-`R/va_model.R` is a base-R implementation of the same equations (`va_simulate()`, `va_presets()`). You can use it to audit the model or to make figures in R, for example:
-
-```r
-source("R/va_model.R")
-r <- va_simulate(va_presets()$pahDecomp)
-plot(r$rec$Vrv, r$rec$Prv, type = "l", xlab = "RV volume (mL)", ylab = "RV pressure (mmHg)")
+node tests/engine.test.mjs          # calibration, conservation, ESPVR recovery, mechanisms, scenario and quoted-number checks
 ```
 
 ## Evidence

@@ -2,7 +2,6 @@
 // and not treatment targets. Keys not listed fall back to NORMAL (engine.js).
 // `refs` are keys into refs.js; each scenario text states what the source shows.
 // `detail` (Scenarios page): mechanism, bedside findings, management evidence, caveat. HTML with <cite>.
-import { WU } from './engine.js';
 
 export const PRESETS = [
   {
@@ -13,7 +12,7 @@ export const PRESETS = [
   },
   {
     id: 'hfpef', side: 'lv', label: 'Hypertensive heart / HFpEF',
-    params: { lvEes: 4.5, lvBeta: 0.042, lvA: 0.3, svr: 1.5, cSys: 0.7, zcAo: 0.06, vStressed: 880 },
+    params: { lvEes: 4.5, lvBeta: 0.042, lvA: 0.3, svr: 1.49, cSys: 0.7, zcAo: 0.06, vStressed: 941, tau: 0.056, lvMass: 1.5, mapSet: 137.7 },
     text: 'Concentric remodeling raises Ees and Ea together, so the ratio remains in the normal range; Kawaguchi reported an Ees of 4.7 mmHg/mL in HFpEF, compared with 2.1 to 3.3 mmHg/mL in controls. Because the EDPVR is steep, filling pressure responds strongly to volume. A 150-mL fluid bolus raises LAP by 3.2 mmHg here and by 2.3 mmHg in the normal heart, and removing the same volume lowers it by 3.5 mmHg.',
     refs: ['kawaguchi2003', 'borlaug2008'],
     detail: {
@@ -25,7 +24,7 @@ export const PRESETS = [
   },
   {
     id: 'hfref', side: 'lv', label: 'HFrEF (dilated, low Ees)',
-    params: { lvEes: 0.8, lvV0: 40, lvBeta: 0.021, lvA: 0.3, svr: 1.2, hr: 85, vStressed: 760 },
+    params: { lvEes: 0.8, lvV0: 40, lvBeta: 0.021, lvA: 0.3, svr: 1.26, hr: 85, vStressed: 917, kFFR: 0, pcdV0: 350 },
     text: 'Ees is reduced, the ESPVR is shifted to the right with a V₀ of 40 mL, and neurohormonal activation constricts the arteries, so Ea/Ees exceeds 2 and SW/PVA is low. Because the ESPVR is flat, stroke volume depends heavily on afterload; the arterial vasodilator (SVR × 0.7) raises it by about 19% here and by about 8% in the normal heart.',
     refs: ['borlaug2008', 'burkhoff1986'],
     detail: {
@@ -37,7 +36,7 @@ export const PRESETS = [
   },
   {
     id: 'vasoplegia', side: 'lv', label: 'Septic shock with vasoplegia',
-    params: { svr: 0.36, cSys: 1.8, hr: 110, vStressed: 700 },
+    params: { svr: 0.336, cSys: 1.8, hr: 87, vStressed: 528 },
     text: 'SVR and Ea are low while Ees is normal, so Ea/Ees falls below the normal range and MAP is below 70 mmHg despite a cardiac output of 8.1 L/min.',
     refs: ['guarracino2014', 'ikonomidis2019'],
     detail: {
@@ -49,7 +48,7 @@ export const PRESETS = [
   },
   {
     id: 'septicCM', side: 'lv', label: 'Septic shock with depressed Ees',
-    params: { lvEes: 1.0, svr: 0.62, cSys: 1.6, hr: 110, vStressed: 760 },
+    params: { lvEes: 0.75, svr: 0.538, cSys: 1.6, hr: 87, vStressed: 573 },
     text: 'Ees and SVR are low and the heart rate is increased. Because Ea ≈ SVR/T and the cardiac period is short, Ea remains near normal, and the high ratio reflects the low Ees; Guarracino reported an Ea/Ees of 1.81 in septic shock and 1.07 in non-septic patients. In the simulator, norepinephrine raises MAP to 88 mmHg but lowers cardiac output from 6.2 to 5.8 L/min, whereas the inotrope raises cardiac output to 7.4 L/min and lowers Ea/Ees from 1.48 to 1.06.',
     refs: ['guarracino2014', 'whitehouse2023'],
     detail: {
@@ -73,7 +72,7 @@ export const PRESETS = [
   },
   {
     id: 'pahComp', side: 'rv', label: 'PAH, compensated RV',
-    params: { pvr: 7 * WU, cPa: 1.0, zcPa: 0.03, rvEes: 1.05, rvBeta: 0.028, rvA: 0.3, vStressed: 820 },
+    params: { pvr: 0.4, cPa: 1.0, zcPa: 0.03, rvEes: 1.05, rvBeta: 0.028, rvA: 0.3, vStressed: 806, rvMass: 2 },
     text: 'PVR is 7 WU and PA compliance is low, and the hypertrophied RV has an Ees of 1.05 mmHg/mL. Ees/Ea is about 1.2 and the RV volumes are near normal, consistent with the Emax/Ea of 1.1 ± 0.3 reported by Kuehne in chronic pulmonary hypertension, compared with 1.9 ± 0.4 in controls.',
     refs: ['kuehne2004', 'naeije2014', 'tello2019hf'],
     detail: {
@@ -85,7 +84,7 @@ export const PRESETS = [
   },
   {
     id: 'pahDecomp', side: 'rv', label: 'PAH, decompensated RV',
-    params: { pvr: 12 * WU, cPa: 0.7, zcPa: 0.035, rvEes: 0.55, rvV0: 45, rvBeta: 0.024, rvA: 0.3, hr: 95, vStressed: 920 },
+    params: { pvr: 0.622, cPa: 0.7, zcPa: 0.035, rvEes: 0.55, rvV0: 45, rvBeta: 0.024, rvA: 0.3, vStressed: 963, rvMass: 2, pcdV0: 340 },
     text: 'PVR is 12 WU, the RV Ees is 0.55 mmHg/mL, and the RV ESPVR is shifted to the right. Ees/Ea is below the 0.805 threshold that Tello associated with the onset of RV failure, and SV/ESV is below the 0.515 threshold reported by Vanderpool. The dilated RV raises RAP above 10 mmHg and underfills the LV, so blood pressure is low despite a normal LV Ees.',
     refs: ['tello2019hf', 'vanderpool2015', 'naeije2014'],
     detail: {
@@ -97,7 +96,7 @@ export const PRESETS = [
   },
   {
     id: 'acutePE', side: 'rv', label: 'Acute massive PE',
-    params: { pvr: 6 * WU, cPa: 1.4, zcPa: 0.03 },
+    params: { pvr: 0.42, cPa: 1.4, zcPa: 0.03 },
     text: 'A normal RV is exposed to an acute PVR of 6 WU. Ees is unchanged, so Ees/Ea falls to 0.6 and cardiac output to 3.9 L/min, while mPAP rises only to 29 mmHg. The hypertrophied RV of the compensated PAH scenario maintains a cardiac output of 5.2 L/min at a PVR of 7 WU.',
     refs: ['konstantinides2020', 'konstam2018', 'naeije2014'],
     detail: {
@@ -109,7 +108,7 @@ export const PRESETS = [
   },
   {
     id: 'cpcph', side: 'rv', label: 'HFpEF with combined pre-/post-capillary PH',
-    params: { lvEes: 4.5, lvBeta: 0.042, lvA: 0.3, svr: 1.5, cSys: 0.7, zcAo: 0.06, vStressed: 1240, pvr: 3.5 * WU, cPa: 1.8 },
+    params: { lvEes: 4.5, lvBeta: 0.042, lvA: 0.3, svr: 1.54, cSys: 0.7, zcAo: 0.06, vStressed: 1250, tau: 0.056, lvMass: 1.5, pvr: 0.187, cPa: 1.8, mapSet: 138.9 },
     text: 'An HFpEF left heart is combined with a PVR of 3.5 WU. A LAP of 16 mmHg raises PA pressure passively, and the additional PVR imposes a pre-capillary load on the RV, whose Ees/Ea falls to 0.69. The ESC/ERS 2022 guidelines define combined post- and pre-capillary PH as a PAWP above 15 mmHg with a PVR above 2 WU.',
     refs: ['humbert2022', 'kawaguchi2003'],
     detail: {
@@ -118,6 +117,42 @@ export const PRESETS = [
       manage: 'Management is directed at the underlying left heart disease. The 6th World Symposium maintained a strong recommendation against the use of PAH therapies in group 2 PH <cite data-ref="vachiery2019"></cite>.',
       note: '',
     },
+  },
+  // ---- Advanced scenarios: the mechanisms on the Advanced page change what these look like
+  {
+    id: 'asSevere', side: 'lv', group: 'advanced', label: 'Severe aortic stenosis',
+    params: { avArea: 0.7, lvEes: 3.2, lvBeta: 0.036, lvA: 0.28, tau: 0.05, lvMass: 1.6, vStressed: 831 },
+    text: '', refs: ['baumgartner2017', 'briand2005'],
+  },
+  {
+    id: 'mrAcute', side: 'lv', group: 'advanced', label: 'Acute severe mitral regurgitation',
+    params: { mrEroa: 0.5, laEmin: 0.6, laEmax: 2.0 },
+    text: '', refs: ['zoghbi2017'],
+  },
+  {
+    id: 'arChronic', side: 'lv', group: 'advanced', label: 'Chronic severe aortic regurgitation',
+    params: { arEroa: 0.3, lvA: 2.07, lvBeta: 0.012, lvV0: 25, vStressed: 776, pcdV0: 480, lvMass: 1.6 },
+    text: '', refs: ['zoghbi2017'],
+  },
+  {
+    id: 'hfpefTachy', side: 'lv', group: 'advanced', label: 'HFpEF with tachycardia',
+    params: { lvEes: 4.5, lvBeta: 0.042, lvA: 0.3, svr: 1.49, cSys: 0.7, zcAo: 0.06, vStressed: 941, tau: 0.056, lvMass: 1.5, mapSet: 137.7, hr: 110 },
+    text: '', refs: ['zile2004'],
+  },
+  {
+    id: 'trSevere', side: 'rv', group: 'advanced', label: 'Severe tricuspid regurgitation',
+    params: { trEroa: 0.9, rvBeta: 0.012, rvV0: 40, rvA: 2.37, vStressed: 1160, pcdV0: 420, pvr: 0.15 },
+    text: '', refs: ['zoghbi2017'],
+  },
+  {
+    id: 'peIschemia', side: 'rv', group: 'advanced', label: 'Acute PE with RV ischemia',
+    params: { pvr: 0.54, cPa: 1.4, zcPa: 0.03 },
+    text: '', refs: ['vlahakes1981'],
+  },
+  {
+    id: 'tamponade', side: 'both', group: 'advanced', label: 'Cardiac tamponade',
+    params: { pcdFluid: 230 },
+    text: '', refs: ['spodick2003'],
   },
 ];
 
