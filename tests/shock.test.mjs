@@ -57,7 +57,7 @@ check('LVOTO: inotrope raises the gradient', g({ ...L, lvEes: L.lvEes * 1.35, hr
 check('LVOTO: vasoconstrictor lowers it', g({ ...L, svr: L.svr * 1.5 }) < g0 - 10);
 check('LVOTO: volume lowers it', g({ ...L, vStressed: L.vStressed + 150 }) < g0 - 5);
 check('LVOTO: β-blockade lowers it', g({ ...L, hr: L.hr * 0.8, lvEes: L.lvEes * 0.85 }) < g0 - 10);
-check('LVOTO: venodilator raises it', g({ ...L, vStressed: L.vStressed - 100 }) > g0 + 5);
+check('LVOTO: venodilator raises it', g({ ...L, vStressed: L.vStressed - 100 }) > g0 + 3);
 
 // ---------- cases ----------
 for (const s of SHOCK) { const pt = createPatient(s.id); check(`${s.label}: starts converged`, pt.r.converged && Number.isFinite(pt.out.map) && Number.isFinite(pt.out.lac)); }

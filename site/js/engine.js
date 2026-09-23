@@ -48,9 +48,10 @@ export const NORMAL = Object.freeze({
   rMv: 0.004,         // mitral inflow resistance
   // Atria: time-varying elastance, P = [Emin + a(t)·(Emax − Emin)]·(V − V0)
   laEmax: 1.4, laEmin: 0.2, laV0: 10,
-  raEmax: 1.0, raEmin: 0.14, raV0: 10,
+  raEmax: 0.5, raEmin: 0.14, raV0: 10,
   pr: 0.16,           // P-wave onset to QRS (start of ventricular activation), s
-  aDur: 0.14,         // duration of atrial contraction, s
+  aDelay: 0.05,       // P-wave onset to the start of atrial contraction (tissue Doppler: ~37 ms RA, ~56 ms LA), s
+  aDur: 0.17,         // duration of atrial contraction, s
   aKick: 1,           // atrial contraction strength: 1 sinus, 0 none (atrial fibrillation)
   aShift: 0,          // s added to atrial timing; > PR puts atrial systole inside ventricular systole (AV dissociation)
   // Blood volume
@@ -65,8 +66,10 @@ export const NORMAL = Object.freeze({
   sptEes: 48, sptVd: -2, sptA: 1.11, sptBeta: 0.435, sptBetaL: 0.2, sptV0: -3.5,
   // AV-plane descent and leaflet bulging, as changes in effective atrial volume
   baseAlpha: 0.4,     // mL of atrial capacity gained per mL of ventricular emptying (scaled by activation)
-  cBulge: 4,          // mL of leaflet displacement into the atrium while the valve is closed
-  cP: 4,              // mmHg gradient that half-saturates the bulge
+  baseExp: 0.4,       // activation is raised to this power, so the AV plane returns more slowly than the ventricle relaxes
+  cBulge: 6,          // mL of leaflet displacement into the atrium while the valve is closed
+  cP: 1,              // mmHg gradient that half-saturates the bulge
+  cFade: 30,          // mL ejected over which the bulge gives way to the AV-plane descent
   // Relaxation: monoexponential fall of activation after end-systole
   tau: 0.035,         // s
   // Force–frequency: Ees × (1 + kFFR·(HR − 70)/70), bounded to 0.7–1.4
@@ -125,10 +128,10 @@ function makeActivation(T, p) {
   return { e, tPeak };
 }
 
-// Atrial activation: a raised-cosine pulse of duration aDur that starts at the P wave,
+// Atrial activation: a raised-cosine pulse of duration aDur that starts aDelay after the P wave,
 // PR seconds before the QRS (t = 0), shifted by aShift; periodic in T.
 function makeAtrialActivation(T, p) {
-  const onset = (((-p.pr + p.aShift) % T) + T) % T;
+  const onset = (((-p.pr + p.aDelay + p.aShift) % T) + T) % T;
   return (t) => {
     const u = ((((t - onset) % T) + T) % T) / p.aDur;
     return u < 1 ? p.aKick * 0.5 * (1 - Math.cos(2 * Math.PI * u)) : 0;
@@ -204,11 +207,16 @@ function pressures(s, e, ea, p, ctx) {
     // descent of the AV plane enlarges the atrium as the ventricle empties;
     // the closed leaflets bulge back into the atrium while ventricular pressure exceeds atrial
     // (the gain follows ventricular activation, so the AV plane returns as the ventricle relaxes)
-    VraE -= p.baseAlpha * e * (ctx.vR0 - s[3]);
-    VlaE -= p.baseAlpha * e * (ctx.vL0 - s[0]);
+    const eB = Math.pow(e, p.baseExp);
+    VraE -= p.baseAlpha * eB * (ctx.vR0 - s[3]);
+    VlaE -= p.baseAlpha * eB * (ctx.vL0 - s[0]);
     const gR = Prv - (Era * (VraE - p.raV0) + Ppcd), gL = Plv - (Ela * (VlaE - p.laV0) + Ppcd);
-    if (gR > 0) VraE += p.cBulge * gR / (gR + p.cP);
-    if (gL > 0) VlaE += p.cBulge * gL / (gL + p.cP);
+    // the bulge starts with ventricular contraction and gives way to the AV-plane descent once the
+    // ventricle has ejected cFade mL, so the c wave is followed by the x descent
+    const fE = Math.min(1, e / 0.05);
+    const fR = fE * Math.max(0, 1 - (ctx.vR0 - s[3]) / p.cFade), fL = fE * Math.max(0, 1 - (ctx.vL0 - s[0]) / p.cFade);
+    if (gR > 0) VraE += fR * p.cBulge * gR / (gR + p.cP);
+    if (gL > 0) VlaE += fL * p.cBulge * gL / (gL + p.cP);
   }
   const Pra = Era * (VraE - p.raV0) + Ppcd;
   const Pla = Ela * (VlaE - p.laV0) + Ppcd;
@@ -436,7 +444,7 @@ function dist(a, b) { return Math.max(...a.map((x, i) => Math.abs(x - b[i]))); }
  */
 export function simulate(params, opt = {}) {
   const p = { ...NORMAL, ...params };
-  const dt = opt.dt ?? 0.0005, maxBeats = opt.maxBeats ?? 300, tol = opt.tol ?? 0.05;
+  const dt = opt.dt ?? 0.0005, maxBeats = opt.maxBeats ?? 400, tol = opt.tol ?? 0.05;
   // a warm start carries the reflex state; ischemia is always recomputed from an unischemic heart,
   // so the result depends only on the parameters
   const sl = opt.slow ? { ...opt.slow, ischL: 1, ischR: 1 } : initialSlow();

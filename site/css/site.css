@@ -491,3 +491,6 @@ body[data-view="both"] .pv-card { position: static; }
 #pac-scr { touch-action: pan-y; }
 .pac-quick { gap: 6px; margin: 4px 0 6px; }
 .seg.pac-inline { margin: 0; }
+.pac-quiz { border: 1px solid var(--border); border-radius: 8px; padding: 6px 10px; margin: 6px 0 10px; background: var(--surface); }
+.pac-quiz .btn-row { align-items: center; margin: 0; }
+.pac-quiz #pac-quiz-out p { margin: 6px 0 0; }
