@@ -365,15 +365,30 @@ body[data-view="both"] .pv-card { position: static; }
 .pac-notes .card p { font-size: 0.9rem; margin: 0; }
 
 /* Scenario details */
-.scen details h4 { font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--link); margin: 12px 0 2px; }
-.scen details p { font-size: 0.9rem; margin: 0 0 4px; }
-.scen-table { font-size: 0.8rem; margin-top: 10px; max-width: 640px; }
-.scen-table td, .scen-table th { padding: 3px 6px; }
+.scen details h4 { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--link); margin: 16px 0 4px; }
+.scen details h4:first-of-type { margin-top: 10px; }
+.scen details p { font-size: 0.93rem; line-height: 1.55; margin: 0 0 6px; max-width: 46em; }
+.scen details > summary { list-style: none; display: inline-flex; align-items: center; gap: 6px; font-weight: 600; font-size: 0.85rem;
+  border: 1px solid var(--border); border-radius: 99px; padding: 3px 12px; background: var(--surface-2); }
+.scen details > summary::-webkit-details-marker { display: none; }
+.scen details > summary::before { content: "▸"; font-size: 0.8em; }
+.scen details[open] > summary::before { content: "▾"; }
+.scen details .when-open, .scen details[open] .when-closed { display: none; }
+.scen details[open] .when-open { display: inline; }
+.scen-table { font-size: 0.82rem; margin-top: 10px; max-width: 640px; }
+.scen-table td, .scen-table th { padding: 4px 8px; }
+.scen-table td.num, .scen-table th.num { text-align: right; font-family: "Source Code Pro", ui-monospace, monospace; white-space: nowrap; }
+.scen .scen-table { width: 100%; max-width: 46em; margin-top: 18px; border-top: 1px solid var(--border); }
+/* Open card: spans the grid; loop, key numbers and link on the left, one readable text column and the table on the right */
 .scen:has(details[open]) { grid-column: 1 / -1; }
-.scen:has(details[open]) .monitor.mini { max-width: 420px; }
-.scen details[open] { columns: 2 22em; column-gap: 28px; }
-.scen details[open] > summary, .scen-table { column-span: all; }
-.scen details h4 { break-after: avoid; }
+@media (min-width: 820px) {
+  .scen:has(details[open]) { display: grid; grid-template-columns: minmax(260px, 360px) minmax(0, 1fr); column-gap: 28px; align-items: start; }
+  .scen:has(details[open]) > h3 { grid-column: 1 / -1; }
+  .scen:has(details[open]) > .monitor.mini { grid-column: 1; grid-row: 2; }
+  .scen:has(details[open]) > .scen-nums { grid-column: 1; grid-row: 3; }
+  .scen:has(details[open]) > a.more { grid-column: 1; grid-row: 4; }
+  .scen:has(details[open]) > details { grid-column: 2; grid-row: 2 / span 4; margin: 6px 0 0; }
+}
 
 /* Echo lab: coupling from echo */
 .coupling { margin: 18px 0 8px; }
@@ -449,3 +464,11 @@ body[data-view="both"] .pv-card { position: static; }
 @media (prefers-reduced-motion: reduce) { .lvl span { transition: none; } }
 .calc-out .metrics { margin-top: 6px; }
 .side-col.shock-side .panel:first-child { display: block; }   /* the simulator hides its first side panel on phones; the shock lab does not */
+@media (max-width: 600px) {
+  .scen-table { font-size: 0.76rem; }
+  .scen-table td, .scen-table th { padding: 3px 4px; }
+  .scen-table td.num { white-space: normal; }
+}
+.log li.log-new { animation: log-new 2s ease-out; }
+@keyframes log-new { from { background: var(--flag-bg); } to { background: transparent; } }
+@media (prefers-reduced-motion: reduce) { .log li.log-new { animation: none; } }

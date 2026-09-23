@@ -13,7 +13,9 @@ const FS = 250, WIN = 6;             // monitor sample rate (Hz) and window (s)
 const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 const NORM = simulate({});
 
-const st = { id: 'normal', speed: 1, running: false, timer: null, busy: false, pt: null, start: null, beat: null, t0: performance.now(), showPA: false };
+const st = { id: 'normal', speed: 1, running: false, timer: null, busy: false, pt: null, start: null, beat: null, t0: performance.now(), showPA: false,
+  sweep: null, scale: { abp: 0, cvp: 0, pa: 0 } };
+const KEYS = ['ecg', 'abp', 'cvp', 'pa'];
 
 // ---------- monitor ----------
 function buildBeat() {
@@ -26,6 +28,39 @@ function ecg(ph, T) {
   let d = u < 0.03 ? Math.sin(u / 0.03 * Math.PI) * 12 * (u < 0.015 ? 1 : -0.4) : u > 0.3 && u < 0.45 ? Math.sin((u - 0.3) / 0.15 * Math.PI) * 3.5 : 0;
   if (tp >= 0 && tp < 0.09) d += 2 * Math.sin(tp / 0.09 * Math.PI);
   return d;
+}
+
+// Sweep buffer, as on a bedside monitor: samples are written once at the moving cursor and never
+// redrawn, and each new sample continues the beat phase, so a change of heart rate at a tick changes
+// only the beats still to come. The display does not scroll, so there is no aliasing shimmer.
+function sweepFill(now) {
+  const N = Math.round(WIN * FS), b = st.beat;
+  if (!st.sweep) st.sweep = { N, written: null, phase: 0, buf: Object.fromEntries(KEYS.map((k) => [k, new Float32Array(N).fill(NaN)])) };
+  const sw = st.sweep, target = Math.floor(((now - st.t0) / 1000) * FS);
+  if (sw.written == null || target - sw.written > N) sw.written = target - N;
+  for (let s = sw.written + 1; s <= target; s++) {
+    sw.phase += 1 / b.n; if (sw.phase >= 1) sw.phase -= Math.floor(sw.phase);
+    const k = Math.min(b.n - 1, Math.floor(sw.phase * b.n)), i = ((s % N) + N) % N;
+    sw.buf.ecg[i] = ecg(k / FS, b.T); sw.buf.abp[i] = b.abp[k]; sw.buf.cvp[i] = b.cvp[k]; sw.buf.pa[i] = b.pa[k];
+  }
+  sw.written = target;
+  return { buf: sw.buf, N, cursor: ((target % N) + N) % N };
+}
+// Scrolling window from one fixed beat (slide export, where every frame is rendered from the model).
+function scrollFill(tEnd) {
+  const N = Math.round(WIN * FS), s0 = Math.round(tEnd * FS) - N, b = st.beat;
+  const buf = Object.fromEntries(KEYS.map((k) => [k, new Float32Array(N)]));
+  for (let j = 0; j < N; j++) {
+    const kk = (((s0 + j) % b.n) + b.n) % b.n;
+    buf.ecg[j] = ecg(kk / FS, b.T); buf.abp[j] = b.abp[kk]; buf.cvp[j] = b.cvp[kk]; buf.pa[j] = b.pa[kk];
+  }
+  return { buf, N, cursor: null };
+}
+// Display range with hysteresis, so the scale does not jump with small beat-to-beat changes.
+function range(k, max, floor, step) {
+  const cur = st.scale[k];
+  if (!cur || max > cur * 0.92 || max < cur * 0.45) st.scale[k] = Math.max(floor, Math.ceil((max * 1.25) / step) * step);
+  return [0, st.scale[k]];
 }
 
 // target (export only): { g, w, h }
@@ -41,32 +76,44 @@ function drawMonitor(tEnd, target) {
     g = c.getContext('2d'); g.setTransform(dpr, 0, 0, dpr, 0, 0);
   }
   const b = st.beat, o = st.pt.out;
+  const src = target || reduce ? scrollFill(tEnd) : sweepFill(tEnd);
   g.fillStyle = '#05090A'; g.fillRect(0, 0, w, h);
   const narrow = w < 560;
   const numW = narrow ? 0 : Math.max(170, w * 0.26);
   const traceH = narrow ? h * 0.58 : h;
-  const pw = w - numW - 16, x0 = 8;
-  const rows = st.showPA ? [['ecg'], ['abp'], ['pa'], ['cvp']] : [['ecg'], ['abp'], ['cvp']];
+  const pw = Math.floor(w - numW - 16), x0 = 8;
+  const rows = st.showPA ? ['ecg', 'abp', 'pa', 'cvp'] : ['ecg', 'abp', 'cvp'];
   const rh = (traceH - 10) / rows.length;
-  const N = Math.round(WIN * FS), s0 = Math.round(tEnd * FS) - N;
   const col = { ecg: '#7CE38B', abp: '#F2706A', cvp: '#6FB7F2', pa: '#E8D35F' };
   const scale = {
-    abp: [0, Math.max(120, Math.ceil(Math.max(...b.abp) / 20) * 20 + 20)],
-    cvp: [0, Math.max(20, Math.ceil(Math.max(...b.cvp) / 5) * 5 + 5)],
-    pa: [0, Math.max(40, Math.ceil(Math.max(...b.pa) / 10) * 10 + 10)],
+    abp: range('abp', Math.max(...b.abp), 120, 20),
+    cvp: range('cvp', Math.max(...b.cvp), 20, 5),
+    pa: range('pa', Math.max(...b.pa), 40, 10),
   };
+  const per = src.N / pw, gap = Math.round(0.25 * FS);   // erase bar ahead of the cursor, 250 ms
   g.font = '11px system-ui'; g.textBaseline = 'alphabetic';
-  rows.forEach(([k], i) => {
+  rows.forEach((k, i) => {
     const top = 6 + i * rh, bot = top + rh - 6;
+    const Y = k === 'ecg' ? (v) => (top + bot) / 2 - v * rh / 40 : (v) => bot - ((v - scale[k][0]) / (scale[k][1] - scale[k][0])) * (bot - top);
+    const a = src.buf[k];
     g.strokeStyle = '#16251F'; g.lineWidth = 1;
     g.beginPath(); g.moveTo(x0, bot); g.lineTo(x0 + pw, bot); g.stroke();
-    g.strokeStyle = col[k]; g.lineWidth = k === 'ecg' ? 1.3 : 1.8; g.beginPath();
-    for (let j = 0; j <= pw; j++) {
-      const s = s0 + Math.round((j / pw) * N), kk = ((s % b.n) + b.n) % b.n;
-      let y;
-      if (k === 'ecg') y = (top + bot) / 2 - ecg(kk / FS, b.T) * rh / 40;
-      else { const [lo, hi] = scale[k]; y = bot - ((b[k][kk] - lo) / (hi - lo)) * (bot - top); }
-      j ? g.lineTo(x0 + j, y) : g.moveTo(x0 + j, y);
+    g.strokeStyle = col[k]; g.lineWidth = k === 'ecg' ? 1.3 : 1.8; g.lineJoin = 'round'; g.beginPath();
+    let pen = false;
+    for (let j = 0; j < pw; j++) {
+      const i0 = Math.floor(j * per), i1 = Math.max(i0 + 1, Math.floor((j + 1) * per));
+      if (src.cursor != null) {
+        const ahead = (i0 - src.cursor + src.N) % src.N;
+        if (ahead > 0 && ahead <= gap) { pen = false; continue; }
+      }
+      // every sample in this pixel column, so a narrow QRS or c wave is always drawn to its full height
+      let lo = Infinity, hi = -Infinity, first = NaN, last = NaN;
+      for (let q = i0; q < i1; q++) { const v = a[q]; if (Number.isNaN(v)) continue; if (Number.isNaN(first)) first = v; last = v; if (v < lo) lo = v; if (v > hi) hi = v; }
+      if (Number.isNaN(first)) { pen = false; continue; }
+      const x = x0 + j + 0.5;
+      if (pen) g.lineTo(x, Y(first)); else g.moveTo(x, Y(first));
+      if (hi - lo > 0.01) { g.lineTo(x, Y(hi)); g.lineTo(x, Y(lo)); }
+      g.lineTo(x, Y(last)); pen = true;
     }
     g.stroke();
     g.fillStyle = col[k]; g.textAlign = 'left';
@@ -104,8 +151,7 @@ function drawMonitor(tEnd, target) {
 }
 
 function frame(now) {
-  const t = (now - st.t0) / 1000;
-  if (st.beat) drawMonitor(t);
+  if (st.beat) drawMonitor(now);
   if (!reduce) requestAnimationFrame(frame);
 }
 
@@ -130,6 +176,7 @@ function setRunning(on) {
 function load(id) {
   st.id = SHOCK_BY[id] ? id : 'normal';
   st.pt = createPatient(st.id);
+  st.scale = { abp: 0, cvp: 0, pa: 0 };
   st.start = st.pt.r;
   $('#scn').value = st.id;
   $('#scn-text').innerHTML = `<p>${st.pt.sc.text}</p>`;
@@ -281,8 +328,10 @@ function drawFK() {
 }
 
 function logPanel() {
-  const L = st.pt.log;
-  $('#log').innerHTML = L.length ? L.slice().reverse().map((e) => `<li><span class="log-t">${hm(e.t)}</span>${e.text}</li>`).join('') : '<li class="status">No treatment given yet.</li>';
+  const L = st.pt.log, box = $('#log'), added = L.length > (box.dataset.n | 0);
+  box.innerHTML = L.length ? L.slice().reverse().map((e, i) => `<li${added && i === 0 ? ' class="log-new"' : ''}><span class="log-t">${hm(e.t)}</span>${e.text}</li>`).join('') : '<li class="status">No treatment given yet.</li>';
+  box.dataset.n = L.length;
+  if (added) box.scrollTop = 0;       // newest entry is at the top; bring it into view
 }
 
 function refresh() {

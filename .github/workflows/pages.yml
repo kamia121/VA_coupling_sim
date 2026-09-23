@@ -36,6 +36,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/configure-pages@v5
+      # Give every module and stylesheet URL the commit's version, so a browser that still holds
+      # files from the previous deploy cannot combine them with new ones (a new page importing an
+      # old engine.js or presets.js fails before it draws anything).
+      - name: Version asset URLs
+        run: |
+          V=${GITHUB_SHA::8}
+          find site \( -name '*.js' -o -name '*.html' \) -print0 | xargs -0 sed -i -E \
+            -e "s#(['\"]\.{1,2}/(js/)?[A-Za-z0-9_-]+\.js)(['\"])#\1?v=$V\3#g" \
+            -e "s#(href=\"css/[A-Za-z0-9_-]+\.css)\"#\1?v=$V\"#g"
+          grep -rc "?v=$V" site --include='*.html' | head -3
       - uses: actions/upload-pages-artifact@v3
         with:
           path: site
