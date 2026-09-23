@@ -1,6 +1,6 @@
 // Simulator page controller: drag handles on the PV loop, intervention buttons,
 // animated transitions, a beat cursor, and a step-by-step replay of each change.
-import { simulate, NORMAL, WU, DYN } from './engine.js';
+import { simulate, NORMAL, WU, DYN, cardiacPhases } from './engine.js';
 import { PRESETS, INTERVENTIONS, presetById } from './presets.js';
 import { drawPlot, niceMax, swatch, svgPoint, svgEl } from './plot.js';
 import { REF_INDEX } from './refs.js';
@@ -88,7 +88,9 @@ const METRICS = {
 
 // ---------- state ----------
 let params = { ...NORMAL };
-let side = 'lv';
+let side = 'lv';          // ventricle used by single-ventricle panels
+let view = 'lv';          // 'lv' | 'rv' | 'both'
+const sidesInView = () => (view === 'both' ? ['lv', 'rv'] : [side]);
 let snapshot = null;     // pinned comparison
 let result = null;       // current steady state
 let prev = null;         // state before the last change (for chips and replay)
@@ -96,7 +98,8 @@ let warm = null;
 let busy = false;        // an animation owns the plot
 let dragAxes = null;     // frozen axis limits while dragging
 let showHidden = false;
-let map = null;          // current PV plot mapping
+let map = null;          // current PV plot mapping (primary side)
+const maps = {};         // PV mapping per side on screen
 const REF = simulate({});
 const HIDDEN = {
   lv: [['hfpef', 'HFpEF'], ['vasoplegia', 'Vasoplegia']],
@@ -161,28 +164,18 @@ async function animateTo(target) {
 }
 
 // ---------- cardiac phases for the moving cursor ----------
-let phases = null;
+let phases = null, events = null;
 function buildPhases(r) {
-  const n = r.rec.t.length;
-  const out = (s, i) => (s === 'lv' ? r.rec.Qao[i] > 0 : r.rec.Qpv[i] > 0);
-  const inflow = (s, i) => (s === 'lv' ? r.rec.Ppv[i] > r.rec.Plv[i] : r.rec.Psv[i] > r.rec.Prv[i]);
-  phases = {};
-  for (const s of ['lv', 'rv']) {
-    const ph = new Array(n);
-    let ejStart = n, seenEj = false;
-    for (let i = 0; i < n; i++) if (out(s, i)) { ejStart = i; break; }
-    for (let i = 0; i < n; i++) {
-      if (out(s, i)) { ph[i] = 'eject'; seenEj = true; }
-      else if (inflow(s, i)) ph[i] = 'fill';
-      else ph[i] = i < ejStart && !seenEj ? 'ivc' : 'ivr';
-    }
-    phases[s] = ph;
-  }
+  const cp = cardiacPhases(r);
+  phases = { lv: cp.lv.ph, rv: cp.rv.ph };
+  events = { lv: cp.lv.events, rv: cp.rv.events };
 }
 const PHASE_LABEL = { fill: 'Filling', ivc: 'Isovolumic contraction', eject: 'Ejection', ivr: 'Isovolumic relaxation' };
 
 // Playback: the beat cursor runs in model time scaled by `speed`; it can be paused and stepped.
-const play = { on: !reduceMotion, speed: 0.25, t: 0, last: null };
+const play = { on: !reduceMotion, speed: 0.25, t: 0, last: null, dwell: true };
+const EVENT_LABELS = { lv: ['MVC', 'AVO', 'AVC', 'MVO'], rv: ['TVC', 'PVO', 'PVC', 'TVO'] };
+const EVENT_NAMES = { MVC: 'mitral valve closes', AVO: 'aortic valve opens', AVC: 'aortic valve closes', MVO: 'mitral valve opens', TVC: 'tricuspid valve closes', PVO: 'pulmonic valve opens', PVC: 'pulmonic valve closes', TVO: 'tricuspid valve opens' };
 let nextStepResolve = null;           // set while the replay waits for "Next step"
 
 function beatIndex() {
@@ -193,31 +186,46 @@ function beatIndex() {
 function drawCursor() {
   if (!result) return;
   const i = beatIndex();
-  const V = side === 'lv' ? result.rec.Vlv[i] : result.rec.Vrv[i];
-  const P = side === 'lv' ? result.rec.Plv[i] : result.rec.Prv[i];
-  const c = document.getElementById('cursor');
-  if (c && map && !busy) { c.setAttribute('cx', map.sx(V)); c.setAttribute('cy', map.sy(P)); }
-  const tl = document.getElementById('tcursor');
-  if (tl && ptMap) { const x = ptMap.sx(result.rec.t[i] * 1000); tl.setAttribute('x1', x); tl.setAttribute('x2', x); }
-  const ph = phases?.[side]?.[i];
+  for (const sd of ['lv', 'rv']) {
+    const c = document.getElementById('cursor-' + sd);
+    const m = maps[sd];
+    if (!c || !m || busy) continue;
+    const V = sd === 'lv' ? result.rec.Vlv[i] : result.rec.Vrv[i];
+    const P = sd === 'lv' ? result.rec.Plv[i] : result.rec.Prv[i];
+    c.setAttribute('cx', m.sx(V)); c.setAttribute('cy', m.sy(P));
+  }
+  for (const pm of ptMaps) { const x = pm.map.sx(result.rec.t[i] * 1000); pm.line.setAttribute('x1', x); pm.line.setAttribute('x2', x); }
   const strip = $('#phase');
   if (strip) {
-    const [inV, outV] = side === 'lv' ? ['Mitral', 'Aortic'] : ['Tricuspid', 'Pulmonic'];
-    const key = ph + side;
+    const key = sidesInView().map((sd) => phases[sd][i]).join() + view;
     if (strip.dataset.phase !== key) {
       strip.dataset.phase = key;
-      strip.innerHTML = `<span class="ph-name">${PHASE_LABEL[ph]}</span>
-        <span class="valve ${ph === 'fill' ? 'open' : ''}">${inV} ${ph === 'fill' ? 'open' : 'closed'}</span>
-        <span class="valve ${ph === 'eject' ? 'open' : ''}">${outV} ${ph === 'eject' ? 'open' : 'closed'}</span>`;
+      strip.innerHTML = sidesInView().map((sd) => {
+        const ph = phases[sd][i];
+        const [inV, outV] = sd === 'lv' ? ['Mitral', 'Aortic'] : ['Tricuspid', 'Pulmonic'];
+        const iso = ph === 'ivc' || ph === 'ivr';
+        return `<span class="ph-name${iso ? ' iso' : ''}">${view === 'both' ? sd.toUpperCase() + ': ' : ''}${PHASE_LABEL[ph]}</span>
+          <span class="valve ${ph === 'fill' ? 'open' : ''}">${inV} ${ph === 'fill' ? 'open' : 'closed'}</span>
+          <span class="valve ${ph === 'eject' ? 'open' : ''}">${outV} ${ph === 'eject' ? 'open' : 'closed'}</span>`;
+      }).join('<span class="ph-sep"></span>');
     }
   }
   const ro = $('#pb-read');
-  if (ro) ro.textContent = `t ${(result.rec.t[i] * 1000).toFixed(0)} ms · V ${V.toFixed(0)} mL · P ${P.toFixed(0)} mmHg`;
+  if (ro) {
+    const t = `t ${(result.rec.t[i] * 1000).toFixed(0)} ms`;
+    ro.textContent = view === 'both'
+      ? `${t} · LV ${result.rec.Plv[i].toFixed(0)} / RV ${result.rec.Prv[i].toFixed(0)} mmHg`
+      : `${t} · V ${(side === 'lv' ? result.rec.Vlv[i] : result.rec.Vrv[i]).toFixed(0)} mL · P ${(side === 'lv' ? result.rec.Plv[i] : result.rec.Prv[i]).toFixed(0)} mmHg`;
+  }
 }
 
 function tick(now) {
   if (result) {
-    if (play.on && play.last != null) play.t = (play.t + ((now - play.last) / 1000) * play.speed) % result.T;
+    if (play.on && play.last != null) {
+      const i = beatIndex();
+      const iso = play.dwell && sidesInView().some((sd) => phases[sd][i] === 'ivc' || phases[sd][i] === 'ivr');
+      play.t = (play.t + ((now - play.last) / 1000) * play.speed * (iso ? 0.2 : 1)) % result.T;   // isovolumic phases run 5× slower
+    }
     play.last = now;
     drawCursor();
   }
@@ -258,6 +266,7 @@ function buildPlayback() {
     <button type="button" class="pb-btn" id="pb-next" title="Next phase">Phase ⏭</button>
     <span class="pb-speed" role="group" aria-label="Speed">${[[1, '1×'], [0.5, '½×'], [0.25, '¼×'], [0.1, '⅒×']]
       .map(([v, t]) => `<button type="button" class="pb-btn" data-speed="${v}">${t}</button>`).join('')}</span>
+    <button type="button" class="pb-btn" id="pb-dwell" title="Run isovolumic contraction and relaxation 5× slower">Slow isovolumic ×5</button>
     <span class="pb-read" id="pb-read"></span>`;
   const syncSpeed = () => document.querySelectorAll('[data-speed]').forEach((b) => b.setAttribute('aria-pressed', String(+b.dataset.speed === play.speed)));
   $('#pb').addEventListener('click', (e) => {
@@ -267,8 +276,10 @@ function buildPlayback() {
     else if (b.id === 'pb-next') stepPhase(1);
     else if (b.id === 'pb-prev') stepPhase(-1);
     else if (b.dataset.speed) { play.speed = +b.dataset.speed; syncSpeed(); }
+    else if (b.id === 'pb-dwell') { play.dwell = !play.dwell; b.setAttribute('aria-pressed', String(play.dwell)); }
   });
   setPlaying(play.on); syncSpeed();
+  $('#pb-dwell').setAttribute('aria-pressed', 'true');
 }
 
 // ---------- PV plot ----------
@@ -296,11 +307,11 @@ function relSeries(R, color, strong) {
   ];
 }
 
-function axes() {
+function axes(sd = side) {
   if (dragAxes) return dragAxes;
-  const all = [REF, result, snapshot, prev, ...(showHidden ? HIDDEN[side].map(([id]) => hiddenRes[id]) : [])].filter(Boolean);
-  const vmax = Math.max(...all.map((r) => r[side].EDV));
-  const pmax = Math.max(...all.map((r) => Math.max(...(side === 'lv' ? r.rec.Plv : r.rec.Prv))));
+  const all = [REF, result, snapshot, prev, ...(showHidden ? HIDDEN[sd].map(([id]) => hiddenRes[id]) : [])].filter(Boolean);
+  const vmax = Math.max(...all.map((r) => r[sd].EDV));
+  const pmax = Math.max(...all.map((r) => Math.max(...(sd === 'lv' ? r.rec.Plv : r.rec.Prv))));
   return { xmax: niceMax(vmax * 1.18), ymax: niceMax(pmax * 1.15) };
 }
 
@@ -310,28 +321,57 @@ function plotWidth(sel) {
 }
 
 function drawPV(extraSeries = [], opts = {}) {
-  const { xmax, ymax } = axes();
-  const w = plotWidth('#pv');
+  maps.lv = maps.rv = null;
+  if (view === 'both') { drawPVFor('lv', '#pv', extraSeries, opts); drawPVFor('rv', '#pv2', [], {}); map = maps.lv; }
+  else map = drawPVFor(side, '#pv', extraSeries, opts);
+}
+
+function drawPVFor(sd, sel, extraSeries = [], opts = {}) {
+  const { xmax, ymax } = axes(sd);
+  const w = plotWidth(sel);
   const series = [
-    { points: loopPts(REF), color: C.ref, width: 1.6 },
-    ...relSeries(rel(REF, xmax), C.ref, false),
+    { points: loopPts(REF, sd), color: C.ref, width: 1.6 },
+    ...relSeries(rel(REF, xmax, sd), C.ref, false),
   ];
-  if (showHidden) for (const [id, name] of HIDDEN[side]) series.push({ points: loopPts(hiddenRes[id]), color: 'var(--flag)', width: 1.4, dash: '4 3' });
-  if (snapshot) series.push({ points: loopPts(snapshot), color: C.snap, width: 1.8 }, ...relSeries(rel(snapshot, xmax), C.snap, false));
+  if (showHidden) for (const [id] of HIDDEN[sd]) series.push({ points: loopPts(hiddenRes[id], sd), color: 'var(--flag)', width: 1.4, dash: '4 3' });
+  if (snapshot) series.push({ points: loopPts(snapshot, sd), color: C.snap, width: 1.8 }, ...relSeries(rel(snapshot, xmax, sd), C.snap, false));
   series.push(...extraSeries);
   if (!opts.noCurrent) {
-    const R = rel(result, xmax);
-    series.push(...relSeries(R, C.cur, true), { points: loopPts(result), color: C.cur, width: 3 }, { points: [R.es], color: C.cur, marker: 5 });
+    const R = rel(result, xmax, sd);
+    series.push(...relSeries(R, C.cur, true), { points: loopPts(result, sd), color: C.cur, width: 3 });
   }
-  map = drawPlot($('#pv'), {
-    width: w, height: Math.round(w * (innerWidth < 700 ? 0.74 : 0.66)),
-    title: `${side === 'lv' ? 'Left' : 'Right'} ventricular pressure–volume loop`,
-    x: { min: 0, max: xmax, label: `${side.toUpperCase()} volume (mL)` },
-    y: { min: 0, max: ymax, label: `${side.toUpperCase()} pressure (mmHg)` },
+  const name = sd === 'lv' ? 'Left' : 'Right';
+  const m = drawPlot($(sel), {
+    width: w, height: Math.round(w * (innerWidth < 700 || view === 'both' ? 0.74 : 0.66)),
+    title: `${name} ventricular pressure–volume loop`,
+    x: { min: 0, max: xmax, label: `${sd.toUpperCase()} volume (mL)` },
+    y: { min: 0, max: ymax, label: `${sd.toUpperCase()} pressure (mmHg)` },
     series,
-    annotations: showHidden ? HIDDEN[side].map(([id, name]) => ({ x: hiddenRes[id][side].EDV, y: hiddenRes[id][side].EDP, text: name, dx: 6, dy: 14, color: 'var(--flag)' })) : [],
+    annotations: showHidden ? HIDDEN[sd].map(([id, nm]) => ({ x: hiddenRes[id][sd].EDV, y: hiddenRes[id][sd].EDP, text: nm, dx: 6, dy: 14, color: 'var(--flag)' })) : [],
   });
-  if (!opts.noCurrent) { addHandles(xmax, ymax); svgEl('circle', { id: 'cursor', r: 6, class: 'beat-cursor', cx: -20, cy: -20 }, map.svg); }
+  maps[sd] = m;
+  if (!opts.noCurrent) {
+    addEventMarks(m, sd);
+    if (view !== 'both') addHandles(xmax, ymax);
+    svgEl('circle', { id: 'cursor-' + sd, r: 6, class: 'beat-cursor', cx: -20, cy: -20 }, m.svg);
+  }
+  return m;
+}
+
+// Valve events at the loop corners: inflow closes, outflow opens, outflow closes, inflow opens.
+function addEventMarks(m, sd) {
+  const ev = events[sd], V = sd === 'lv' ? result.rec.Vlv : result.rec.Vrv, P = sd === 'lv' ? result.rec.Plv : result.rec.Prv;
+  const idx = [ev.inClose, ev.outOpen, ev.outClose, ev.inOpen];
+  const off = [[8, 16], [8, -8], [-8, -8], [-8, 16]];   // label offsets: MVC lower right, AVO upper right, AVC upper left, MVO lower left
+  idx.forEach((i, k) => {
+    if (i >= V.length) return;
+    const x = m.sx(V[i]), y = m.sy(P[i]), lab = EVENT_LABELS[sd][k];
+    const g = svgEl('g', { class: 'ev-mark' }, m.svg);
+    svgEl('circle', { cx: x, cy: y, r: 4.5 }, g);
+    const t = svgEl('text', { x: x + off[k][0], y: y + off[k][1], 'text-anchor': off[k][0] > 0 ? 'start' : 'end' }, g);
+    t.textContent = lab;
+    const tt = svgEl('title', {}, g); tt.textContent = `${lab}: ${EVENT_NAMES[lab]}`;
+  });
 }
 
 // Drag handles: ESPVR (Ees), Ea line (afterload), end-diastolic volume (preload).
@@ -465,6 +505,13 @@ const TILES = {
     [() => 'LAP', (r) => `${r.hemo.LAP.toFixed(0)} mmHg`, (r) => r.hemo.LAP > 15],
     [() => 'Cardiac output', (r) => `${r.hemo.CO.toFixed(1)} L/min`, (r) => r.hemo.CO < 4],
   ],
+  both: [
+    [() => 'LV Ea/Ees', (r) => r.lv.EaEes.toFixed(2), (r) => r.lv.EaEes < 0.3 || r.lv.EaEes > 1.3],
+    [() => 'RV Ees/Ea', (r) => r.rv.EesEa.toFixed(2), (r) => r.rv.EesEa < 0.805],
+    [() => 'MAP / mPAP', (r) => `${r.hemo.MAP.toFixed(0)} / ${r.hemo.mPAP.toFixed(0)}`, (r) => r.hemo.MAP < 65 || r.hemo.mPAP > 20],
+    [() => 'LAP / RAP', (r) => `${r.hemo.LAP.toFixed(0)} / ${r.hemo.RAP.toFixed(0)}`, (r) => r.hemo.LAP > 15 || r.hemo.RAP > 8],
+    [() => 'Cardiac output', (r) => `${r.hemo.CO.toFixed(1)} L/min`, (r) => r.hemo.CO < 4],
+  ],
   rv: [
     [() => ratioName('rv'), (r) => r.rv.EesEa.toFixed(2), (r) => r.rv.EesEa < 0.805],
     [() => 'Stroke volume', (r) => `${r.rv.SV.toFixed(0)} mL`, (r) => r.rv.SV < 55],
@@ -475,7 +522,7 @@ const TILES = {
 };
 
 function renderTiles() {
-  $('#tiles').innerHTML = TILES[side].map(([name, val, bad]) =>
+  $('#tiles').innerHTML = TILES[view].map(([name, val, bad]) =>
     `<div class="tile${bad(result) ? ' off' : ''}"><div class="tile-v">${val(result)}</div><div class="tile-k">${name()}<span> · normal ${val(REF)}</span></div></div>`).join('');
 }
 
@@ -484,7 +531,8 @@ function renderChips() {
   if (!prev) { box.innerHTML = '<span class="status">Drag a handle on the loop or press a button.</span>'; $('#chips-m').innerHTML = ''; $('#why').disabled = true; return; }
   const s = side, a = prev, b = result;
   const items = [
-    [ratioName(), ratioOf(a), ratioOf(b), 2, ''],
+    ...(view === 'both' ? [['RV Ees/Ea', a.rv.EesEa, b.rv.EesEa, 2, ''], ['mPAP', a.hemo.mPAP, b.hemo.mPAP, 0, ' mmHg']] : []),
+    [(view === 'both' ? 'LV ' : '') + ratioName(), ratioOf(a), ratioOf(b), 2, ''],
     ['SV', a[s].SV, b[s].SV, 0, ' mL'],
     ['ESV', a[s].ESV, b[s].ESV, 0, ' mL'],
     ['EDV', a[s].EDV, b[s].EDV, 0, ' mL'],
@@ -531,33 +579,75 @@ function renderGauge() {
   }
 }
 
-let ptMap = null;
-function renderPT() {
+let ptMaps = [];
+// Pressure–time strip for one side: ventricle, great artery and atrium, with valve events.
+function drawStrip(sd, sel, atrialOnly = false) {
   const r = result, ms = r.rec.t.map((t) => t * 1000);
   const pick = (arr) => ms.map((t, i) => [t, arr[i]]).filter((_, i) => i % 3 === 0);
-  const vent = side === 'lv' ? r.rec.Plv : r.rec.Prv;
-  const art = side === 'lv' ? r.rec.Pao : r.rec.Ppa;
-  const atr = side === 'lv' ? r.rec.Ppv : r.rec.Psv;
-  const refV = side === 'lv' ? REF.rec.Plv : REF.rec.Prv;
+  const vent = sd === 'lv' ? r.rec.Plv : r.rec.Prv;
+  const art = sd === 'lv' ? r.rec.Pao : r.rec.Ppa;
+  const atr = sd === 'lv' ? r.rec.Ppv : r.rec.Psv;
+  const refV = sd === 'lv' ? REF.rec.Plv : REF.rec.Prv;
+  const refA = sd === 'lv' ? REF.rec.Ppv : REF.rec.Psv;
   const refMs = REF.rec.t.map((t) => t * 1000);
-  const ymax = niceMax(Math.max(...vent, ...art, ...refV) * 1.1);
-  const w = plotWidth('#pt');
-  ptMap = drawPlot($('#pt'), {
-    width: w, height: Math.round(w * 0.4), yTicks: 4, title: 'Pressure over one cardiac cycle',
-    x: { min: 0, max: Math.max(ms[ms.length - 1], refMs[refMs.length - 1]), label: 'Time (ms)' },
-    y: { min: 0, max: ymax, label: 'mmHg' },
-    series: [
+  const xmax = Math.max(ms[ms.length - 1], refMs[refMs.length - 1]);
+  const ymax = atrialOnly ? niceMax(Math.max(...atr, ...refA) * 1.35) : niceMax(Math.max(...vent, ...art, ...refV) * 1.1);
+  const w = plotWidth(sel);
+  const series = atrialOnly
+    ? [{ points: refMs.map((t, i) => [t, refA[i]]).filter((_, i) => i % 3 === 0), color: C.ref, width: 1.4 }, { points: pick(atr), color: C.cur, width: 2.2 }]
+    : [
       { points: refMs.map((t, i) => [t, refV[i]]).filter((_, i) => i % 3 === 0), color: C.ref, width: 1.4 },
       { points: pick(atr), color: C.cur, width: 1.2, dash: '2 3' },
       { points: pick(art), color: C.cur, width: 1.6, dash: '6 4' },
       { points: pick(vent), color: C.cur, width: 2.4 },
-    ],
+    ];
+  const pm = drawPlot($(sel), {
+    width: w, height: Math.round(w * (atrialOnly ? 0.26 : 0.36)), yTicks: atrialOnly ? 3 : 4,
+    title: atrialOnly ? `${sd === 'lv' ? 'Left' : 'Right'} atrial pressure` : `${sd.toUpperCase()} pressures over one beat`,
+    x: { min: 0, max: xmax, label: 'Time (ms)' },
+    y: { min: 0, max: ymax, label: atrialOnly ? `${sd === 'lv' ? 'LA' : 'RA'} mmHg` : `${sd.toUpperCase()} mmHg` },
+    series,
   });
-  svgEl('line', { id: 'tcursor', x1: -5, x2: -5, y1: 12, y2: ptMap.sy(0), class: 't-cursor' }, ptMap.svg);
-  $('#pt-legend').innerHTML = `<span>${swatch(C.cur, '', 2.4)}${side.toUpperCase()}</span>
-    <span>${swatch(C.cur, '6 4')}${side === 'lv' ? 'Aorta' : 'Pulmonary artery'}</span>
-    <span>${swatch(C.cur, '2 3')}${side === 'lv' ? 'Left' : 'Right'} atrium</span>
-    <span>${swatch(C.ref, '', 1.4)}Normal ${side.toUpperCase()}</span>`;
+  // shade isovolumic intervals and mark valve events
+  const ev = events[sd], idx = [ev.inClose, ev.outOpen, ev.outClose, ev.inOpen];
+  const top = pm.sy(ymax), bot = pm.sy(0);
+  const shade = (i0, i1) => { if (i1 > i0 && i1 < ms.length) svgEl('rect', { x: pm.sx(ms[i0]), y: top, width: Math.max(1.5, pm.sx(ms[i1]) - pm.sx(ms[i0])), height: bot - top, class: 'iso-band' }, pm.svg); };
+  shade(ev.inClose, ev.outOpen); shade(ev.outClose, ev.inOpen);
+  idx.forEach((i, k) => {
+    if (i >= ms.length) return;
+    const x = pm.sx(ms[i]);
+    svgEl('line', { x1: x, x2: x, y1: top, y2: bot, class: 'ev-line' }, pm.svg);
+    const t = svgEl('text', { x: x + 3, y: top + 11 + (k % 2) * 11, class: 'ev-text' }, pm.svg);
+    t.textContent = EVENT_LABELS[sd][k];
+  });
+  if (atrialOnly) {
+    // v wave: atrial peak while the inflow valve is closed; y descent: fall after the inflow valve opens
+    let iv = ev.inClose, iy = ev.inOpen;
+    for (let i = ev.inClose; i < Math.min(ev.inOpen, atr.length); i++) if (atr[i] > atr[iv]) iv = i;
+    for (let i = ev.inOpen; i < Math.min(atr.length, ev.inOpen + Math.round(0.25 / r.dt)); i++) if (atr[i] < atr[iy]) iy = i;
+    for (const [i, lab] of [[iv, 'v'], [iy, 'y']]) {
+      const t = svgEl('text', { x: pm.sx(ms[i]), y: pm.sy(atr[i]) + (lab === 'v' ? -7 : 15), class: 'ev-wave', 'text-anchor': 'middle' }, pm.svg);
+      t.textContent = lab;
+    }
+  }
+  const line = svgEl('line', { x1: -5, x2: -5, y1: top, y2: bot, class: 't-cursor' }, pm.svg);
+  ptMaps.push({ map: pm, line });
+}
+
+function renderPT() {
+  ptMaps = [];
+  const both = view === 'both';
+  $('#pt2-wrap').hidden = !both;
+  drawStrip(both ? 'lv' : side, '#pt');
+  if (both) drawStrip('rv', '#pt2');
+  drawStrip(both ? 'lv' : side, '#pt-atr', true);
+  const sd = both ? 'lv' : side;
+  $('#pt-legend').innerHTML = `<span>${swatch(C.cur, '', 2.4)}Ventricle</span>
+    <span>${swatch(C.cur, '6 4')}${both ? 'Aorta / PA' : sd === 'lv' ? 'Aorta' : 'Pulmonary artery'}</span>
+    <span>${swatch(C.cur, '2 3')}${both ? 'LA / RA' : sd === 'lv' ? 'LA (pulmonary veins + LA)' : 'RA (systemic veins + RA)'}</span>
+    <span>${swatch(C.ref, '', 1.4)}Normal ventricle</span><span class="iso-key"></span>Isovolumic`;
+  $('#atr-title').textContent = sd === 'lv' ? 'Left atrial pressure' : 'Right atrial pressure';
+  $('#atr-note').textContent = `${sd === 'lv' ? 'LA' : 'RA'} ${ (sd === 'lv' ? result.hemo.LAP : result.hemo.RAP).toFixed(0)} mmHg mean. v wave: atrial filling while the ${sd === 'lv' ? 'mitral' : 'tricuspid'} valve is closed. y descent: emptying after it opens. The model has no atrial contraction, so there is no a wave or x descent.`;
 }
 
 function renderLegend() {
@@ -569,7 +659,8 @@ function renderLegend() {
 }
 
 function renderMetrics() {
-  const rows = METRICS[side].map(([label, unit, fn, range, d, key]) => {
+  const list = view === 'both' ? [...METRICS.lv.map((m) => ['LV · ' + m[0], ...m.slice(1)]), ...METRICS.rv.map((m) => ['RV · ' + m[0], ...m.slice(1)])] : METRICS[side];
+  const rows = list.map(([label, unit, fn, range, d, key]) => {
     const cur = fn(result), ref = fn(REF), snap = snapshot ? fn(snapshot) : null;
     const flag = typeof cur === 'number' && range && (cur < range[0] || cur > range[1]);
     const show = (v) => (typeof v === 'number' ? f(d ?? 1)(v) : v);
@@ -585,7 +676,9 @@ function render(light = false) {
   renderTiles(); renderChips();
   if (light) return;
   renderLegend(); renderGauge(); renderPT(); renderMetrics();
-  document.querySelectorAll('.tabs button').forEach((b) => b.setAttribute('aria-selected', b.dataset.side === side));
+  document.querySelectorAll('.tabs button').forEach((b) => b.setAttribute('aria-selected', b.dataset.side === view));
+  document.body.dataset.view = view;
+  $('#pv-title').textContent = view === 'both' ? 'Pressure–volume loops: LV and RV' : `${side === 'lv' ? 'Left' : 'Right'} ventricular pressure–volume loop`;
   $('#clear').disabled = !snapshot;
   $('#hidden-toggle').textContent = showHidden ? 'Hide in-range disease' : `Show disease with an in-range ${ratioName()}`;
 }
@@ -639,7 +732,7 @@ function loadPreset(id, keepSide) {
   if (!p) return;
   markChange();
   params = { ...NORMAL, ...p.params };
-  if (!keepSide && (p.side === 'lv' || p.side === 'rv')) side = p.side;
+  if (!keepSide && view !== 'both' && (p.side === 'lv' || p.side === 'rv')) { side = p.side; view = side; }
   warm = null;
   $('#preset').value = id;
   $('#preset-text').innerHTML = `<p>${p.text} <span class="status">Sources: ${p.refs.map((k) => {
@@ -652,12 +745,12 @@ function writeHash() {
   const diff = {};
   for (const [k, v] of Object.entries(params)) if (Math.abs(v - NORMAL[k]) > 1e-9) diff[k] = +v.toPrecision(4);
   const pid = $('#preset').value;
-  history.replaceState(null, '', '#' + (pid ? `preset=${pid}&side=${side}` : `side=${side}&p=${encodeURIComponent(JSON.stringify(diff))}`));
+  history.replaceState(null, '', '#' + (pid ? `preset=${pid}&side=${view}` : `side=${view}&p=${encodeURIComponent(JSON.stringify(diff))}`));
 }
 
 function readHash() {
   const h = new URLSearchParams(location.hash.slice(1));
-  if (h.get('side')) side = h.get('side') === 'rv' ? 'rv' : 'lv';
+  if (h.get('side')) { view = ['lv', 'rv', 'both'].includes(h.get('side')) ? h.get('side') : 'lv'; side = view === 'rv' ? 'rv' : 'lv'; }
   if (h.get('preset') && presetById(h.get('preset'))) { loadPreset(h.get('preset'), !!h.get('side')); prev = null; render(); return true; }
   if (h.get('p')) {
     try {
@@ -694,7 +787,7 @@ export function initSimulator() {
   $('#why').addEventListener('click', () => { if (nextStepResolve) { const r = nextStepResolve; nextStepResolve = null; r(); } else replay(); });
   buildPlayback();
   $('#hidden-toggle').addEventListener('click', () => { showHidden = !showHidden; render(); });
-  document.querySelectorAll('.tabs button').forEach((b) => b.addEventListener('click', () => { side = b.dataset.side; render(); writeHash(); }));
+  document.querySelectorAll('.tabs button').forEach((b) => b.addEventListener('click', () => { view = b.dataset.side; if (view !== 'both') side = view; render(); writeHash(); }));
   let rt;
   window.addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(() => result && render(), 150); });
   setupDrag();

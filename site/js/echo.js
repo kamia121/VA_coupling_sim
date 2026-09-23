@@ -11,12 +11,13 @@ const css = (name) => getComputedStyle(document.documentElement).getPropertyValu
 const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 let R = null;               // current simulation
-const st = { angle: 0, dMeas: LVOT_D, trace: [], trCal: null, weak: false, rapEst: 8, tap: [null, null], ed: null, es: null, frame: 0, playing: true };
+const st = { ov: { lvot: false, tr: false, tap: false }, angle: 0, dMeas: LVOT_D, trace: [], trCal: null, weak: false, rapEst: 8, tap: [null, null], ed: null, es: null, frame: 0, playing: true };
 
 // ---------- canvas helpers ----------
 function screen(id, aspect = 0.42) {
   const c = document.getElementById(id);
-  const w = Math.min(760, c.parentElement.clientWidth - 4);
+  const cs = getComputedStyle(c.parentElement);
+  const w = Math.floor(Math.min(760, c.parentElement.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight)));
   const h = Math.round(w * (w < 520 ? Math.max(aspect, 0.72) : aspect)), dpr = window.devicePixelRatio || 1;
   c.width = w * dpr; c.height = h * dpr; c.style.width = w + 'px'; c.style.height = h + 'px';
   const g = c.getContext('2d');
@@ -50,6 +51,26 @@ function scale(g, x, y0, h, vmax, step, unit) {
   g.fillText(unit, x, y0 - 8);
 }
 
+// Pressure (or volume) curves drawn over an echo screen on the same time axis, with a right-hand scale.
+const OV = { vent: '#5FD0BD', art: '#E8B962', atr: '#A9BCF2' };
+function overlay(g, x0, pw, top, h, curves, vmax, unit) {
+  g.save();
+  for (const { arr, color, dash } of curves) {
+    const v = twoBeats(arr, pw);
+    g.strokeStyle = color; g.lineWidth = 2; g.setLineDash(dash || []); g.globalAlpha = 0.9; g.beginPath();
+    for (let i = 0; i < pw; i++) { const y = top + h - (v[i] / vmax) * h; i ? g.lineTo(x0 + i, y) : g.moveTo(x0 + i, y); }
+    g.stroke();
+  }
+  g.setLineDash([]); g.globalAlpha = 1; g.font = '11px system-ui'; g.textAlign = 'left';
+  const gap = 12, widths = curves.map((c) => g.measureText(c.label).width);  // legend, right-aligned so it never clips
+  let x = x0 + pw - 6 - widths.reduce((a, b) => a + b + gap, -gap);
+  curves.forEach((c, k) => { g.fillStyle = c.color; g.fillText(c.label, x, top + 20); x += widths[k] + gap; });
+  g.fillStyle = '#8FA39D'; g.textAlign = 'right'; g.font = '10px system-ui';
+  for (const f of [0, 0.5, 1]) g.fillText(`${Math.round(vmax * f)}`, x0 + pw + 8, top + h - f * h + 3);
+  g.fillText(unit, x0 + pw + 8, top + h / 2 + 15);
+  g.restore();
+}
+
 // ---------- LVOT pulsed-wave Doppler ----------
 function lvotV() { const A = Math.PI * (LVOT_D / 2) ** 2; return R.rec.Qao.map((q) => (q / A) / 100 * Math.cos(st.angle * Math.PI / 180)); } // m/s
 function trueVTI() { const A = Math.PI * (LVOT_D / 2) ** 2; return R.rec.Qao.reduce((a, q) => a + q * R.dt, 0) / A; }         // cm
@@ -69,6 +90,11 @@ function drawLVOT() {
   }
   scale(g, x0 - 6, base, ph, vmax, 0.5, 'm/s');
   ecg(g, x0, pw, h - 14, pw);
+  if (st.ov.lvot) overlay(g, x0, pw - 16, base, ph, [
+    { arr: R.rec.Plv, color: OV.vent, label: 'LV' },
+    { arr: R.rec.Pao, color: OV.art, dash: [5, 4], label: 'Aorta' },
+    { arr: R.rec.Ppv, color: OV.atr, dash: [2, 3], label: 'LA' },
+  ], Math.ceil(R.hemo.SBP * 1.15 / 10) * 10, 'mmHg');
   if (st.trace.length > 1) {
     g.strokeStyle = css('--mon-flag'); g.lineWidth = 2; g.beginPath();
     st.trace.forEach(([x, y], i) => (i ? g.lineTo(x, y) : g.moveTo(x, y))); g.stroke();
@@ -134,6 +160,11 @@ function drawTR() {
   }
   scale(g, x0 - 6, base, ph, vmax, 1, 'm/s');
   ecg(g, x0, pw, h - 14, pw);
+  if (st.ov.tr) overlay(g, x0, pw - 16, base, ph, [
+    { arr: R.rec.Prv, color: OV.vent, label: 'RV' },
+    { arr: R.rec.Ppa, color: OV.art, dash: [5, 4], label: 'PA' },
+    { arr: R.rec.Psv, color: OV.atr, dash: [2, 3], label: 'RA' },
+  ], Math.ceil(Math.max(...R.rec.Prv) * 1.15 / 10) * 10, 'mmHg');
   if (st.trCal != null) {
     const y = base + (st.trCal / vmax) * ph;
     g.strokeStyle = css('--mon-flag'); g.setLineDash([6, 4]); g.lineWidth = 1.5;
@@ -152,7 +183,10 @@ function trOut() {
     ['4v² + RAP estimate', pasp != null ? `${pasp.toFixed(0)} mmHg` : '–', pasp != null && Math.abs(pasp - R.hemo.PASP) > 10],
     ['Catheter PASP (model)', `${R.hemo.PASP.toFixed(0)} mmHg`],
     ['Catheter RAP (model)', `${R.hemo.RAP.toFixed(0)} mmHg`],
-  ]);
+  ]) + (st.ov.tr ? (() => {
+    const i = R.rec.Prv.indexOf(Math.max(...R.rec.Prv)), grad = R.rec.Prv[i] - R.rec.Psv[i], v = Math.sqrt(grad / 4);
+    return `<p class="status">At peak systole: RV ${R.rec.Prv[i].toFixed(0)} − RA ${R.rec.Psv[i].toFixed(0)} = ${grad.toFixed(0)} mmHg = 4 × ${v.toFixed(2)}² (the Doppler peak).</p>`;
+  })() : '');
   tapOut();
 }
 
@@ -177,6 +211,10 @@ function drawTAPSE() {
   g.fillStyle = '#8FA39D'; g.font = '11px system-ui'; g.textAlign = 'right';
   for (let mm = 0; mm <= depth; mm += 10) g.fillText(`${mm}`, x0 - 6, top + mm * pxmm + 4);
   g.fillText('mm', x0 - 6, top - 4);
+  if (st.ov.tap) {
+    const vmaxV = Math.ceil(Math.max(...R.rec.Vrv) * 1.1 / 10) * 10;
+    overlay(g, x0, pw - 16, top, ph, [{ arr: R.rec.Vrv, color: OV.art, label: 'RV volume' }], vmaxV, 'mL');
+  }
   st.tap.forEach((y, k) => {
     if (y == null) return;
     g.strokeStyle = css('--mon-flag'); g.setLineDash([6, 4]); g.lineWidth = 1.5;
@@ -219,7 +257,7 @@ function drawRV() {
   const { g, w, h } = screen('scr-rv', 0.5);
   const n = R.rec.Vrv.length, i = st.frame % n, V = R.rec.Vrv[i];
   const s = Math.cbrt(V / 130);                          // linear size ∝ volume^(1/3)
-  const cx = w * 0.42, cy = h * 0.55;
+  const cx = w * 0.3, cy = h * 0.55;
   g.save(); g.translate(cx, cy);
   g.fillStyle = 'rgba(200,215,210,0.08)'; g.strokeStyle = 'rgba(225,240,236,0.9)'; g.lineWidth = 3;
   g.beginPath();                                          // RV crescent in an apical four-chamber orientation
@@ -230,6 +268,21 @@ function drawRV() {
   g.fill(); g.stroke(); g.restore();
   g.strokeStyle = 'rgba(225,240,236,0.35)'; g.lineWidth = 2;   // septum and LV outline for orientation
   g.beginPath(); g.ellipse(cx + w * 0.16, cy, w * 0.1, h * 0.36, 0, 0, Math.PI * 2); g.stroke();
+  // mini RV pressure–volume loop with the current frame
+  const lx = w * 0.7, ly = 20, lw = w * 0.27, lh = h * 0.5;
+  const vmx = Math.max(...R.rec.Vrv) * 1.1, pmx = Math.max(...R.rec.Prv) * 1.15;
+  const X = (v) => lx + (v / vmx) * lw, Y = (p) => ly + lh - (p / pmx) * lh;
+  g.strokeStyle = '#2A3D37'; g.strokeRect(lx, ly, lw, lh);
+  g.strokeStyle = OV.vent; g.lineWidth = 1.8; g.beginPath();
+  for (let k = 0; k < n; k += 8) { k ? g.lineTo(X(R.rec.Vrv[k]), Y(R.rec.Prv[k])) : g.moveTo(X(R.rec.Vrv[k]), Y(R.rec.Prv[k])); }
+  g.closePath(); g.stroke();
+  const dot = (v, p, c, r) => { g.fillStyle = c; g.beginPath(); g.arc(X(v), Y(p), r, 0, Math.PI * 2); g.fill(); };
+  for (const [vv, lab] of [[st.ed, 'ED'], [st.es, 'ES']]) if (vv != null) {
+    const k = R.rec.Vrv.indexOf(vv); dot(vv, R.rec.Prv[k], OV.art, 4);
+    g.fillStyle = OV.art; g.font = '10px system-ui'; g.fillText(lab, X(vv) + 5, Y(R.rec.Prv[k]) - 4);
+  }
+  dot(V, R.rec.Prv[i], '#fff', 4.5);
+  g.fillStyle = '#8FA39D'; g.font = '10px system-ui'; g.textAlign = 'left'; g.fillText('RV PV loop', lx + 4, ly + lh + 12);
   const ph = i / n;
   g.fillStyle = '#8FA39D'; g.font = '12px system-ui'; g.textAlign = 'left';
   g.fillText(`frame ${i + 1}/${n}`, 10, 18);
@@ -317,6 +370,11 @@ export function initEcho() {
     const gm = JSON.parse(cp.dataset.geom);
     st.tap = [gm.rest, gm.rest - Math.max(...disp()) * gm.pxmm]; drawTAPSE();
   });
+
+  for (const k of ['lvot', 'tr', 'tap']) {
+    const b = document.getElementById('ov-' + k);
+    b.addEventListener('click', () => { st.ov[k] = !st.ov[k]; b.setAttribute('aria-pressed', String(st.ov[k])); drawAll(); });
+  }
 
   // RV volumes: freeze and mark frames
   $('#rv-play').addEventListener('click', () => { st.playing = !st.playing; $('#rv-play').textContent = st.playing ? 'Freeze' : 'Play'; });
