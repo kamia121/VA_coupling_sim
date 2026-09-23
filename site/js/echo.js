@@ -111,6 +111,7 @@ function drawLVOT() {
 }
 
 function lvotOut() {
+  queueMicrotask(cplOut);   // after this station stores its measurement
   const gm = JSON.parse($('#scr-lvot').dataset.geom || '{}');
   let vti = null;
   if (st.trace.length > 5) {
@@ -121,6 +122,7 @@ function lvotOut() {
   const A = Math.PI * (st.dMeas / 2) ** 2;
   const sv = vti != null ? A * vti : null;
   const ea = sv ? 0.9 * R.hemo.SBP / sv : null;
+  st.svEcho = sv;
   $('#out-lvot').innerHTML = row([
     ['Your VTI', vti != null ? `${vti.toFixed(1)} cm` : 'trace one envelope'],
     ['True VTI', `${trueVTI().toFixed(1)} cm`],
@@ -183,6 +185,7 @@ function drawTR() {
 }
 
 function trOut() {
+  queueMicrotask(cplOut);   // after this station stores its measurement
   const pasp = st.trCal != null ? 4 * st.trCal ** 2 + st.rapEst : null;
   st.paspEcho = pasp;
   $('#out-tr').innerHTML = row([
@@ -233,11 +236,13 @@ function drawTAPSE() {
 }
 
 function tapOut() {
+  queueMicrotask(cplOut);   // after this station stores its measurement
   const gm = JSON.parse($('#scr-tap').dataset.geom || '{}');
   const tapse = st.tap[0] != null && st.tap[1] != null ? Math.abs(st.tap[0] - st.tap[1]) / gm.pxmm : null;
   const pasp = st.paspEcho ?? R.hemo.PASP;
   const ratio = tapse != null ? tapse / pasp : null;
   const trueT = TAPSE_K * R.rv.SV;
+  st.tapseEcho = tapse;
   $('#out-tap').innerHTML = row([
     ['Your TAPSE', tapse != null ? `${tapse.toFixed(1)} mm` : 'place both calipers'],
     ['Model TAPSE', `${trueT.toFixed(1)} mm`],
@@ -300,6 +305,7 @@ function drawRV() {
 
 function rvOut() {
   const r = st.ed != null && st.es != null ? (st.ed - st.es) / st.es : null;
+  st.svEsvEcho = r;
   $('#out-rv').innerHTML = row([
     ['Marked EDV', st.ed != null ? `${st.ed.toFixed(0)} mL` : '–'],
     ['Marked ESV', st.es != null ? `${st.es.toFixed(0)} mL` : '–'],
@@ -332,11 +338,36 @@ function seg(id, opts, get, set) {
 function loadCase(id) {
   st.caseId = id;
   R = simulate(presetById(id).params);
-  Object.assign(st, { trace: [], trCal: null, tap: [null, null], ed: null, es: null, paspEcho: null });
+  Object.assign(st, { trace: [], trCal: null, tap: [null, null], ed: null, es: null, paspEcho: null, svEcho: null, tapseEcho: null, svEsvEcho: null });
   document.querySelectorAll('#cases button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.id === id)));
   drawAll();
 }
-function drawAll() { drawLVOT(); drawTR(); drawTAPSE(); drawRV(); }
+function drawAll() { drawLVOT(); drawTR(); drawTAPSE(); drawRV(); cplOut(); }
+
+// ---------- "Coupling from echo" worked example ----------
+// Uses the learner's measurements where made, otherwise the model's values, and shows the
+// catheter (model) truth for comparison.
+function cplOut() {
+  const src = (mine) => `<span class="src">${mine ? 'yours' : 'model'}</span>`;
+  const sv = st.svEcho ?? R.lv.SV, sbp = R.hemo.SBP, ef = R.lv.EF;
+  const ea = 0.9 * sbp / sv, ratio = (1 - ef) / ef, ees = ea / ratio;
+  $('#cpl-lv').innerHTML = row([
+    [`Stroke volume ${src(st.svEcho != null)}`, `${sv.toFixed(0)} mL`],
+    ['Cuff SBP', `${sbp.toFixed(0)} mmHg`],
+    ['Ea = 0.9 × SBP / SV', `${ea.toFixed(2)} mmHg/mL`, Math.abs(ea / R.lv.Ea - 1) > 0.25],
+    [`EF ${src(false)} (biplane in practice)`, `${(ef * 100).toFixed(0)}%`],
+    ['Ea/Ees ≈ (1 − EF)/EF', ratio.toFixed(2), ratio > 1.36],
+    ['Implied Ees = Ea ÷ ratio', `${ees.toFixed(2)} mmHg/mL`],
+  ]) + `<p class="truth">Catheter truth: Ea ${R.lv.Ea.toFixed(2)}, Ees ${R.lv.Ees.toFixed(2)} mmHg/mL, Ea/Ees <b>${R.lv.EaEes.toFixed(2)}</b> · normal 1.43, 2.30, 0.62</p>`;
+  const tapse = st.tapseEcho ?? TAPSE_K * R.rv.SV, pasp = st.paspEcho ?? R.hemo.PASP, tp = tapse / pasp;
+  const svEsv = st.svEsvEcho ?? R.rv.svEsv;
+  $('#cpl-rv').innerHTML = row([
+    [`TAPSE ${src(st.tapseEcho != null)}`, `${tapse.toFixed(1)} mm`],
+    [`PASP ${src(st.paspEcho != null)}`, `${pasp.toFixed(0)} mmHg`],
+    ['TAPSE/PASP', `${tp.toFixed(2)} mm/mmHg`, tp < 0.31],
+    [`SV/ESV ${src(st.svEsvEcho != null)}`, svEsv.toFixed(2), svEsv <= 0.515],
+  ]) + `<p class="truth">Catheter truth: RV Ees/Ea <b>${R.rv.EesEa.toFixed(2)}</b>${R.rv.EesEa < 0.805 ? ' (below 0.805)' : ''} · normal 2.00</p>`;
+}
 
 export function initEcho() {
   $('#cases').innerHTML = CASES.map(([id, t]) => `<button type="button" data-id="${id}">${t}</button>`).join('');
@@ -388,8 +419,8 @@ export function initEcho() {
   $('#rv-play').addEventListener('click', () => { st.playing = !st.playing; $('#rv-play').textContent = st.playing ? 'Freeze' : 'Play'; });
   $('#rv-back').addEventListener('click', () => { st.playing = false; st.frame = (st.frame - 20 + R.rec.Vrv.length) % R.rec.Vrv.length; $('#rv-play').textContent = 'Play'; drawRV(); });
   $('#rv-fwd').addEventListener('click', () => { st.playing = false; st.frame = (st.frame + 20) % R.rec.Vrv.length; $('#rv-play').textContent = 'Play'; drawRV(); });
-  $('#rv-ed').addEventListener('click', () => { st.ed = R.rec.Vrv[st.frame % R.rec.Vrv.length]; rvOut(); });
-  $('#rv-es').addEventListener('click', () => { st.es = R.rec.Vrv[st.frame % R.rec.Vrv.length]; rvOut(); });
+  $('#rv-ed').addEventListener('click', () => { st.ed = R.rec.Vrv[st.frame % R.rec.Vrv.length]; rvOut(); cplOut(); });
+  $('#rv-es').addEventListener('click', () => { st.es = R.rec.Vrv[st.frame % R.rec.Vrv.length]; rvOut(); cplOut(); });
 
   let rt;
   window.addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(drawAll, 150); });

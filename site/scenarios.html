@@ -17,15 +17,16 @@
 <main>
   <div class="prose">
     <h1>Scenarios</h1>
-    <p class="lede">Green: the scenario. Grey: normal. Numbers come from the model. Parameters are synthetic and chosen to match the direction and rough size of changes in the cited studies.</p>
+    <p class="lede">Green: the scenario. Grey: normal. Numbers come from the model. Parameters are synthetic and chosen to match the direction and rough size of changes in the cited studies. Open <b>Details</b> on any card for the mechanism, what echo and the catheter show, what the published evidence says about management, and the model's values next to normal.</p>
   </div>
   <div class="grid cols-3" id="scenario-list" style="margin-top:16px"></div>
+  <div class="prose"><div id="page-refs"></div></div>
 </main>
 <script type="module">
   import { initLayout } from './js/layout.js';
   import { initScenarioCards } from './js/figures.js';
+  initScenarioCards();   // before initLayout, so citations inside the cards are numbered
   initLayout();
-  initScenarioCards();
 </script>
 </body>
 </html>

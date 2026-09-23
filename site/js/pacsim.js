@@ -12,22 +12,74 @@ const POS = [['ra', 'RA'], ['rv', 'RV'], ['pa', 'PA'], ['wedge', 'Wedge']];
 const $ = (s) => document.querySelector(s);
 const reduce = typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-const st = { preset: 'normal', pos: 'ra', damp: 'ok', level: 0, resp: 'none', t0: performance.now(), playing: !reduce, tFrozen: 0 };
-let R = null, beat = null, ev = null, BREATH = BREATH_TARGET, TB = 1;   // TB: beat period as sampled
+const st = { preset: 'normal', pos: 'ra', damp: 'ok', level: 0, resp: 'none', atr: 'sinus', showLA: true, labels: true, t0: performance.now(), playing: !reduce, tFrozen: 0 };
+let R = null, beat = null, ev = null, evs = null, BREATH = BREATH_TARGET, TB = 1;   // TB: beat period as sampled
 
-// One beat of each site's pressure, resampled to FS. Wedge = LA (pulmonary venous) pressure,
+// ---------- atrial waves ----------
+// The model has no atria that contract, so its RA and LA pressures carry only the v wave and
+// y descent. The a wave, c wave and x descent (and the rhythm/valve patterns) are added from a
+// template timed to the model's own valve events and to the ECG below. Amplitudes are
+// illustrative, not fitted to data. t = 0 is QRS onset (start of ventricular activation).
+const PR = 0.16;                      // s, P-wave onset to QRS
+export const ATRIAL = {
+  sinus: 'Sinus rhythm',
+  af: 'Atrial fibrillation',
+  junc: 'AV dissociation (cannon a)',
+  mr: 'Severe mitral regurgitation',
+  tr: 'Severe tricuspid regurgitation',
+};
+function waveTimes(side) {            // side: 'ra' (right heart events) or 'la' (left heart events)
+  const e = evs[side === 'ra' ? 'rv' : 'lv'].events, m = R.rec.t.length, T = R.T;
+  const at = (i) => (i / m) * T;
+  const tIn = at(e.inClose), tOpen = at(e.outOpen), tClose = at(e.outClose), tIO = at(e.inOpen);
+  return { a: st.atr === 'junc' ? tOpen + 0.08 : T - 0.07, c: tIn + 0.03, x: tOpen + 0.35 * (tClose - tOpen), v: tIO - 0.02, y: tIO + 0.09, tOpen, tClose, tIO };
+}
+function atrialWaves(side, n) {
+  const T = n / FS, w = waveTimes(side), out = new Array(n);
+  const g = (t, mu, sd) => { let d = (((t - mu) % T) + T) % T; if (d > T / 2) d -= T; return Math.exp(-0.5 * (d / sd) ** 2); };
+  const sys = (t) => {                // systolic regurgitant wave: rises through ejection, falls with the y descent
+    if (t >= w.tOpen && t < w.tIO) return Math.sin(((t - w.tOpen) / (w.tIO - w.tOpen)) * Math.PI / 2) ** 1.5;
+    return t >= w.tIO ? Math.exp(-(t - w.tIO) / 0.05) : 0;
+  };
+  const la = side === 'la', A = st.atr;
+  const aAmp = A === 'af' ? 0 : (la ? 2.5 : 3) * (A === 'junc' ? 3 : 1);
+  const xAmp = (la ? 2 : 2.5) * (A === 'af' ? 0.4 : (A === 'mr' && la) || (A === 'tr' && !la) ? 0 : 1);
+  const big = A === 'mr' && la ? 18 : A === 'tr' && !la ? 9 : 0;
+  for (let k = 0; k < n; k++) {
+    const t = k / FS;
+    out[k] = aAmp * g(t, w.a, 0.035) + (la ? 0.8 : 1.2) * g(t, w.c, 0.015) - xAmp * g(t, w.x, 0.3 * (w.tClose - w.tOpen)) + big * sys(t);
+  }
+  return out;
+}
+
+// One beat of each site's pressure, resampled to FS. Wedge = LA pressure (model + atrial waves),
 // smoothed (τ 50 ms) and delayed 60 ms to mimic transmission through the occluded capillary bed.
 function buildBeat() {
   R = simulate(presetById(st.preset).params);
-  ev = cardiacPhases(R).rv.events;
+  evs = cardiacPhases(R); ev = evs.rv.events;
   const n = Math.round(R.T * FS), m = R.rec.t.length;
   const pick = (arr) => Array.from({ length: n }, (_, k) => arr[Math.min(m - 1, Math.floor((k / n) * m))]);
-  const la = pick(R.rec.Ppv), wedge = new Array(n), d = Math.round(0.06 * FS), a = 1 / (1 + 0.05 * FS);
+  const addA = (arr, side) => { const a = atrialWaves(side, n); return arr.map((v, k) => v + a[k]); };
+  const la = addA(pick(R.rec.Ppv), 'la'), wedge = new Array(n), d = Math.round(0.06 * FS), a = 1 / (1 + 0.05 * FS);
   let y = la.reduce((s, v) => s + v, 0) / n;
   for (let pass = 0; pass < 2; pass++) for (let k = 0; k < n; k++) { y += a * (la[(k - d + n) % n] - y); wedge[k] = y; }
-  beat = { n, ra: pick(R.rec.Psv), rv: pick(R.rec.Prv), pa: pick(R.rec.Ppa), wedge };
+  beat = { n, ra: addA(pick(R.rec.Psv), 'ra'), rv: pick(R.rec.Prv), pa: pick(R.rec.Ppa), wedge, la };
   TB = n / FS;
   BREATH = Math.max(2, Math.round(BREATH_TARGET / TB)) * TB;   // whole number of beats, so the pattern repeats exactly
+}
+const WEDGE_LAG = 0.06 + 0.05;        // s: transmission delay + filter time constant
+
+// ECG in mV-ish screen units at time t (s); rhythm follows st.atr.
+function ecg(t) {
+  const ph = (((t % TB) + TB) % TB), u = ph / TB;
+  let d = u < 0.03 ? Math.sin(u / 0.03 * Math.PI) * 12 * (u < 0.015 ? 1 : -0.4) : u > 0.3 && u < 0.45 ? Math.sin((u - 0.3) / 0.15 * Math.PI) * 3.5 : 0;
+  const tp = ph - (TB - PR);                         // P wave: 0–0.09 s after its onset
+  if ((st.atr === 'sinus' || st.atr === 'mr' || st.atr === 'tr') && tp >= 0 && tp < 0.09) d += 2 * Math.sin(tp / 0.09 * Math.PI);
+  if (st.atr === 'af') {                             // fibrillatory baseline; frequencies fit the beat so the loop repeats
+    const f1 = Math.round(6.3 * TB) / TB, f2 = Math.round(8.7 * TB) / TB;
+    d += 0.9 * Math.sin(2 * Math.PI * f1 * t) + 0.6 * Math.sin(2 * Math.PI * f2 * t + 1);
+  }
+  return d;
 }
 
 function resp(t) {
@@ -90,8 +142,11 @@ function draw(tEnd, target) {
   }
   g.fillStyle = '#05090A'; g.fillRect(0, 0, w, h);
   const { out, raw, ed } = signal(tEnd);
+  const N = out.length, s0 = Math.round(tEnd * FS) - N;
+  const laTrue = st.pos === 'wedge' && st.showLA
+    ? Array.from({ length: N }, (_, j) => beat.la[(((s0 + j) % beat.n) + beat.n) % beat.n] + resp((s0 + j) / FS)) : null;
   const x0 = 40, pw = w - x0 - 12, top = 12, ph = h - top - 50;
-  const ymax = Math.max(20, Math.ceil(Math.max(...beat.rv, ...out) * 1.15 / 10) * 10);
+  const ymax = Math.max(20, Math.ceil(Math.max(...beat.rv, ...out, ...(laTrue || [])) * 1.15 / 10) * 10);
   const Y = (p) => top + ph - (Math.max(-5, p) / ymax) * ph;
   g.strokeStyle = '#16251F'; g.fillStyle = '#8FA39D'; g.font = '11px system-ui'; g.textAlign = 'right';
   for (let p = 0; p <= ymax; p += ymax > 60 ? 20 : 10) { g.beginPath(); g.moveTo(x0, Y(p)); g.lineTo(x0 + pw, Y(p)); g.stroke(); g.fillText(p, x0 - 6, Y(p) + 4); }
@@ -108,13 +163,23 @@ function draw(tEnd, target) {
     g.strokeStyle = 'rgba(160,175,170,0.45)'; g.lineWidth = 1.2; g.beginPath();
     raw.forEach((p, j) => { const x = x0 + (j / out.length) * pw; j ? g.lineTo(x, Y(p)) : g.moveTo(x, Y(p)); }); g.stroke();
   }
+  if (laTrue) {                                                               // true LA pressure, as a second catheter would show it
+    g.strokeStyle = '#A9BCF2'; g.lineWidth = 1.6; g.setLineDash([5, 4]); g.beginPath();
+    laTrue.forEach((p, j) => { const x = x0 + (j / N) * pw; j ? g.lineTo(x, Y(p)) : g.moveTo(x, Y(p)); }); g.stroke(); g.setLineDash([]);
+  }
   g.strokeStyle = '#E8D35F'; g.lineWidth = 2; g.beginPath();                 // monitor PA/RA trace colour
   out.forEach((p, j) => { const x = x0 + (j / out.length) * pw; j ? g.lineTo(x, Y(p)) : g.moveTo(x, Y(p)); }); g.stroke();
+  if (laTrue) {
+    g.font = '12px system-ui'; g.textAlign = 'right';
+    g.fillStyle = '#E8D35F'; g.fillText('— wedge (catheter)', x0 + pw - 6, top + 14);
+    g.fillStyle = '#A9BCF2'; g.fillText('- - true LA pressure', x0 + pw - 6, top + 30);
+    g.textAlign = 'left';
+  }
+  if (st.labels && (st.pos === 'ra' || st.pos === 'wedge')) labelWaves(g, out, s0, (j) => x0 + (j / N) * pw, Y);
   // ECG
   g.strokeStyle = '#7CE38B'; g.lineWidth = 1.2; g.beginPath();
   for (let j = 0; j <= pw; j++) {
-    const t = tEnd - WIN + (j / pw) * WIN, phs = ((t % TB) + TB) % TB / TB;
-    const d = phs < 0.03 ? Math.sin(phs / 0.03 * Math.PI) * 12 * (phs < 0.015 ? 1 : -0.4) : phs > 0.3 && phs < 0.45 ? Math.sin((phs - 0.3) / 0.15 * Math.PI) * 3.5 : 0;
+    const d = ecg(tEnd - WIN + (j / pw) * WIN);
     j ? g.lineTo(x0 + j, h - 18 - d) : g.moveTo(x0 + j, h - 18 - d);
   }
   g.stroke();
@@ -123,11 +188,52 @@ function draw(tEnd, target) {
   const label = POS.find((p) => p[0] === st.pos)[1];
   const off = out.length - lastBeats.length;
   const read = { label, monitor: report(out, st.pos, ed), last: report(lastBeats, st.pos, ed, off), truth: report(trueBeats, st.pos, ed, off) };
+  if (laTrue) read.la = `${stats(laTrue.slice(-beat.n * 2)).mean.toFixed(0)} mean`;
+  if (st.pos === 'wedge') read.ed = endDiastolicWedge(out, s0);
   if (target) return read;
-  $('#pac-read').innerHTML = `<div class="tile"><div class="tile-v">${report(out, st.pos, ed)}</div><div class="tile-k">Monitor reads (${label}, whole ${WIN}-s screen)</div></div>
+  $('#pac-read').innerHTML = (read.ed ? `<div class="tile"><div class="tile-v">${read.ed.value.toFixed(0)}</div><div class="tile-k">Wedge at end-diastole: ${read.ed.how} · model LVEDP ${R.lv.EDP.toFixed(0)}</div></div>` : '')
+    + (laTrue ? `<div class="tile la"><div class="tile-v">${read.la}</div><div class="tile-k">True LA pressure (model), last 2 beats</div></div>` : '') + `<div class="tile"><div class="tile-v">${report(out, st.pos, ed)}</div><div class="tile-k">Monitor reads (${label}, whole ${WIN}-s screen)</div></div>
     <div class="tile"><div class="tile-v">${report(lastBeats, st.pos, ed, off)}</div><div class="tile-k">Last 2 beats on screen</div></div>
     <div class="tile"><div class="tile-v">${report(trueBeats, st.pos, ed, off)}</div><div class="tile-k">True tip pressure, no artifact (model)</div></div>`;
   drawMap();
+}
+
+// End-diastolic wedge (the LVEDP estimate), read the way Vachiéry 2019 describes: the mean of
+// the a wave in sinus rhythm; 130–160 ms after QRS onset in AF. Averaged over the last 2 beats.
+function endDiastolicWedge(out, s0) {
+  const n = beat.n, N = out.length, w = waveTimes('la');
+  const vals = [];
+  for (let b = 1; b <= 2; b++) {
+    const bs = (Math.floor((s0 + N) / n) - b) * n - s0;          // QRS onset of this beat, as an index into `out`
+    const [t0, t1] = st.atr === 'af' ? [0.13, 0.16] : [w.a - TB + WEDGE_LAG - 0.05, w.a - TB + WEDGE_LAG + 0.05];
+    for (let j = bs + Math.round(t0 * FS); j <= bs + Math.round(t1 * FS); j++) if (j >= 0 && j < N) vals.push(out[j]);
+  }
+  if (st.atr === 'junc' || !vals.length) return null;              // cannon a falls in systole: no end-diastolic a wave to read
+  return { value: vals.reduce((a, v) => a + v, 0) / vals.length, how: st.atr === 'af' ? '130–160 ms after QRS (AF)' : 'mean of the a wave' };
+}
+
+// Letters on the last complete beat on screen, placed on the trace's own peaks and troughs.
+function labelWaves(g, out, s0, X, Y) {
+  const wedge = st.pos === 'wedge', side = wedge ? 'la' : 'ra', lag = wedge ? WEDGE_LAG : 0, A = st.atr;
+  const w = waveTimes(side), n = beat.n, N = out.length;
+  const bs = (Math.floor((s0 + N) / n) - 2) * n - s0;          // index in `out` of the last complete beat's QRS
+  const idx = (t) => bs + Math.round((t + lag) * FS);
+  const find = (t0, t1, max) => {
+    let best = -1;
+    for (let j = Math.max(0, idx(t0)); j <= Math.min(N - 1, idx(t1)); j++) if (best < 0 || (max ? out[j] > out[best] : out[j] < out[best])) best = j;
+    return best;
+  };
+  const T = TB, ta = w.a > T / 2 && A !== 'junc' ? w.a - T : w.a;
+  const big = (A === 'mr' && wedge) || (A === 'tr' && !wedge);
+  const items = [];
+  if (A !== 'af') items.push([A === 'junc' ? 'cannon a' : 'a', find(ta - 0.06, ta + 0.06, true), true]);
+  if (!wedge && !big && A !== 'junc') items.push(['c', find(w.c - 0.02, w.c + 0.04, true), true]);
+  if (!big) items.push(['x', find(w.c + 0.05, w.v - 0.08, false), false]);
+  items.push([big ? (wedge ? 'giant v' : 'cv') : 'v', find(w.v - 0.12, w.v + 0.04, true), true]);
+  items.push(['y', find(w.tIO + 0.02, w.tIO + 0.25, false), false]);
+  g.font = '600 13px system-ui'; g.textAlign = 'center'; g.fillStyle = '#F2C66D';
+  for (const [txt, j, up] of items) if (j >= 0) g.fillText(txt, X(j), Y(out[j]) + (up ? -8 : 17));
+  g.textAlign = 'left';
 }
 
 let mapPos = null;
@@ -153,11 +259,12 @@ const RESP = { none: '', spont: 'spontaneous breaths', ppv: 'positive-pressure b
 function pacSpec() {
   const label = POS.find((p) => p[0] === st.pos)[1], patient = presetById(st.preset).label;
   const faults = [DAMP[st.damp], LEVEL[st.level], RESP[st.resp]].filter(Boolean);
+  const rhythm = st.atr === 'sinus' ? '' : ATRIAL[st.atr].toLowerCase();
   const fault = faults.length ? faults.join(', ') : 'no artifact';
   return {
-    file: `va-coupling-pac-${st.pos}-${st.preset}${faults.length ? '-artifact' : ''}`,
+    file: `va-coupling-pac-${st.pos}-${st.preset}${st.atr === 'sinus' ? '' : '-' + st.atr}${faults.length ? '-artifact' : ''}`,
     title: `PA catheter, ${label} tracing · ${patient}`,
-    caption: `Pressure at the catheter tip (${label}), generated from the model beat; ${fault}.${faults.length ? ' Grey: true tip pressure without the artifact.' : ''}${st.resp !== 'none' ? ' Shaded: inspiration; read at end-expiration (marked).' : ''}`,
+    caption: `Pressure at the catheter tip (${label}), generated from the model beat${rhythm ? `, ${rhythm}` : ''}; ${fault}.${st.pos === 'ra' || st.pos === 'wedge' ? ' Atrial a, c and x waves come from a template timed to the model beat (illustrative).' : ''}${st.pos === 'wedge' && st.showLA ? ' Dashed: true LA pressure.' : ''}${faults.length ? ' Grey: true tip pressure without the artifact.' : ''}${st.resp !== 'none' ? ' Shaded: inspiration; read at end-expiration (marked).' : ''}`,
     notes: '',
     async prepare() {
       const W = 1100, h = Math.round(W * 0.42), top = 56, band = 44, H = even(top + h + band);
@@ -171,10 +278,11 @@ function pacSpec() {
         async frame(g, t) {
           const r = draw(t0 + t, { g: cg, w: W, h });
           g.fillStyle = '#05090A'; g.fillRect(0, 0, W, H);
-          header(g, W, `${label} · ${patient}`, fault);
+          header(g, W, `${label} · ${patient}`, [rhythm, faults.length ? fault : ''].filter(Boolean).join(' · ') || 'no artifact');
           g.drawImage(c, 0, top);
           g.font = '600 17px system-ui, sans-serif'; g.textAlign = 'left';
-          const items = [['Monitor reads', r.monitor, '#E8D35F'], ['Last 2 beats', r.last, '#E8D35F'], ['True pressure (model)', r.truth, '#A7B8B2']];
+          const items = [['Monitor reads', r.monitor, '#E8D35F'], ...(r.ed ? [[r.ed.how === 'mean of the a wave' ? 'At the a wave (end-diastole)' : 'End-diastole (AF)', r.ed.value.toFixed(0), '#E8D35F']] : []),
+            [r.la ? 'True LA' : 'True pressure (model)', r.la || r.truth, '#A7B8B2'], [r.ed ? 'Model LVEDP' : 'Last 2 beats', r.ed ? R.lv.EDP.toFixed(0) : r.last, '#A7B8B2']];
           let x = 20;
           for (const [k, v, col] of items) {
             g.fillStyle = '#A7B8B2'; g.font = '14px system-ui, sans-serif'; g.fillText(k, x, top + h + 28);
@@ -203,6 +311,9 @@ export function initPacSim() {
   $('#pac-path').addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; st.pos = b.dataset.v; draw(st.tFrozen); });
   seg('pac-damp', [['ok', 'Optimal'], ['over', 'Overdamped'], ['under', 'Underdamped (whip)']], () => st.damp, (v) => { st.damp = v; });
   seg('pac-level', [['0', 'At phlebostatic axis'], ['1', '10 cm below'], ['-1', '10 cm above']], () => st.level, (v) => { st.level = +v; });
+  seg('pac-atr', Object.entries(ATRIAL), () => st.atr, (v) => { st.atr = v; buildBeat(); });
+  seg('pac-lbl', [['1', 'Label waves'], ['0', 'No labels']], () => (st.labels ? '1' : '0'), (v) => { st.labels = v === '1'; });
+  seg('pac-la', [['1', 'Show true LA at wedge'], ['0', 'Hide']], () => (st.showLA ? '1' : '0'), (v) => { st.showLA = v === '1'; });
   seg('pac-resp', [['none', 'Apnoeic'], ['spont', 'Spontaneous breaths'], ['ppv', 'Positive-pressure breaths']], () => st.resp, (v) => { st.resp = v; });
   $('#pac-float').addEventListener('click', () => {
     const order = POS.map((p) => p[0]);
@@ -223,4 +334,4 @@ export function initPacSim() {
 }
 
 // exported for tests
-export const _pac = { st, buildBeat, signal, stats, get beat() { return beat; }, get breath() { return BREATH; }, get tb() { return TB; }, MMHG_PER_10CM, FS };
+export const _pac = { st, buildBeat, signal, stats, waveTimes, get beat() { return beat; }, get breath() { return BREATH; }, get tb() { return TB; }, MMHG_PER_10CM, FS };

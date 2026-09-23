@@ -158,6 +158,29 @@ export function initLearnFigures() {
 const ratioLbl = (s) => (s === 'lv' ? 'Ea/Ees' : 'Ees/Ea');
 
 // Scenario thumbnails: normal loop (grey) against the scenario loop (green).
+// Details panel: mechanism, bedside findings, management evidence, caveat, then model values vs normal.
+function scenarioDetail(p, r, ref, side) {
+  const d = p.detail || {};
+  const sec = (h, t) => (t ? `<h4>${h}</h4><p>${t}</p>` : '');
+  const rows = [
+    ['LV Ees / Ea (mmHg/mL)', (x) => `${x.lv.Ees.toFixed(2)} / ${x.lv.Ea.toFixed(2)}`],
+    ['LV Ea/Ees', (x) => x.lv.EaEes.toFixed(2)],
+    ['LV EDV / ESV (mL), EF', (x) => `${x.lv.EDV.toFixed(0)} / ${x.lv.ESV.toFixed(0)}, ${(x.lv.EF * 100).toFixed(0)}%`],
+    ['RV Ees / Ea (mmHg/mL)', (x) => `${x.rv.Ees.toFixed(2)} / ${x.rv.Ea.toFixed(2)}`],
+    ['RV Ees/Ea', (x) => x.rv.EesEa.toFixed(2)],
+    ['RV EDV / ESV (mL), EF', (x) => `${x.rv.EDV.toFixed(0)} / ${x.rv.ESV.toFixed(0)}, ${(x.rv.EF * 100).toFixed(0)}%`],
+    ['BP (MAP) mmHg', (x) => `${x.hemo.SBP.toFixed(0)}/${x.hemo.DBP.toFixed(0)} (${x.hemo.MAP.toFixed(0)})`],
+    ['PA (mean) mmHg', (x) => `${x.hemo.PASP.toFixed(0)}/${x.hemo.PADP.toFixed(0)} (${x.hemo.mPAP.toFixed(0)})`],
+    ['LAP / RAP mmHg', (x) => `${x.hemo.LAP.toFixed(0)} / ${x.hemo.RAP.toFixed(0)}`],
+    ['CO L/min, HR', (x) => `${x.hemo.CO.toFixed(1)}, ${x.params.hr.toFixed(0)}`],
+    ['PVR WU', (x) => x.hemo.PVR_WU.toFixed(1)],
+  ];
+  const order = side === 'rv' ? [3, 4, 5, 7, 8, 9, 10, 0, 1, 6] : [0, 1, 2, 6, 8, 9, 3, 4, 7];
+  const table = `<table class="data scen-table"><thead><tr><th>Model</th><th class="num">This</th><th class="num">Normal</th></tr></thead><tbody>${
+    order.map((i) => `<tr><td>${rows[i][0]}</td><td class="num">${rows[i][1](r)}</td><td class="num">${rows[i][1](ref)}</td></tr>`).join('')}</tbody></table>`;
+  return `${d.mech ? '' : `<p>${p.text}</p>`}${sec('Mechanism', d.mech)}${sec('What echo and the catheter show', d.see)}${sec('Management: what the evidence says', d.manage)}${sec('Caveat', d.note)}${table}`;
+}
+
 export function initScenarioCards() {
   const ref = simulate({});
   const box = document.getElementById('scenario-list');
@@ -173,7 +196,7 @@ export function initScenarioCards() {
     card.className = 'card scen';
     card.innerHTML = `<h3>${p.label}</h3><div class="monitor mini"><svg aria-hidden="true"></svg></div>
       <div class="scen-nums">${nums.map(([k, v]) => `<div><b>${v}</b><span>${k}</span></div>`).join('')}</div>
-      <details><summary>Details</summary><p>${p.text}</p></details>
+      <details><summary>Details</summary>${scenarioDetail(p, r, ref, side)}</details>
       <a class="more" href="simulator.html#preset=${p.id}&side=${side}">Open in simulator →</a>`;
     box.appendChild(card);
     const xmax = niceMax(Math.max(m.EDV, ref[side].EDV) * 1.15);

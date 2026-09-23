@@ -127,6 +127,31 @@ for (const id of ['normal', 'pahDecomp', 'septicCM']) {
 }
 Object.assign(_pac.st, { preset: 'normal', damp: 'ok', resp: 'none' }); _pac.buildBeat();
 
+// Atrial waves (template on top of the model pressure)
+{
+  const at = (side) => { const b = _pac.beat, i = (t) => ((Math.round(t * _pac.FS) % b.n) + b.n) % b.n; return { b, i, w: _pac.waveTimes(side) }; };
+  const setAtr = (a) => { _pac.st.atr = a; _pac.buildBeat(); };
+  setAtr('sinus'); let { b, i, w } = at('ra');
+  const aSinus = b.ra[i(w.a)] - b.ra[i(w.a - 0.15)];
+  check('RA sinus: a wave rises ≥ 2 mmHg before the QRS', aSinus >= 2, aSinus.toFixed(1));
+  check('RA sinus: x descent below the c wave', b.ra[i(w.x)] < b.ra[i(w.c)] - 1);
+  const wedgeSinus = _pac.stats(b.wedge).mean, laSinus = _pac.stats(b.la).mean;
+  check('wedge mean equals LA mean (filter keeps the mean)', Math.abs(wedgeSinus - laSinus) < 0.05, `${wedgeSinus.toFixed(2)} vs ${laSinus.toFixed(2)}`);
+  setAtr('af'); ({ b, i, w } = at('ra'));
+  check('AF: no a wave', b.ra[i(w.a)] - b.ra[i(w.a - 0.15)] < 0.5);
+  setAtr('mr');
+  const laMR = _pac.stats(_pac.beat.la);
+  check('severe MR: giant LA v wave ≥ 15 mmHg above LA minimum, wedge mean rises', laMR.max - laMR.min >= 15 && _pac.stats(_pac.beat.wedge).mean > wedgeSinus + 3, `v ${ (laMR.max - laMR.min).toFixed(0)}`);
+  setAtr('tr'); ({ b, i, w } = at('ra'));
+  check('severe TR: systolic cv wave, RA peak in systole', b.ra[i(w.v)] - b.ra[i(w.y + 0.1)] > 6);
+  for (const a of ['af', 'junc', 'mr']) {
+    setAtr(a); Object.assign(_pac.st, { pos: 'wedge', resp: 'spont' });
+    const t0 = 100 * _pac.breath, s1 = _pac.signal(t0).out, s2 = _pac.signal(t0 + _pac.breath).out;
+    check(`${a}: wedge tracing still periodic over one breath`, s1.every((v, k) => Math.abs(v - s2[k]) < 1e-6));
+  }
+  Object.assign(_pac.st, { atr: 'sinus', pos: 'ra', resp: 'none' }); _pac.buildBeat();
+}
+
 // 11. GIF encoder: decode our own output and compare every pixel
 function decodeGif(buf) {
   const u16 = (i) => buf[i] | (buf[i + 1] << 8), W = u16(6), H = u16(8), pal = buf.subarray(13, 13 + 768);
