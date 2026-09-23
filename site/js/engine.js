@@ -108,6 +108,7 @@ function seriesArea(a, b) {
 // limb is replaced by a monoexponential decay with time constant τ, smoothed at the peak,
 // and the tail that has not decayed by the next beat carries into it. Tprev is the length of the beat
 // before (it differs from T only in an irregular rhythm), which sets how far that tail has decayed.
+// w(t) is the share of e(t) that is still the previous beat's tail (1 at the QRS, 0 from the peak on).
 function makeActivation(T, p, Tprev = T) {
   const tmax = 0.2 + 0.15 * T;
   const tau1 = 0.67 * tmax, tau2 = 1.13 * tmax, m1 = 1.32, m2 = 27.4;
@@ -120,7 +121,7 @@ function makeActivation(T, p, Tprev = T) {
     const v = raw(t);
     if (v > peak) { peak = v; tPeak = t; }
   }
-  if (!p.relax) return { e: (t) => raw(t) / peak, tPeak };
+  if (!p.relax) return { e: (t) => raw(t) / peak, w: () => 0, tPeak };
   const d = 0.25 * p.tau;
   const decay = (x) => Math.exp(-(Math.sqrt(x * x + d * d) - d) / p.tau);
   const tPeakPrev = Tprev === T ? tPeak : makeActivation(Tprev, { ...p, relax: 0 }).tPeak;
@@ -129,7 +130,12 @@ function makeActivation(T, p, Tprev = T) {
     if (t < tPeak) { const r = raw(t) / peak; return r + (1 - r) * carry; }
     return decay(t - tPeak);
   };
-  return { e, tPeak };
+  const w = (t) => {
+    if (t >= tPeak) return 0;
+    const r = raw(t) / peak, c = (1 - r) * decay(t + Tprev - tPeakPrev);
+    return c > 0 ? c / (r + c) : 0;
+  };
+  return { e, w, tPeak };
 }
 
 // Atrial activation: a raised-cosine pulse of duration aDur that starts aDelay after the P wave,
@@ -176,15 +182,15 @@ function septDP(x, e, p) {
 }
 
 // Septal volume that balances the septal pressure against the transseptal gradient.
-function solveSeptum(Vlv, Vrv, e, p, x0) {
+function solveSeptum(Vlv, Vrv, e, p, x0, lvEes = p.lvEes, rvEes = p.rvEes) {
   let x = x0;
   for (let i = 0; i < 30; i++) {
     const f = septP(x, e, p)
-      - wallP(Vlv - x, e, p.lvEes, p.lvV0, p.lvA, p.lvBeta)
-      + wallP(Vrv + x, e, p.rvEes, p.rvV0, p.rvA, p.rvBeta);
+      - wallP(Vlv - x, e, lvEes, p.lvV0, p.lvA, p.lvBeta)
+      + wallP(Vrv + x, e, rvEes, p.rvV0, p.rvA, p.rvBeta);
     const df = septDP(x, e, p)
-      + wallDP(Vlv - x, e, p.lvEes, p.lvV0, p.lvA, p.lvBeta)
-      + wallDP(Vrv + x, e, p.rvEes, p.rvV0, p.rvA, p.rvBeta);
+      + wallDP(Vlv - x, e, lvEes, p.lvV0, p.lvA, p.lvBeta)
+      + wallDP(Vrv + x, e, rvEes, p.rvV0, p.rvA, p.rvBeta);
     let dx = f / df;
     if (dx > 20) dx = 20; else if (dx < -20) dx = -20;
     x -= dx;
@@ -195,14 +201,19 @@ function solveSeptum(Vlv, Vrv, e, p, x0) {
 
 // state = [Vlv, Vsa, Vsv, Vrv, Vpa, Vpv, Vra, Vla]; arterial and venous compartments hold
 // stressed volume; ventricles and atria hold total volume (their V0 is unstressed).
-// `ctx.spt` carries the last septal volume as the Newton starting point.
+// `ctx.spt` carries the last septal volume as the Newton starting point. `ctx.w` is the share of e
+// that is still the previous beat's relaxation tail; that share keeps the previous beat's Ees
+// (ctx.lvEesP, which differs when the force-frequency relation sees a new RR) and its AV-plane
+// reference, so nothing steps at the QRS of an irregular rhythm.
 function pressures(s, e, ea, p, ctx) {
+  const w = ctx.w;
+  const lvEes = p.lvEes + w * (ctx.lvEesP - p.lvEes), rvEes = p.rvEes + w * (ctx.rvEesP - p.rvEes);
   let Vspt = 0;
-  if (p.septum) { Vspt = solveSeptum(s[0], s[3], e, p, ctx.spt); ctx.spt = Vspt; }
+  if (p.septum) { Vspt = solveSeptum(s[0], s[3], e, p, ctx.spt, lvEes, rvEes); ctx.spt = Vspt; }
   const Ppcd = p.pericardium
     ? p.pcdP0 * (Math.exp(p.pcdLambda * (s[0] + s[3] + s[6] + s[7] + p.pcdFluid - p.pcdV0)) - 1) : 0;
-  const Plv = wallP(s[0] - Vspt, e, p.lvEes, p.lvV0, p.lvA, p.lvBeta) + Ppcd;
-  const Prv = wallP(s[3] + Vspt, e, p.rvEes, p.rvV0, p.rvA, p.rvBeta) + Ppcd;
+  const Plv = wallP(s[0] - Vspt, e, lvEes, p.lvV0, p.lvA, p.lvBeta) + Ppcd;
+  const Prv = wallP(s[3] + Vspt, e, rvEes, p.rvV0, p.rvA, p.rvBeta) + Ppcd;
   const Psa = s[1] / p.cSys, Psv = s[2] / p.cSv;
   const Ppa = s[4] / p.cPa, Ppv = s[5] / p.cPv;
   const Era = p.raEmin + ea * (p.raEmax - p.raEmin), Ela = p.laEmin + ea * (p.laEmax - p.laEmin);
@@ -210,15 +221,18 @@ function pressures(s, e, ea, p, ctx) {
   if (p.baseDescent) {
     // descent of the AV plane enlarges the atrium as the ventricle empties;
     // the closed leaflets bulge back into the atrium while ventricular pressure exceeds atrial
-    // (the gain follows ventricular activation, so the AV plane returns as the ventricle relaxes)
+    // (the gain follows ventricular activation, so the AV plane returns as the ventricle relaxes).
+    // The descent (and the fade of the bulge below) is measured from the ventricular volume at the QRS;
+    // the tail share w of e keeps the previous beat's volume, so neither restarts at the QRS.
     const eB = Math.pow(e, p.baseExp);
-    VraE -= p.baseAlpha * eB * (ctx.vR0 - s[3]);
-    VlaE -= p.baseAlpha * eB * (ctx.vL0 - s[0]);
+    const refR = ctx.vR0 + w * (ctx.vR0p - ctx.vR0), refL = ctx.vL0 + w * (ctx.vL0p - ctx.vL0);
+    VraE -= p.baseAlpha * eB * (refR - s[3]);
+    VlaE -= p.baseAlpha * eB * (refL - s[0]);
     const gR = Prv - (Era * (VraE - p.raV0) + Ppcd), gL = Plv - (Ela * (VlaE - p.laV0) + Ppcd);
     // the bulge starts with ventricular contraction and gives way to the AV-plane descent once the
     // ventricle has ejected cFade mL, so the c wave is followed by the x descent
     const fE = Math.min(1, e / 0.05);
-    const fR = fE * Math.max(0, 1 - (ctx.vR0 - s[3]) / p.cFade), fL = fE * Math.max(0, 1 - (ctx.vL0 - s[0]) / p.cFade);
+    const fR = fE * Math.max(0, 1 - (refR - s[3]) / p.cFade), fL = fE * Math.max(0, 1 - (refL - s[0]) / p.cFade);
     if (gR > 0) VraE += fR * p.cBulge * gR / (gR + p.cP);
     if (gL > 0) VlaE += fL * p.cBulge * gL / (gL + p.cP);
   }
@@ -278,11 +292,15 @@ function simulateBeat(s0, p, act, T, dt, record, ctx) {
   const acc = { map: 0, corL: 0, corR: 0, lvEDV: -Infinity, lvESV: Infinity, rvEDV: -Infinity, rvESV: Infinity,
     swL: 0, swR: 0, pesL: 0, pesR: 0 };
   const iEs = Math.round(act.tPeak / dt);
-  ctx.vL0 = s[0]; ctx.vR0 = s[3];                              // ventricular volumes at the QRS
+  // ventricular volumes at this QRS and Ees of this beat, with those of the beat before for its tail
+  ctx.vL0p = ctx.vL0 ?? s[0]; ctx.vR0p = ctx.vR0 ?? s[3];
+  ctx.lvEesP = ctx.lvEes ?? p.lvEes; ctx.rvEesP = ctx.rvEes ?? p.rvEes;
+  ctx.vL0 = s[0]; ctx.vR0 = s[3]; ctx.lvEes = p.lvEes; ctx.rvEes = p.rvEes;
   let prev = null;
   for (let i = 0; i < n; i++) {
     const t = i * dt;
     const e0 = act.e(t), a0 = act.a(t);
+    ctx.w = act.w(t);
     const q = pressures(s, e0, a0, p, ctx);
     const Pao = q.Psa + q.Qao * p.zcAo;
     acc.map += Pao;
@@ -304,9 +322,12 @@ function simulateBeat(s0, p, act, T, dt, record, ctx) {
     }
     const e2 = act.e(t + dt / 2), e3 = act.e(t + dt);
     const a2 = act.a(t + dt / 2), a3 = act.a(t + dt);
+    const w2 = act.w(t + dt / 2), w3 = act.w(t + dt);
     deriv(s, e0, a0, p, ctx, k1);
+    ctx.w = w2;
     deriv(add(s, k1, dt / 2), e2, a2, p, ctx, k2);
     deriv(add(s, k2, dt / 2), e2, a2, p, ctx, k3);
+    ctx.w = w3;
     deriv(add(s, k3, dt), e3, a3, p, ctx, k4);
     for (let j = 0; j < 8; j++) s[j] += (dt / 6) * (k1[j] + 2 * k2[j] + 2 * k3[j] + k4[j]);
   }
@@ -444,7 +465,7 @@ function dist(a, b) { return Math.max(...a.map((x, i) => Math.abs(x - b[i]))); }
 /**
  * Run the model to beat-to-beat steady state and return the last beat.
  * @param {object} params  parameter set (see NORMAL); missing keys fall back to NORMAL
- * @param {object} [opt]   { dt, maxBeats, tol, state, slow, holdSlow, prevT }
+ * @param {object} [opt]   { dt, maxBeats, tol, state, slow, holdSlow, prev, prevT }
  */
 export function simulate(params, opt = {}) {
   const p = { ...NORMAL, ...params };
@@ -455,7 +476,13 @@ export function simulate(params, opt = {}) {
   const sl = opt.slow ? (opt.holdSlow ? { ...opt.slow } : { ...opt.slow, ischL: 1, ischR: 1 }) : initialSlow();
   let q = effective(p, sl);
   let s = opt.state && opt.state.length === 8 ? opt.state.slice() : initialState(q);
-  const ctx = { spt: p.sptV0, vL0: 0, vR0: 0 };
+  // opt.prev: the result for the beat before, in irregular sequences run beat by beat. Its length sets how
+  // far its relaxation tail has decayed (opt.prevT gives the length alone), and its ventricular volumes
+  // at the QRS and its Ees stay with that tail in the first beat; see pressures(). The length is the one
+  // integrated (a whole number of steps), so the tail picks up exactly where that beat left it.
+  const pv = opt.prev, prevT = opt.prevT ?? (pv ? pv.rec.t.length * pv.dt : undefined);
+  const ctx = { spt: p.sptV0, w: 0, vL0: pv?.state[0] ?? null, vR0: pv?.state[3] ?? null,
+    lvEes: pv?.eff.lvEes ?? null, rvEes: pv?.eff.rvEes ?? null };
   let beats = 0, converged = false;
   for (; beats < maxBeats; beats++) {
     // carry the reflex change in venous tone as a change of stressed volume
@@ -477,8 +504,7 @@ export function simulate(params, opt = {}) {
   const dV = q.vStressed - stressed(s, q);
   s[2] += dV * 0.8; s[5] += dV * 0.2;
   const T = 60 / q.hr;
-  // opt.prevT: length of the beat before this one, for irregular sequences run beat by beat
-  const act = makeActivation(T, q, beats === 0 && opt.prevT ? opt.prevT : T);
+  const act = makeActivation(T, q, beats === 0 && prevT ? prevT : T);
   act.a = makeAtrialActivation(T, q);
   const startState = s.slice();
   const { s: endState, rec, acc } = simulateBeat(s, q, act, T, dt, true, ctx);

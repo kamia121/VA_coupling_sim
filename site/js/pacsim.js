@@ -89,11 +89,13 @@ function afBeats(p, base) {
   const nb = Math.max(5, Math.min(AF_RR.length, Math.round(8 / base.T)));
   const mean = AF_RR.slice(0, nb).reduce((a, b) => a + b, 0) / nb, k = AF_RR.slice(0, nb).map((x) => x / mean);
   const hr = base.params.hr, out = [];
-  let s = base.state;
+  // each beat starts where the one before ended and is given that beat (its length, QRS volumes and Ees),
+  // so the relaxation tail and the AV-plane descent carry across the QRS
+  let s = base.state, prev = base;
   for (let pass = 0; pass < 2; pass++) for (const f of k) {
-    const r = simulate({ ...p, hr: hr / f }, { state: s, slow: base.slow, holdSlow: true, maxBeats: 0 });
+    const r = simulate({ ...p, hr: hr / f }, { state: s, slow: base.slow, holdSlow: true, maxBeats: 0, prev });
     if (pass) out.push(r);
-    s = r.endState;
+    s = r.endState; prev = r;
   }
   return out;
 }

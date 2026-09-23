@@ -76,10 +76,11 @@ export function solveCond(base, cond = {}, warm) {
   const r = simulate(q, warm ? { state: warm.state, slow: warm.slow } : {});
   if (cond.rhythm !== 'af' || cond.regular) return { r, q, beats: [r] };
   const beats = [];
-  let s = r.state, prevT = 60 / q.hr / AF_RR[AF_RR.length - 1];
+  // the run starts from the steady state, so the beat before the first is the steady beat itself
+  let s = r.state, prev = r;
   for (const f of AF_RR) {
-    const b = simulate({ ...q, hr: q.hr / f }, { state: s, slow: r.slow, holdSlow: true, maxBeats: 0, dt: 0.001, prevT });
-    beats.push(b); s = b.endState; prevT = b.T;
+    const b = simulate({ ...q, hr: q.hr / f }, { state: s, slow: r.slow, holdSlow: true, maxBeats: 0, dt: 0.001, prev });
+    beats.push(b); s = b.endState; prev = b;
   }
   return { r, q, beats };
 }

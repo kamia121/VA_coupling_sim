@@ -60,6 +60,24 @@ for (const [g, t] of T.entries()) {
 }
 check('cohort has 40 patients per grade plus a reference', COHORT.grades.every((g) => g.patients.length === 41));
 
+// ---------- AF: nothing steps at the QRS ----------
+// Each beat of an irregular run starts while the previous beat's relaxation tail is still up. That tail keeps
+// its own AV-plane reference and Ees, so LA pressure is continuous across the QRS and mitral flow has no spike
+// there. A spike is a maximum at t = 0 above the previous beat's flow carried on at its last slope; the allowance
+// is 2 mL/s (0.5 cm/s through 4 cm²). A valve that opens at the QRS gives a flow that keeps rising, not a spike.
+for (const [g, rate] of [[4, 110], [4, 150], [2, 110], [3, 130], [0, 150]]) {
+  const { beats } = solveCond(GRADES[g].params, { rhythm: 'af', afRate: rate });
+  let dQ = 0, dP = 0;
+  for (let k = 1; k < beats.length; k++) {
+    const a = beats[k - 1].rec, b = beats[k].rec;
+    const carried = a.Qmv.at(-1) + Math.max(0, a.Qmv.at(-1) - a.Qmv.at(-2));
+    if (b.Qmv[0] >= b.Qmv[1]) dQ = Math.max(dQ, b.Qmv[0] - carried);
+    dP = Math.max(dP, Math.abs(b.Pla[0] - a.Pla.at(-1)));
+  }
+  check(`AF ${rate}/min, grade ${GRADES[g].roman}: no mitral flow spike at the QRS`, dQ < 2, `${f2(dQ)} mL/s`);
+  check(`AF ${rate}/min, grade ${GRADES[g].roman}: LA pressure continuous at the QRS`, dP < 0.1, `${f2(dP)} mmHg`);
+}
+
 // ---------- numbers quoted on diastolic.html ----------
 q('normal E', e[0].E, 90, 0.6); q('normal A', e[0].A, 77, 0.6); q('normal E/A', e[0].EA, 1.17, 0.006); q('normal DT', e[0].DT, 226, 0.6);
 q('normal e′', e[0].ep, 11.8, 0.06); q('normal E/e′', e[0].Eep, 7.6, 0.06); q('normal LAP', O[0].LAP, 7, 0.5);
@@ -88,10 +106,10 @@ q('afterload LAP, normal', T[0].aftLAP, 0.4, 0.06); q('afterload LAP, grade IV',
 q('surge LAP, normal', T[0].surgeLAP, 3.6, 0.06); q('surge LAP, grade II', T[2].surgeLAP, 4.9, 0.06); q('surge LAP, grade IV', T[4].surgeLAP, 6.4, 0.06);
 check('AF at 70/min lowers CO by 10–14%', T.every((t) => t.af70CO <= -9.5 && t.af70CO >= -14.5), T.map((t) => t.af70CO.toFixed(1)).join(' '));
 q('AF 130 CO, normal', T[0].af130CO, 0, 0.6); q('AF 130 LAP, normal', T[0].af130LAP, 2.9, 0.06);
-q('AF 130 CO, grade I', T[1].af130CO, -27, 0.6); q('AF 130 LAP, grade I', T[1].af130LAP, 7.8, 0.06);
-q('AF 130 CO, grade II', T[2].af130CO, -15, 0.6); q('AF 130 LAP, grade II', T[2].af130LAP, 6.4, 0.06);
-q('AF 110 CO, grade III', T[3].af110CO, 4, 0.6); q('AF 110 CO, grade IV', T[4].af110CO, 3, 0.6);
-check('AF 130 CO, grades III–IV: −4 to −5%', [3, 4].every((g) => T[g].af130CO <= -3.5 && T[g].af130CO >= -5.5), `${T[3].af130CO.toFixed(1)} ${T[4].af130CO.toFixed(1)}`);
+q('AF 130 CO, grade I', T[1].af130CO, -28, 0.6); q('AF 130 LAP, grade I', T[1].af130LAP, 7.7, 0.06);
+q('AF 130 CO, grade II', T[2].af130CO, -16, 0.6); q('AF 130 LAP, grade II', T[2].af130LAP, 6.3, 0.06);
+q('AF 110 CO, grade III', T[3].af110CO, 2, 0.6); q('AF 110 CO, grade IV', T[4].af110CO, 1, 0.6);
+check('AF 130 CO, grades III–IV: −6 to −8%', [3, 4].every((g) => T[g].af130CO <= -5.5 && T[g].af130CO >= -8.5), `${T[3].af130CO.toFixed(1)} ${T[4].af130CO.toFixed(1)}`);
 q('AF 130 LAP, grade III', T[3].af130LAP, 1.7, 0.06); check('AF 130: LAP falls in grade IV', T[4].af130LAP < 0);
 // cohort classification by the echo algorithm (as found, and after 1.5 L removed)
 {
