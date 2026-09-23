@@ -274,7 +274,7 @@ function pacSpec() {
   return {
     file: `va-coupling-pac-${st.pos}-${st.preset}${st.atr === 'sinus' ? '' : '-' + st.atr}${faults.length ? '-artifact' : ''}`,
     title: `PA catheter, ${label} tracing · ${patient}`,
-    caption: `Pressure at the catheter tip in the ${label} position, generated from the model beat${rhythm ? ` with ${rhythm}` : ''} (${fault}).${st.pos === 'ra' || st.pos === 'wedge' ? ' The atrial a, c, and x waves come from an illustrative template timed to the model beat.' : ''}${st.pos === 'wedge' && st.showLA ? ' The dashed line is the true LA pressure.' : ''}${faults.length ? ' The gray line is the true tip pressure without the artifact.' : ''}${st.resp !== 'none' ? ' The shaded bands mark inspiration, and pressures are read at end-expiration, which is marked.' : ''}`,
+    caption: `Pressure at the catheter tip in the ${label} position, generated from the model beat${rhythm ? ` with ${rhythm}` : ''} (${fault}).${st.pos === 'ra' || st.pos === 'wedge' ? ' The a wave comes from atrial contraction in the model; the c wave and the systolic part of the x descent come from an illustrative template timed to the model beat.' : ''}${st.pos === 'wedge' && st.showLA ? ' The dashed line is the true LA pressure.' : ''}${faults.length ? ' The gray line is the true tip pressure without the artifact.' : ''}${st.resp !== 'none' ? ' The shaded bands mark inspiration, and pressures are read at end-expiration, which is marked.' : ''}`,
     notes: '',
     async prepare() {
       const W = 1100, h = Math.round(W * 0.42), top = 56, band = 44, H = even(top + h + band);
