@@ -284,7 +284,7 @@ export function initScenarioCards(group = 'basic', boxId = 'scenario-list') {
     card.className = 'card scen';
     card.innerHTML = `<h3>${p.label}</h3><div class="monitor mini"><svg aria-hidden="true"></svg></div>
       <div class="scen-nums">${nums.map(([k, v]) => `<div><b>${v}</b><span>${k}</span></div>`).join('')}</div>
-      <details><summary>Details</summary>${scenarioDetail(p, r, ref, side)}</details>
+      <details><summary><span class="when-closed">Details</span><span class="when-open">Hide details</span></summary>${scenarioDetail(p, r, ref, side)}</details>
       <a class="more" href="simulator.html#preset=${p.id}&side=${side}">Open in simulator →</a>`;
     box.appendChild(card);
     const xmax = niceMax(Math.max(m.EDV, ref[side].EDV) * 1.15);
