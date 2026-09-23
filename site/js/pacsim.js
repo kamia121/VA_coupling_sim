@@ -580,7 +580,7 @@ function pacSpec() {
   return {
     file: `va-coupling-pac-${all ? 'all' : st.pos}-${st.preset}${st.atr === 'sinus' ? '' : '-' + st.atr}${faults.length ? '-artifact' : ''}`,
     title: `PA catheter, ${label} · ${patient}`,
-    caption: all ? `RA, RV, PA and wedge pressures from the same model beats, stacked over one ECG${rhythm ? `, with ${rhythm}` : ''} (${fault}). RV and PA share a scale, as do RA and wedge.` : `Pressure at the catheter tip in the ${label} position, generated from the model beat${rhythm ? ` with ${rhythm}` : ''} (${fault}).${st.pos === 'ra' || st.pos === 'wedge' ? ' Every atrial wave comes from the model beat.' : ''}${st.pos === 'wedge' && st.showLA ? ' The lavender line is the true LA pressure.' : ''}${st.guide ? ' The dotted lines mark where the pressure is read and where that falls on the ECG.' : ''}${faults.length ? ' The gray line is the true tip pressure without the artifact.' : ''}${st.resp !== 'none' ? ' The shaded bands mark inspiration, and pressures are read at end-expiration, which is marked.' : ''}`,
+    caption: all ? `RA, RV, PA and wedge (PAWP) pressures from the same model beats, stacked over one ECG${rhythm ? `, with ${rhythm}` : ''} (${fault}). RV and PA share a scale, as do RA and wedge.` : `Pressure at the catheter tip in the ${label} position, generated from the model beat${rhythm ? ` with ${rhythm}` : ''} (${fault}).${st.pos === 'ra' || st.pos === 'wedge' ? ' Every atrial wave comes from the model beat.' : ''}${st.pos === 'wedge' && st.showLA ? ' The lavender line is the true LA pressure.' : ''}${st.guide ? ' The dotted lines mark where the pressure is read and where that falls on the ECG.' : ''}${faults.length ? ' The gray line is the true tip pressure without the artifact.' : ''}${st.resp !== 'none' ? ' The shaded bands mark inspiration, and pressures are read at end-expiration, which is marked.' : ''}`,
     notes: '',
     async prepare() {
       const W = 1100, h = Math.round(W * (all ? 0.95 : 0.42)), top = 56, band = 44, H = even(top + h + band);
@@ -588,7 +588,7 @@ function pacSpec() {
       const cg = c.getContext('2d'), t0 = 100 * BREATH;          // well past start-up, on a whole breath and beat
       const duration = st.resp === 'none' ? Math.ceil(3 / TB) * TB : BREATH;
       const first = draw(t0 + duration, { g: cg, w: W, h });
-      this.notes = all ? `Last 2 beats: RA ${first.ra}, RV ${first.rv}, PA ${first.pa}, wedge ${first.wedge} mmHg. Artifact: ${fault}.` : `Monitor reads ${first.monitor} (whole screen), last 2 beats ${first.last}; true tip pressure ${first.truth} mmHg.${first.reading ? ` ${first.reading.name} read at ${first.reading.how}: ${first.reading.value.toFixed(0)} mmHg.` : ''} Artifact: ${fault}.`;
+      this.notes = all ? `Last 2 beats: RA ${first.ra}, RV ${first.rv}, PA ${first.pa}, PAWP ${first.wedge} mmHg. Artifact: ${fault}.` : `Monitor reads ${first.monitor} (whole screen), last 2 beats ${first.last}; true tip pressure ${first.truth} mmHg.${first.reading ? ` ${first.reading.name} read at ${first.reading.how}: ${first.reading.value.toFixed(0)} mmHg.` : ''} Artifact: ${fault}.`;
       return {
         W, H, duration,
         async frame(g, t) {
