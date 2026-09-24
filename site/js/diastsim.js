@@ -1,6 +1,10 @@
-// Diastolic lab page: one patient of the chosen grade, live (PV loop, monitor numbers and the Doppler
-// echocardiogram as volume, afterload and rhythm change), and the virtual cohort (precomputed by
-// tools/diastolic_cohort.mjs) for fluid, afterload and AF tolerance and the fluid-then-diuresis course.
+// Diastolic lab, two pages that can be open side by side.
+//   diastolic.html (text): concept figures, the grade table and the predict-then-test questions.
+//   diastolic-sim.html (simulator): one patient of the chosen grade, live (PV loop, values, bedside
+//   consequences and the Doppler echocardiogram), and the virtual cohort (precomputed by
+//   tools/diastolic_cohort.mjs) with the fluid-then-diuresis course.
+// The text page sends a question's case to an open simulator window on a BroadcastChannel; when none
+// answers, the link opens the simulator in a named window with the case in the URL hash.
 import { simulate, NORMAL, pvRelations } from './engine.js';
 import { GRADES, MV_AREA, CUT, LAP_WET, SURGE, COURSE, BSA, CONSEQ, solveCond, readout, condParams, consequences } from './diastcore.js';
 import { QUESTIONS } from './diastquiz.js';
@@ -274,7 +278,7 @@ function drawLive() {
   $('#af-v').textContent = `${st.afRate}/min`;
   $('#af-row').hidden = st.rhythm !== 'af';
   $('#grade-text').innerHTML = `<p>${GRADES[st.g].text}</p>`;
-  history.replaceState(null, '', `#grade=${st.g}`);
+  history.replaceState(null, '', `#${setupHash({ g: st.g, vol: st.vol, svrX: st.svrX, surge: st.surge, rhythm: st.rhythm, afRate: st.afRate })}`);
 }
 
 // ---------- cohort ----------
@@ -449,7 +453,6 @@ function drawCohort() {
   courseChart('t-lap', 'LAP', 'LA pressure (mmHg)', LAP_WET);
   courseChart('t-co', 'CO', 'Cardiac output (L/min)', null, (v) => v.toFixed(2));
   courseChart('t-ea', 'EA', 'Mitral E/A', 2, (v) => v.toFixed(2));
-  $('#c-n').textContent = COHORT.N;
 }
 
 // CSV of the whole cohort, one row per patient per condition.
@@ -570,7 +573,23 @@ function quizCard() {
     <p class="quiz-q">${q.prompt}</p>
     <div class="quiz-choices">${q.choices.map(([k, t]) => `<button type="button" class="give quiz-c${p ? (k === p.key ? ' right' : k === p.pick ? ' wrong' : '') : ''}" data-k="${k}"${p ? ' disabled' : ''}>${t}${p && k === p.key ? '<small>correct</small>' : p && k === p.pick ? '<small>your answer</small>' : ''}</button>`).join('')}</div>
     ${p ? `<div class="interp quiz-a"><p><b>${p.ok ? 'Correct.' : 'Not quite.'}</b> ${p.explain}</p></div>
-      <div class="btn-row"><button type="button" class="btn primary" id="quiz-show">Show it in the simulator</button>${quiz.i < QUESTIONS.length - 1 ? '<button type="button" class="btn" id="quiz-next">Next question</button>' : ''}</div>` : ''}`;
+      <div class="btn-row"><a class="btn primary" id="quiz-show" href="${SIM_URL}#${setupHash(q.setup)}" target="${SIM_WIN}">Show this case in the simulator</a>${quiz.i < QUESTIONS.length - 1 ? '<button type="button" class="btn" id="quiz-next">Next question</button>' : ''}</div>` : ''}`;
+}
+// A case as a URL hash (g=3&vol=500&svr=1.5&surge=1&rhythm=af&rate=130) and back.
+function setupHash(su) {
+  const q = [`g=${su.g}`];
+  if (su.vol) q.push(`vol=${su.vol}`);
+  if (su.svrX && su.svrX !== 1) q.push(`svr=${su.svrX}`);
+  if (su.surge) q.push('surge=1');
+  if (su.rhythm === 'af') q.push('rhythm=af', `rate=${su.afRate ?? 110}`);
+  return q.join('&');
+}
+function parseHash(h) {
+  const m = Object.fromEntries(h.replace(/^#/, '').split('&').filter(Boolean).map((kv) => kv.split('=')));
+  const g = m.g ?? m.grade;
+  if (g == null) return null;
+  return { g: Math.max(0, Math.min(4, +g || 0)), vol: +m.vol || 0, svrX: +m.svr || 1, surge: m.surge === '1',
+    rhythm: m.rhythm === 'af' ? 'af' : 'sinus', afRate: +m.rate || 110 };
 }
 function applySetup(su) {
   Object.assign(st, { g: su.g, vol: su.vol ?? 0, svrX: su.svrX ?? 1, surge: !!su.surge, rhythm: su.rhythm ?? 'sinus', afRate: su.afRate ?? 110 });
@@ -578,9 +597,14 @@ function applySetup(su) {
   $('#rhythm').querySelectorAll('button').forEach((x) => x.setAttribute('aria-pressed', String(x.dataset.v === st.rhythm)));
   $('#grades').querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', String(+b.dataset.g === st.g)));
   update();
-  document.getElementById('sim').scrollIntoView({ behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
 }
+// The two pages talk on one channel. The simulator announces itself every 2 s; the text page sends a case
+// to it when it has heard from it recently, and otherwise lets the link open the simulator.
+const SIM_URL = 'diastolic-sim.html', SIM_WIN = 'vac-dia-sim';
+const channel = typeof BroadcastChannel === 'function' ? new BroadcastChannel('vac-diastolic') : null;
+let simSeen = 0;
 function initQuiz() {
+  if (channel) channel.addEventListener('message', (e) => { if (e.data?.type === 'sim-here') simSeen = Date.now(); });
   $('#quiz-nav').addEventListener('click', (e) => { const b = e.target.closest('button[data-q]'); if (!b) return; quiz.i = +b.dataset.q; quizNav(); quizCard(); });
   $('#quiz-card').addEventListener('click', (e) => {
     const q = QUESTIONS[quiz.i];
@@ -589,7 +613,8 @@ function initQuiz() {
       $('#quiz-card').insertAdjacentHTML('beforeend', '<p class="status">Running the model…</p>');
       setTimeout(() => { const r = q.run(); quiz.picked[q.id] = { pick: c.dataset.k, key: r.key, ok: c.dataset.k === r.key, explain: r.explain }; quizNav(); quizCard(); }, 20);
     }
-    if (e.target.closest('#quiz-show')) applySetup(q.setup);
+    // an open simulator window takes the case on the channel; otherwise the link opens one
+    if (e.target.closest('#quiz-show') && channel && Date.now() - simSeen < 5000) { e.preventDefault(); channel.postMessage({ type: 'setup', setup: q.setup }); }
     if (e.target.closest('#quiz-next')) { quiz.i++; quizNav(); quizCard(); }
   });
   quizNav(); quizCard();
@@ -619,7 +644,19 @@ function cqTable() {
 }
 
 // ---------- controls ----------
-export function initDiastolic() {
+// Text page: concept figures, the grade table and the questions.
+export function initDiastolicText() {
+  document.querySelectorAll('.g-legend').forEach((el) => { el.innerHTML = legendHTML(); });
+  drawEDPVR(); initQuiz();
+  // the reference beat of every grade, for the mitral strips and the table (about a second of model time)
+  setTimeout(() => { drawMinis(); gradeTable(); }, 50);
+  let rt;
+  window.addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(() => { drawEDPVR(); drawMinis(); }, 200); });
+  document.addEventListener('themechange', () => { drawEDPVR(); drawMinis(); });
+}
+
+// Simulator page: the live patient and the cohort.
+export function initDiastolicSim() {
   // on phones the buttons show only the numeral (0, I–IV) so the bar fits on one line
   $('#grades').innerHTML = GRADES.map((g) => `<button type="button" data-g="${g.id}" aria-pressed="false" aria-label="${g.short}"><span class="g-long">${g.short}</span><span class="g-short" aria-hidden="true">${g.roman}</span></button>`).join('');
   const syncGrade = () => $('#grades').querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', String(+b.dataset.g === st.g)));
@@ -637,24 +674,26 @@ export function initDiastolic() {
     const b = e.target.closest('button[data-dv]'); if (!b) return;
     st.vol = Math.max(-2000, Math.min(2000, st.vol + +b.dataset.dv)); vol.value = st.vol; update();
   });
-  $('#reset').addEventListener('click', () => {
-    Object.assign(st, { vol: 0, svrX: 1, surge: false, rhythm: 'sinus' });
-    vol.value = 0; svr.value = 1; $('#surge').checked = false;
-    $('#rhythm').querySelectorAll('button').forEach((x) => x.setAttribute('aria-pressed', String(x.dataset.v === 'sinus')));
-    update();
-  });
+  $('#reset').addEventListener('click', () => applySetup({ g: st.g }));
   $('#csv').addEventListener('click', downloadCSV);
   addExport($('#echo-panel'), echoSpec, { still: true });
-  const m = /grade=(\d)/.exec(location.hash);
-  if (m) st.g = Math.min(4, +m[1]);
-  syncGrade();
   $('#cq-pick').addEventListener('click', (e) => { const b = e.target.closest('button[data-k]'); if (!b) return; cqPick = b.dataset.k; cqTable(); });
-  solveNow(); drawLive(); drawCohort(); drawEDPVR(); cqTable(); initQuiz();
-  // the other grades' reference beats, for the mitral strips (about a second of model time)
-  setTimeout(() => { drawMinis(); gradeTable(); }, 50);
+  const su = parseHash(location.hash);
+  if (su) Object.assign(st, su);
+  vol.value = st.vol; svr.value = st.svrX; afr.value = st.afRate; $('#surge').checked = st.surge;
+  $('#rhythm').querySelectorAll('button').forEach((x) => x.setAttribute('aria-pressed', String(x.dataset.v === st.rhythm)));
+  syncGrade();
+  solveNow(); drawLive(); drawCohort(); cqTable();
+  // cases from the text page: by the channel when it is open, or by the hash when the link reuses this window
+  window.addEventListener('hashchange', () => { const x = parseHash(location.hash); if (x && setupHash(x) !== setupHash(st)) applySetup(x); });
+  if (channel) {
+    const hello = () => channel.postMessage({ type: 'sim-here' });
+    hello(); setInterval(hello, 2000);
+    channel.addEventListener('message', (e) => { if (e.data?.type === 'setup') { applySetup(e.data.setup); window.focus(); } });
+  }
   let rt;
-  window.addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(() => { drawLive(); drawCohort(); drawEDPVR(); drawMinis(); }, 200); });
-  document.addEventListener('themechange', () => { drawLive(); drawCohort(); drawEDPVR(); });
+  window.addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(() => { drawLive(); drawCohort(); }, 200); });
+  document.addEventListener('themechange', () => { drawLive(); drawCohort(); });
 }
 
 export const _diast = { st, solveNow, cond };

@@ -21,21 +21,21 @@ const G1 = { tau: 0.065, lvBeta: 0.033, lvA: 0.24, lvEes: 2.8, lvMass: 1.2, laV0
   vStressed: 650, svr: 1.15, cSys: 1.0 };
 export const GRADES = [
   { id: 0, key: 'g0', roman: '0', label: 'Normal diastolic function', short: 'Normal', params: { mvArea: MV_AREA },
-    text: 'Normal relaxation and chamber stiffness. Most of the LV fills in early diastole, driven by LV suction, so E exceeds A and the lateral e′ is brisk.' },
+    text: 'Relaxation and chamber stiffness are normal. Most LV filling occurs in early diastole, driven by the suction gradient of relaxation, so that E exceeds A and lateral e′ is normal.' },
   { id: 1, key: 'g1', roman: 'I', label: 'Grade I: impaired relaxation', short: 'Grade I', params: { ...G1, mvArea: MV_AREA },
-    text: 'Relaxation is slow (τ about 70 ms), so the early transmitral gradient is small and E falls; the atrium contracts harder and A rises. The E/A ratio falls below 0.8 and the deceleration time lengthens. LA pressure is still normal at rest.' },
+    text: 'Impaired relaxation at a normal filling pressure. With τ near 70 ms, LV pressure is still falling at mitral valve opening, the early transmitral gradient narrows and E declines, while a stronger atrial kick raises A; E/A falls below 0.8 and the deceleration time lengthens. Mean LA pressure remains normal at rest.' },
   { id: 2, key: 'g2', roman: 'II', label: 'Grade II: pseudonormal', short: 'Grade II',
     params: { ...G1, mvArea: MV_AREA, tau: 0.068, lvBeta: 0.04, lvA: 0.27, lvEes: 3.1, lvMass: 1.35, laV0: 50, laEmax: 1.2, laEmin: 0.34,
       vStressed: 950, svr: 1.25, cSys: 0.85, pvr: 0.06 },
-    text: 'Relaxation is still slow and the chamber is stiffer, and LA pressure has risen enough to restore the early gradient. The E/A ratio looks normal, but e′ stays low, so E/e′ is high, and the LA has enlarged. Preload reduction unmasks the impaired-relaxation pattern.' },
+    text: 'The pseudonormal pattern. Relaxation remains slow and chamber stiffness has increased, but a raised mean LA pressure restores the early transmitral gradient and returns E/A to the normal range. The relatively preload-independent indices stay abnormal: e′ is low, E/e′ is raised and the LA is enlarged. Preload reduction uncovers the impaired relaxation pattern.' },
   { id: 3, key: 'g3', roman: 'III', label: 'Grade III: restrictive, reversible', short: 'Grade III',
     params: { ...G1, mvArea: MV_AREA, tau: 0.068, lvBeta: 0.055, lvA: 0.3, lvEes: 3.2, lvMass: 1.45, laV0: 75, laEmax: 0.9, laEmin: 0.4,
       vStressed: 1000, svr: 1.3, cSys: 0.8, pvr: 0.09, cPa: 2.6 },
-    text: 'A stiff LV filling from a high-pressure, stiff LA. E is tall and decelerates quickly as LV pressure rises steeply; A is small because the atrium contracts against a full, stiff ventricle. Removing volume still returns the pattern toward pseudonormal.' },
+    text: 'Reversible restrictive filling. A stiff LV fills from a stiff atrium at high pressure, so that E is tall with a short deceleration time, and the atrial kick contributes little against a full, stiff ventricle. Preload reduction returns the pattern toward pseudonormal.' },
   { id: 4, key: 'g4', roman: 'IV', label: 'Grade IV: restrictive, fixed', short: 'Grade IV',
     params: { ...G1, mvArea: MV_AREA, tau: 0.07, lvBeta: 0.065, lvA: 0.34, lvEes: 3.2, lvMass: 1.5, laV0: 80, laEmax: 0.7, laEmin: 0.5,
       vStressed: 1110, svr: 1.3, cSys: 0.8, pvr: 0.14, cPa: 2.0, rvEes: 0.6, rvMass: 1.3, hr: 78 },
-    text: 'The ventricle is so stiff that the restrictive pattern persists after preload reduction. LA pressure is high at rest, pulmonary hypertension has developed, and the atrium adds little. This is the end of the continuum and the grade with the narrowest volume window.' },
+    text: 'Fixed restrictive filling. Chamber stiffness is high enough that the restrictive pattern persists after preload reduction. Mean LA pressure is high at rest, retrograde transmission of that pressure has produced pulmonary hypertension, and the atrial kick contributes little. Of the five grades, this one has the narrowest volume window.' },
 ];
 
 // Chronic hypertension resets the baroreflex: the set point is the MAP the grade has without the reflex.

@@ -23,27 +23,27 @@ export const QUESTIONS = [
     run() {
       const o = state(2), e = o.echo;
       const key = e.EA > CUT.EA_low && e.EA < CUT.EA_high && e.Eep > CUT.Eep && e.LAVI > CUT.LAVI ? 'sup' : 'ea';
-      return { key, explain: `This is grade II (pseudonormal). LA pressure is ${f0(o.LAP)} mmHg, high enough to restore the early gradient that slow relaxation took away, so E/A (${f2(e.EA)}) and DT (${f0(e.DT)} ms) look normal. Relaxation is still slow, so e′ stays low (${f1(e.ep)} cm/s), E/e′ is ${f1(e.Eep)} and the LA volume index is ${f0(e.LAVI)} mL/m². Those supporting criteria, not the E/A ratio, tell you the pressure is up.` };
+      return { key, explain: `This is the pseudonormal pattern of grade II. A mean LA pressure of ${f0(o.LAP)} mmHg restores the early transmitral gradient that slow relaxation had narrowed, so that E/A (${f2(e.EA)}) and the deceleration time (${f0(e.DT)} ms) fall in the normal range. Relaxation remains slow, and the relatively preload-independent indices remain abnormal, with an e′ of ${f1(e.ep)} cm/s, an E/e′ of ${f1(e.Eep)} and an LA volume index of ${f0(e.LAVI)} mL/m². These indices, and not the E/A ratio, identify the raised filling pressure.` };
     },
   },
   {
     id: 'grade1', topic: 'Echo', setup: { g: 1 },
-    prompt: 'In grade I, E is low and A is tall. What causes this?',
+    prompt: 'In grade I, E is reduced and A is increased. What causes this pattern?',
     choices: [['relax', 'Slow relaxation lowers the early LA–LV gradient, so the atrium does more of the filling'], ['lap', 'LA pressure is high'], ['stiff', 'The LV is so stiff that it cannot fill early']],
     run() {
       const o = state(1), n = state(0);
       const key = o.echo.tauMs > n.echo.tauMs * 1.5 && o.LAP < 12 ? 'relax' : 'lap';
-      return { key, explain: `τ is ${f0(o.echo.tauMs)} ms against ${f0(n.echo.tauMs)} ms in the normal heart, while LA pressure is still ${f0(o.LAP)} mmHg. The LV pressure falls slowly after mitral opening, so the early gradient is small: E falls to ${f0(o.echo.E)} cm/s, A rises to ${f0(o.echo.A)} cm/s (E/A ${f2(o.echo.EA)}), IVRT lengthens to ${f0(o.echo.IVRT)} ms and e′ falls to ${f1(o.echo.ep)} cm/s. The chamber is only mildly stiff, which is why the pressure is still normal.` };
+      return { key, explain: `With a relaxation time constant of ${f0(o.echo.tauMs)} ms, against ${f0(n.echo.tauMs)} ms in the normal ventricle, LV pressure is still falling when the mitral valve opens. The early transmitral gradient narrows, E falls and the atrial kick carries more of the filling, giving an E/A ratio of ${f2(o.echo.EA)}. Chamber stiffness is only mildly increased, and mean LA pressure remains ${f0(o.LAP)} mmHg.` };
     },
   },
   {
     id: 'unmask', topic: 'Echo', setup: { g: 2, vol: -1500 },
-    prompt: 'Grade II patient. Remove 1.5 L, the model’s stand-in for preload reduction by Valsalva. What does the E/A ratio become?',
+    prompt: 'A grade II patient has 1.5 L removed, a preload reduction standing in for the Valsalva maneuver. What does the E/A ratio become?',
     choices: [['low', 'Below 0.8, an impaired-relaxation pattern'], ['same', 'Still between 0.8 and 2'], ['high', '2 or more, restrictive']],
     run() {
       const a = state(2), b = state(2, { vol: -1500 }), ea = b.echo.EA;
       return { key: ea <= CUT.EA_low ? 'low' : ea < CUT.EA_high ? 'same' : 'high',
-        explain: `LA pressure falls from ${f0(a.LAP)} to ${f0(b.LAP)} mmHg and E/A falls from ${f2(a.echo.EA)} to ${f2(ea)}. The pressure had been masking the slow relaxation, and removing it unmasks the grade I pattern. e′ barely moves (${f1(a.echo.ep)} → ${f1(b.echo.ep)} cm/s), because it follows relaxation, not preload.` };
+        explain: `Mean LA pressure falls from ${f0(a.LAP)} to ${f0(b.LAP)} mmHg and E/A from ${f2(a.echo.EA)} to ${f2(ea)}. Without the raised filling pressure that had restored the early gradient, the slow relaxation of the ventricle again determines the mitral pattern. Lateral e′, a relatively preload-independent surrogate of relaxation, changes from ${f1(a.echo.ep)} to ${f1(b.echo.ep)} cm/s.` };
     },
   },
   {
@@ -54,17 +54,17 @@ export const QUESTIONS = [
       const a = state(3, { vol: -1500 }), b = state(4, { vol: -1500 });
       const r3 = a.echo.EA >= CUT.EA_high, r4 = b.echo.EA >= CUT.EA_high;
       return { key: r3 && r4 ? 'both' : r4 ? 'g4' : r3 ? 'g3' : 'neither',
-        explain: `Grade III falls to E/A ${f2(a.echo.EA)} (reversible); grade IV stays at ${f2(b.echo.EA)} (fixed), because its ventricle is stiff even at a lower volume. In the virtual cohort this split is not clean: reversibility is a continuum across patients.` };
+        explain: `E/A falls to ${f2(a.echo.EA)} in grade III and remains ${f2(b.echo.EA)} in grade IV, whose ventricle stays on the steep limb of its EDPVR even at a lower volume. Among the 40 simulated patients of each grade, reversibility varies continuously and the two grades overlap.` };
     },
   },
   {
     id: 'fluid3', topic: 'Fluid', setup: { g: 3, vol: 500 },
-    prompt: 'Grade III patient, LA pressure 21 mmHg. You give 500 mL. What happens?',
+    prompt: 'A grade III patient with a mean LA pressure of 21 mmHg receives 500 mL of fluid. What happens?',
     choices: [['both', 'Cardiac output rises and LA pressure rises a little'], ['lap', 'Cardiac output barely changes and LA pressure rises by 3–4 mmHg'], ['none', 'Neither changes much']],
     run() {
       const a = state(3), b = state(3, { vol: 500 }), dco = pct(a.CO, b.CO), dl = b.LAP - a.LAP;
       return { key: Math.abs(dco) < 3 && dl >= 2 && dl <= 6 ? 'lap' : dco >= 3 ? 'both' : 'none',
-        explain: `Cardiac output goes from ${f2(a.CO)} to ${f2(b.CO)} L/min, a change of ${f1(Math.abs(dco))}%, and LA pressure goes from ${f1(a.LAP)} to ${f1(b.LAP)} mmHg. The stiff ventricle sits on the flat part of its output curve and the steep part of its pressure curve, so the fluid adds pressure without flow. The patient was already congested, and is now ${f1(Math.max(0, CONSEQ.edema - b.LAP))} mmHg below the alveolar edema range (${CONSEQ.edema} mmHg; lungs: ${lungs(b)}). A second bolus would cross it.` };
+        explain: `${Math.abs(dco) < 0.5 ? `Cardiac output is unchanged at ${f2(b.CO)} L/min` : `Cardiac output changes by ${f1(Math.abs(dco))}%, from ${f2(a.CO)} to ${f2(b.CO)} L/min,`} while mean LA pressure rises from ${f1(a.LAP)} to ${f1(b.LAP)} mmHg. The stiff ventricle operates on the plateau of its Frank–Starling relation and the steep limb of its EDPVR, so the added volume raises filling pressure without raising stroke volume. Already congested at baseline, the patient now sits ${f1(Math.max(0, CONSEQ.edema - b.LAP))} mmHg below the ${CONSEQ.edema} mmHg edema threshold, which a second bolus would exceed.` };
     },
   },
   {
@@ -75,18 +75,18 @@ export const QUESTIONS = [
       const a1 = state(1), b1 = state(1, { vol: -1000 }), a3 = state(3), b3 = state(3, { vol: -1000 });
       const d1 = b1.CO - a1.CO, d3 = b3.CO - a3.CO;
       return { key: Math.abs(d1 - d3) < 0.15 ? 'same' : d1 < d3 ? 'g1' : 'g3',
-        explain: `Grade I loses ${f2(-d1)} L/min (LA pressure ${f0(a1.LAP)} → ${f0(b1.LAP)} mmHg); grade III loses ${f2(-d3)} L/min (LA pressure ${f0(a3.LAP)} → ${f0(b3.LAP)} mmHg). Grade I starts at a normal filling pressure and depends on preload and its atrial kick; grade III starts congested, on the flat part of its curve. Diuresis is the treatment for grade III and a hazard in grade I.` };
+        explain: `Cardiac output falls by ${f2(-d1)} L/min in grade I, as mean LA pressure falls from ${f0(a1.LAP)} to ${f0(b1.LAP)} mmHg, and by ${f2(-d3)} L/min in grade III, as it falls from ${f0(a3.LAP)} to ${f0(b3.LAP)} mmHg. Starting from a normal filling pressure, the slowly relaxing ventricle of grade I depends on preload and the atrial kick to reach its end-diastolic volume. The congested grade III ventricle operates on the plateau of its Frank–Starling relation and gives up pressure with little loss of volume.` };
     },
   },
   {
     id: 'afterload', topic: 'Afterload', setup: { g: 4, svrX: 1.5 },
-    prompt: 'Grade IV patient. SVR rises by 50%, with no change in venous tone. By how much does LA pressure rise?',
+    prompt: 'In a grade IV patient, SVR rises by 50% with no change in venous tone. By how much does mean LA pressure rise?',
     choices: [['small', 'Less than 2 mmHg'], ['mid', '2 to 5 mmHg'], ['large', 'More than 5 mmHg']],
     run() {
       const a = state(4), b = state(4, { svrX: 1.5 }), c = state(4, { svrX: 1.5, recruit: 200 });
       const d = b.LAP - a.LAP;
       return { key: d < 2 ? 'small' : d <= 5 ? 'mid' : 'large',
-        explain: `LA pressure rises by ${f1(d)} mmHg while stroke volume falls ${f0(-pct(a.SV, b.SV))}%. Afterload alone does not flood the lungs. Add the venoconstriction of a sympathetic surge (200 mL moved into the stressed volume) and LA pressure rises by ${f1(c.LAP - a.LAP)} mmHg, to ${f0(c.LAP)} mmHg. In a stiff ventricle, a small shift of volume becomes a large rise in pressure. Tick “Sympathetic surge” in the simulator to see it.` };
+        explain: `Mean LA pressure rises by ${f1(d)} mmHg while stroke volume falls by ${f0(-pct(a.SV, b.SV))}%. When the rise in SVR is accompanied by sympathetic venoconstriction that moves 200 mL into the stressed volume, mean LA pressure rises by ${f1(c.LAP - a.LAP)} mmHg, to ${f0(c.LAP)} mmHg, because the stiff ventricle converts a small central shift of volume into a large rise in filling pressure. The “Sympathetic surge” option in the simulator adds this recruitment.` };
     },
   },
   {
@@ -97,7 +97,7 @@ export const QUESTIONS = [
       const a1 = state(1), b1 = state(1, { rhythm: 'af', afRate: 130 }), a4 = state(4), b4 = state(4, { rhythm: 'af', afRate: 130 });
       const p1 = pct(a1.CO, b1.CO), p4 = pct(a4.CO, b4.CO);
       return { key: Math.abs(p1 - p4) < 5 ? 'same' : p1 < p4 ? 'g1' : 'g4',
-        explain: `Grade I loses ${f0(-p1)}% of its output, and its LA pressure rises from ${f0(a1.LAP)} to ${f0(b1.LAP)} mmHg; grade IV changes by ${f0(p4)}%. Grade I fills by slow relaxation and a strong atrial kick, and AF takes both: the kick, and the diastolic time that a short RR interval cuts off. Grade IV had little atrial contribution left to lose. This is the acute effect only; chronic AF remodels the atrium and worsens congestion over years.` };
+        explain: `Grade I loses ${f0(-p1)}% of its cardiac output, and its mean LA pressure rises from ${f0(a1.LAP)} to ${f0(b1.LAP)} mmHg; in grade IV, cardiac output ${p4 < 0 ? 'falls' : 'rises'} by ${f0(Math.abs(p4))}%. Filling in grade I depends on slow relaxation and on a strong atrial kick, and AF removes the kick while the short RR interval cuts off the time that slow relaxation needs. In grade IV, the atrium was contributing little before AF began. Over years, chronic AF also remodels the atrium, which the acute simulation does not include.` };
     },
   },
   {
@@ -107,7 +107,7 @@ export const QUESTIONS = [
     run() {
       const a = state(1), b = state(1, { rhythm: 'af', afRate: 70 }), p = -pct(a.CO, b.CO);
       return { key: p < 5 ? 'small' : p <= 20 ? 'mid' : 'large',
-        explain: `Cardiac output falls ${f0(p)}% (${f2(a.CO)} → ${f2(b.CO)} L/min). In sinus rhythm, the atrium delivers ${f0(a.atrialFill * 100)}% of this patient’s filling. Rate control alone does not restore it; only sinus rhythm does.` };
+        explain: `Cardiac output falls by ${f0(p)}%, from ${f2(a.CO)} to ${f2(b.CO)} L/min. In sinus rhythm, the atrial kick supplies ${f0(a.atrialFill * 100)}% of LV filling in this patient, a share that rate control cannot restore.` };
     },
   },
 ];

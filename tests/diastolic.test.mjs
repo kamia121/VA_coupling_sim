@@ -133,6 +133,29 @@ check('course: normal and grade I stop at the stressed-volume floor', C(0, 240).
 
 q('limits: grade III cardiac index', O[3].CO / 1.9, 1.8, 0.06); q('limits: grade IV cardiac index', O[4].CO / 1.9, 1.8, 0.06);
 check('grades III–IV sit in the cold, wet subset at rest (stated in the limits)', [3, 4].every((g) => consequences(O[g]).subset === 'Cold and wet'));
+// ---------- ranges and rounded values quoted in the rewritten text of diastolic.html ----------
+{
+  const r4 = COHORT.grades[4].patients.find((p) => p.ref).rows, F = Object.fromEntries(COHORT.fields.map((k, i) => [k, i]));
+  const i0 = COHORT.conds.findIndex(([k, x]) => k === 'volume' && x === 0), i1 = COHORT.conds.findIndex(([k, x]) => k === 'volume' && x === 1000);
+  q('EDPVR caption: grade IV EDP rise with 1 L', r4[i1][F.EDP] - r4[i0][F.EDP], 8, 0.5);
+  check('grade I τ nearly twice normal', e[1].tauMs / e[0].tauMs > 1.7 && e[1].tauMs / e[0].tauMs < 2);
+  q('grade IV: E/e′ underestimate of LAP', O[4].LAP - e[4].pcwpNagueh, 9, 0.5); q('grade III: E/e′ underestimate of LAP', O[3].LAP - e[3].pcwpNagueh, 2, 0.5);
+  check('grade IV LAP approaches 30 and mPAP nearly 40', O[4].LAP > 28 && O[4].LAP < 30 && O[4].mPAP > 38 && O[4].mPAP < 40);
+  check('500 mL adds 0.1–0.2 L/min in normal and grade I', [0, 1].every((g) => T[g].co500 >= 0.1 && T[g].co500 <= 0.2));
+  check('500 mL raises LAP by 3–4 mmHg in grades II–IV with no gain in output', [2, 3, 4].every((g) => T[g].lap500 >= 2.95 && T[g].lap500 <= 4.49 && T[g].co500 < 0.05));
+  check('1 L raises LAP by about 5 in normal and 7–8 in grades III–IV', Math.abs(T[0].lap1000 - 5) < 0.5 && [3, 4].every((g) => T[g].lap1000 >= 6.95 && T[g].lap1000 <= 8.49));
+  check('1 L removed lowers LAP by 8–9 in grades III–IV', [3, 4].every((g) => -T[g].lapDiur >= 7.5 && -T[g].lapDiur <= 9.5));
+  check('grade I loses more than 1.2 L/min with 1 L removed, more than normal', -T[1].coDiur > 1.2 && T[1].coDiur < T[0].coDiur);
+  q('window normal (L)', T[0].window / 1000, 2.5, 0.05); q('window grade II (L)', T[2].window / 1000, 1.4, 0.05);
+  q('grade IV must lose about 1.2 L', -T[4].winHi / 1000, 1.2, 0.05);
+  check('SVR × 1.5 alone raises LAP by less than 2 in every grade', T.every((t) => t.aftLAP < 2));
+  check('surge LAP rise grows with grade', T.every((t, g) => g === 0 || t.surgeLAP > T[g - 1].surgeLAP - 0.05));
+  check('AF 130: LAP rises 6–8 in grades I–II', [1, 2].every((g) => T[g].af130LAP >= 5.95 && T[g].af130LAP <= 8.49));
+  check('AF: grades III–IV maintain output up to 110/min', [3, 4].every((g) => T[g].af110CO > -1));
+  const C = (g, t) => COHORT.grades[g].course.find((r) => r.t === t);
+  check('course: 1 L raises LAP by 3–4 in grades III–IV', [3, 4].every((g) => C(g, 30).LAP - C(g, 0).LAP >= 2.95 && C(g, 30).LAP - C(g, 0).LAP <= 4.49));
+}
+
 // ---------- predict-then-test answers (the model decides; these are the answers the page teaches) ----------
 const EXPECT = { pseudo: 'sup', grade1: 'relax', unmask: 'low', fixed: 'g4', fluid3: 'lap', diur: 'g1', afterload: 'small', afrate: 'g1', kick: 'mid' };
 for (const q of QUESTIONS) {
