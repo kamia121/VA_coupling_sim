@@ -87,6 +87,12 @@ export const NORMAL = Object.freeze({
   avArea: 0, mrEroa: 0, trEroa: 0, arEroa: 0,
   // Effective mitral inflow orifice (cm²) for the Bernoulli term in diastole; 0 = resistance only
   mvArea: 0,
+  // LA contraction limits (0 = off, the linear time-varying elastance above). laPiso: length–tension
+  // plateau, the developed (isovolumic) pressure toward which atrial contraction saturates as the atrium
+  // is stretched, mmHg. laKej: force–velocity limit, an internal resistance laKej × developed pressure
+  // (s/mL) in series with the mitral orifice while the atrium empties (the ejection effect, Shroff 1983),
+  // so that emptying flow is bounded by 1/laKej mL/s.
+  laPiso: 0, laKej: 0,
   // Dynamic LVOT obstruction: the outflow orifice narrows as the LV empties below lvoto mL
   // during contraction (0 = off). Area runs from lvotAmax to lvotAmin (cm²) over a width lvotW mL.
   lvoto: 0, lvotW: 5, lvotAmax: 3.5, lvotAmin: 0.2,
@@ -252,10 +258,17 @@ function pressures(s, e, ea, p, ctx) {
     if (gL > 0) VlaE += fL * p.cBulge * gL / (gL + p.cP);
   }
   const Pra = Era * (VraE - p.raV0) + Ppcd;
-  const Pla = Ela * (VlaE - p.laV0) + Ppcd;
+  let Pla, Rint = 0;
+  if (p.laPiso > 0 || p.laKej > 0) {
+    const st = VlaE - p.laV0, x = (p.laEmax - p.laEmin) * st;
+    const act = ea * (p.laPiso > 0 && x > 0 ? p.laPiso * Math.tanh(x / p.laPiso) : x);
+    Pla = p.laEmin * st + act + Ppcd;
+    if (p.laKej > 0 && act > 0) Rint = p.laKej * act;
+  } else Pla = Ela * (VlaE - p.laV0) + Ppcd;
   const Qao = valveFlow(Plv - Psa, p.zcAo, seriesArea(p.avArea, lvotArea(s[0], e, p)));   // aortic valve + Zc (+ stenotic or dynamic LVOT orifice)
   const Qar = leak(Psa - Plv, p.arEroa);                 // aortic regurgitation
-  const Qmv = valveFlow(Pla - Plv, p.rMv, p.mvArea);     // mitral inflow (+ Bernoulli orifice when mvArea > 0)
+  const Qmv = valveFlow(Pla - Plv, p.rMv + Rint, p.mvArea);   // mitral inflow (+ Bernoulli orifice when mvArea > 0)
+  if (Rint > 0) Pla -= Rint * Qmv;                       // LA chamber pressure while the atrium empties
   const Qmr = leak(Plv - Pla, p.mrEroa);                 // mitral regurgitation
   const Qpv = valveFlow(Prv - Ppa, p.zcPa, 0);           // pulmonic valve + Zc
   const Qtv = valveFlow(Pra - Prv, p.rTv, 0);            // tricuspid inflow

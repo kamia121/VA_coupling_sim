@@ -2,7 +2,7 @@
 // every number quoted on diastolic.html, and that the shipped cohort data match the code.
 // Run with: node tests/diastolic.test.mjs
 import { simulate } from '../site/js/engine.js';
-import { GRADES, solveCond, readout, protocol, tolerance, gradeFromEcho, CUT } from '../site/js/diastcore.js';
+import { GRADES, solveCond, readout, protocol, tolerance, gradeFromEcho, CUT, SBT, CONSEQ } from '../site/js/diastcore.js';
 import { COHORT } from '../site/js/diastdata.js';
 import { QUESTIONS } from '../site/js/diastquiz.js';
 import { consequences } from '../site/js/diastcore.js';
@@ -22,6 +22,8 @@ const f2 = (v) => v.toFixed(2);
 // ---------- engine: the mitral orifice is opt-in ----------
 const n0 = simulate({}), nA = simulate({ mvArea: 0 });
 check('mvArea 0 (default) leaves the engine unchanged', Math.abs(n0.hemo.CO - nA.hemo.CO) < 1e-12 && Math.abs(n0.hemo.LAP - nA.hemo.LAP) < 1e-12);
+const nL = simulate({ laPiso: 0, laKej: 0 });
+check('laPiso and laKej 0 (default) leave the engine unchanged', Math.abs(n0.hemo.CO - nL.hemo.CO) < 1e-12 && Math.abs(n0.hemo.LAP - nL.hemo.LAP) < 1e-12);
 
 // ---------- each grade as found ----------
 const O = GRADES.map((g) => readout(solveCond(g.params, {})));
@@ -79,56 +81,56 @@ for (const [g, rate] of [[4, 110], [4, 150], [2, 110], [3, 130], [0, 150]]) {
 }
 
 // ---------- reference-patient values (grade table, simulator and question explanations) ----------
-q('normal E', e[0].E, 90, 0.6); q('normal A', e[0].A, 77, 0.6); q('normal E/A', e[0].EA, 1.17, 0.006); q('normal DT', e[0].DT, 226, 0.6);
-q('normal e′', e[0].ep, 11.8, 0.06); q('normal E/e′', e[0].Eep, 7.6, 0.06); q('normal LAP', O[0].LAP, 7, 0.5);
+q('normal E', e[0].E, 89, 0.6); q('normal A', e[0].A, 77, 0.6); q('normal E/A', e[0].EA, 1.16, 0.006); q('normal DT', e[0].DT, 226, 0.6);
+q('normal e′', e[0].ep, 11.8, 0.06); q('normal E/e′', e[0].Eep, 7.5, 0.06); q('normal LAP', O[0].LAP, 7, 0.5);
 q('grade I τ', e[1].tauMs, 68, 0.6); q('normal τ', e[0].tauMs, 36, 0.6);
-q('grade I E', e[1].E, 72, 0.6); q('grade I A', e[1].A, 104, 0.6); q('grade I E/A', e[1].EA, 0.69, 0.006);
-q('normal IVRT', e[0].IVRT, 92, 0.6); q('grade I IVRT', e[1].IVRT, 173, 0.6); q('grade I e′', e[1].ep, 6.4, 0.06); q('grade I LAP', O[1].LAP, 8, 0.5);
-q('grade II LAP', O[2].LAP, 16, 0.5); q('grade II E/A', e[2].EA, 1.39, 0.006); q('grade II e′', e[2].ep, 5.9, 0.06); q('grade II E/e′', e[2].Eep, 14.0, 0.06);
+q('grade I E', e[1].E, 71, 0.6); q('grade I A', e[1].A, 102, 0.6); q('grade I E/A', e[1].EA, 0.70, 0.006);
+q('normal IVRT', e[0].IVRT, 92, 0.6); q('grade I IVRT', e[1].IVRT, 174, 0.6); q('grade I e′', e[1].ep, 6.4, 0.06); q('grade I LAP', O[1].LAP, 8, 0.5);
+q('grade II LAP', O[2].LAP, 16, 0.5); q('grade II E/A', e[2].EA, 1.37, 0.006); q('grade II e′', e[2].ep, 5.9, 0.06); q('grade II E/e′', e[2].Eep, 13.9, 0.06);
 q('grade II LAVI', e[2].LAVI, 38, 0.6); q('grade II −1.5 L LAP', D[2].LAP, 7, 0.5); q('grade II −1.5 L E/A', D[2].echo.EA, 0.76, 0.006);
-q('grade III E/A', e[3].EA, 2.26, 0.006); q('grade III DT', e[3].DT, 141, 0.6); q('grade III LAP', O[3].LAP, 21, 0.5); q('grade III −1.5 L E/A', D[3].echo.EA, 1.45, 0.006);
-q('grade IV E/A', e[4].EA, 5.35, 0.006); q('grade IV DT', e[4].DT, 125, 0.6); q('grade IV S/D', e[4].SD, 0.93, 0.006); q('grade IV TR', e[4].TRv, 3.13, 0.006);
-q('grade IV mPAP', O[4].mPAP, 39, 0.5); q('grade IV LAP', O[4].LAP, 29, 0.5); q('grade IV −1.5 L E/A', D[4].echo.EA, 2.10, 0.006);
+q('grade III E/A', e[3].EA, 2.24, 0.006); q('grade III DT', e[3].DT, 141, 0.6); q('grade III LAP', O[3].LAP, 21, 0.5); q('grade III −1.5 L E/A', D[3].echo.EA, 1.42, 0.006);
+q('grade IV E/A', e[4].EA, 5.72, 0.006); q('grade IV DT', e[4].DT, 125, 0.6); q('grade IV S/D', e[4].SD, 0.93, 0.006); q('grade IV TR', e[4].TRv, 3.13, 0.006);
+q('grade IV mPAP', O[4].mPAP, 39, 0.5); q('grade IV LAP', O[4].LAP, 29, 0.5); q('grade IV −1.5 L E/A', D[4].echo.EA, 2.16, 0.006);
 q('grade III Nagueh estimate', e[3].pcwpNagueh, 19, 0.5); q('grade IV Nagueh estimate', e[4].pcwpNagueh, 20, 0.5);
 q('LAP rise 1 L, normal', T[0].lap1000, 5.3, 0.06); q('LAP rise 1 L, grade IV', T[4].lap1000, 7.9, 0.06);
-q('CO gain 500 mL, normal', T[0].co500, 0.11, 0.006); q('CO gain 500 mL, grade I', T[1].co500, 0.17, 0.006); q('CO gain 500 mL, grade II', T[2].co500, 0.01, 0.006);
+q('CO gain 500 mL, normal', T[0].co500, 0.12, 0.006); q('CO gain 500 mL, grade I', T[1].co500, 0.18, 0.006); q('CO gain 500 mL, grade II', T[2].co500, 0.02, 0.006);
 q('CO gain 500 mL, grade III', T[3].co500, 0, 0.006); q('CO gain 500 mL, grade IV', T[4].co500, 0, 0.006);
 q('LAP fall 1 L removed, grade III', -T[3].lapDiur, 7.7, 0.06); q('LAP fall 1 L removed, grade IV', -T[4].lapDiur, 9.5, 0.06);
 q('CO fall 1 L removed, grade III', -T[3].coDiur, 0.1, 0.02); q('CO fall 1 L removed, grade IV', -T[4].coDiur, 0.1, 0.02);
-q('CO fall 1 L removed, grade I', -T[1].coDiur, 1.27, 0.006); q('CO fall 1 L removed, normal', -T[0].coDiur, 1.01, 0.006);
-q('window normal', T[0].window, 2510, 10); q('window normal lo', T[0].winLo, -570, 10); q('window normal hi', T[0].winHi, 1940, 10);
-q('window grade I', T[1].window, 2050, 10); q('window grade II', T[2].window, 1440, 10);
+q('CO fall 1 L removed, grade I', -T[1].coDiur, 1.26, 0.006); q('CO fall 1 L removed, normal', -T[0].coDiur, 1.02, 0.006);
+q('window normal', T[0].window, 2530, 10); q('window normal lo', T[0].winLo, -570, 10); q('window normal hi', T[0].winHi, 1970, 10);
+q('window grade I', T[1].window, 2090, 10); q('window grade II', T[2].window, 1440, 10);
 q('window grade III', T[3].window, 1060, 10); q('window grade III lo', T[3].winLo, -1500, 10); q('window grade III hi', T[3].winHi, -440, 10);
 q('window grade IV', T[4].window, 370, 10); q('window grade IV lo', T[4].winLo, -1560, 10); q('window grade IV hi', T[4].winHi, -1190, 10);
 q('grade IV patients with no window', COHORT.grades[4].patients.filter((p) => !p.ref && !(p.tol.window > 0)).length, 3, 0);
 check('afterload SV fall 11–13% in every grade', T.every((t) => t.aftSVpct < -10.5 && t.aftSVpct > -13.5), T.map((t) => t.aftSVpct.toFixed(1)).join(' '));
 q('afterload LAP, normal', T[0].aftLAP, 0.4, 0.06); q('afterload LAP, grade IV', T[4].aftLAP, 1.6, 0.06);
-q('surge LAP, normal', T[0].surgeLAP, 3.6, 0.06); q('surge LAP, grade II', T[2].surgeLAP, 4.9, 0.06); q('surge LAP, grade IV', T[4].surgeLAP, 6.4, 0.06);
+q('surge LAP, normal', T[0].surgeLAP, 3.5, 0.06); q('surge LAP, grade II', T[2].surgeLAP, 4.9, 0.06); q('surge LAP, grade IV', T[4].surgeLAP, 6.4, 0.06);
 check('AF at 70/min lowers CO by 10–14%', T.every((t) => t.af70CO <= -9.5 && t.af70CO >= -14.5), T.map((t) => t.af70CO.toFixed(1)).join(' '));
-q('AF 130 CO, normal', T[0].af130CO, 0, 0.6); q('AF 130 LAP, normal', T[0].af130LAP, 2.9, 0.06);
-q('AF 130 CO, grade I', T[1].af130CO, -28, 0.6); q('AF 130 LAP, grade I', T[1].af130LAP, 7.7, 0.06);
-q('AF 130 CO, grade II', T[2].af130CO, -16, 0.6); q('AF 130 LAP, grade II', T[2].af130LAP, 6.3, 0.06);
+q('AF 130 CO, normal', T[0].af130CO, -1, 0.6); q('AF 130 LAP, normal', T[0].af130LAP, 3.0, 0.06);
+q('AF 130 CO, grade I', T[1].af130CO, -28, 0.6); q('AF 130 LAP, grade I', T[1].af130LAP, 7.8, 0.06);
+q('AF 130 CO, grade II', T[2].af130CO, -17, 0.6); q('AF 130 LAP, grade II', T[2].af130LAP, 6.6, 0.06);
 q('AF 110 CO, grade III', T[3].af110CO, 2, 0.6); q('AF 110 CO, grade IV', T[4].af110CO, 1, 0.6);
 check('AF 130 CO, grades III–IV: −6 to −8%', [3, 4].every((g) => T[g].af130CO <= -5.5 && T[g].af130CO >= -8.5), `${T[3].af130CO.toFixed(1)} ${T[4].af130CO.toFixed(1)}`);
-q('AF 130 LAP, grade III', T[3].af130LAP, 1.7, 0.06); check('AF 130: LAP falls in grade IV', T[4].af130LAP < 0);
+q('AF 130 LAP, grade III', T[3].af130LAP, 1.9, 0.06); check('AF 130: LAP falls in grade IV', T[4].af130LAP < 0);
 // cohort classification by the echo algorithm (as found, and after 1.5 L removed)
 {
   const F = COHORT.fields.indexOf('echoGrade'), i0 = COHORT.conds.findIndex(([k, x]) => k === 'volume' && x === 0), i1 = COHORT.conds.findIndex(([k, x]) => k === 'volume' && x === -1500);
   const n = (g, idx, v) => COHORT.grades[g].patients.filter((p) => !p.ref && p.rows[idx][F] === v).length;
-  q('cohort: grade II read as II', n(2, i0, 2), 32, 0); q('cohort: grade II read as I', n(2, i0, 1), 8, 0);
-  q('cohort: grade III read as III', n(3, i0, 3), 22, 0); q('cohort: grade III read as II', n(3, i0, 2), 17, 0);
-  q('cohort: grade III reverting', n(3, i1, 1) + n(3, i1, 2), 28, 0); q('cohort: grade III staying', n(3, i1, 3), 12, 0);
-  q('cohort: grade IV reverting', n(4, i1, 1) + n(4, i1, 2), 19, 0); q('cohort: grade IV staying', n(4, i1, 3), 21, 0);
+  q('cohort: grade II read as II', n(2, i0, 2), 31, 0); q('cohort: grade II read as I', n(2, i0, 1), 9, 0);
+  q('cohort: grade III read as III', n(3, i0, 3), 24, 0); q('cohort: grade III read as II', n(3, i0, 2), 16, 0);
+  q('cohort: grade III reverting', n(3, i1, 1) + n(3, i1, 2), 28, 0); q('cohort: grade III staying', n(3, i1, 3), 10, 0);
+  q('cohort: grade IV reverting', n(4, i1, 1) + n(4, i1, 2), 14, 0); q('cohort: grade IV staying', n(4, i1, 3), 21, 0);
 }
 const C = (g, t) => COHORT.grades[g].course.find((r) => r.t === t);
-q('course grade III LAP 0', C(3, 0).LAP, 21, 0.5); q('course grade III LAP 30', C(3, 30).LAP, 24, 0.5); q('course grade III LAP 60', C(3, 60).LAP, 23, 0.5);
+q('course grade III LAP 0', C(3, 0).LAP, 21, 0.5); q('course grade III LAP 30', C(3, 30).LAP, 24, 0.5); q('course grade III LAP 60', C(3, 60).LAP, 22.5, 0.5);
 q('course grade IV LAP 0', C(4, 0).LAP, 29, 0.5); q('course grade IV LAP 30', C(4, 30).LAP, 33, 0.5); q('course grade IV LAP 60', C(4, 60).LAP, 31, 0.5);
 q('course volume left at 60 min', C(3, 60).vol, 194, 0.6);
 check('course: CO unchanged by the fluid in grades III–IV', Math.abs(C(3, 30).CO - C(3, 0).CO) < 0.02 && Math.abs(C(4, 30).CO - C(4, 0).CO) < 0.02);
 q('course grade III LAP 240', C(3, 240).LAP, 11, 0.5); q('course grade IV LAP 240', C(4, 240).LAP, 17, 0.5);
 check('course: diuresis costs about 0.2 L/min in grades III–IV', [3, 4].every((g) => Math.abs(C(g, 0).CO - C(g, 240).CO - 0.22) < 0.05));
-q('course grade III E/A 240', C(3, 240).EA, 1.70, 0.006); q('course grade IV E/A 240', C(4, 240).EA, 2.74, 0.006);
-q('course grade II E/A 0', C(2, 0).EA, 1.39, 0.006); q('course grade II E/A 240', C(2, 240).EA, 0.85, 0.006);
+q('course grade III E/A 240', C(3, 240).EA, 1.66, 0.006); q('course grade IV E/A 240', C(4, 240).EA, 2.89, 0.006);
+q('course grade II E/A 0', C(2, 0).EA, 1.37, 0.006); q('course grade II E/A 240', C(2, 240).EA, 0.84, 0.006);
 check('course: normal and grade I stop at the stressed-volume floor', C(0, 240).LAP == null && C(1, 240).LAP == null);
 
 q('limits: grade III cardiac index', O[3].CO / 1.9, 1.8, 0.06); q('limits: grade IV cardiac index', O[4].CO / 1.9, 1.8, 0.06);
@@ -145,7 +147,7 @@ check('grades III–IV sit in the cold, wet subset at rest (stated in the limits
   check('1 L raises LAP by about 5 in normal and 7–8 in grades III–IV', Math.abs(T[0].lap1000 - 5) < 0.5 && [3, 4].every((g) => T[g].lap1000 >= 6.95 && T[g].lap1000 <= 8.49));
   check('1 L removed lowers LAP by 8–9 in grades III–IV', [3, 4].every((g) => -T[g].lapDiur >= 7.5 && -T[g].lapDiur <= 9.5));
   check('grade I loses more than 1.2 L/min with 1 L removed, more than normal', -T[1].coDiur > 1.2 && T[1].coDiur < T[0].coDiur);
-  q('window normal (L)', T[0].window / 1000, 2.5, 0.05); q('window grade II (L)', T[2].window / 1000, 1.4, 0.05);
+  q('window normal (L)', T[0].window / 1000, 2.5, 0.05); q('window grade II (L)', T[2].window / 1000, 1.45, 0.006);
   q('grade IV must lose about 1.2 L', -T[4].winHi / 1000, 1.2, 0.05);
   check('SVR × 1.5 alone raises LAP by less than 2 in every grade', T.every((t) => t.aftLAP < 2));
   check('surge LAP rise grows with grade', T.every((t, g) => g === 0 || t.surgeLAP > T[g - 1].surgeLAP - 0.05));
@@ -155,8 +157,34 @@ check('grades III–IV sit in the cold, wet subset at rest (stated in the limits
   check('course: 1 L raises LAP by 3–4 in grades III–IV', [3, 4].every((g) => C(g, 30).LAP - C(g, 0).LAP >= 2.95 && C(g, 30).LAP - C(g, 0).LAP <= 4.49));
 }
 
+// ---------- atrial contraction limits, E–A fusion and the breathing trial ----------
+{
+  const lin = { ...GRADES[1].params, laPiso: 0, laKej: 0, laEmax: 2.0 };   // the linear atrium the limits replaced
+  const s1 = readout(solveCond(GRADES[1].params, { sbt: true })), s1lin = readout(solveCond(lin, { sbt: true }));
+  const s2 = readout(solveCond(GRADES[2].params, { sbt: true })), v1 = readout(solveCond(GRADES[1].params, { vol: 1000 }));
+  q('README: grade I A in the breathing trial', s1.echo.A, 124, 0.6);
+  q('limitations: linear atrium, grade I A in the breathing trial', s1lin.echo.A, 167, 0.6);
+  check('limits: 1 L raises grade I E/A more than the linear atrium does', v1.echo.EA > readout(solveCond(lin, { vol: 1000 })).echo.EA + 0.05);
+  // the LA a wave is kept: pressure rise during atrial systole (onset of the late-diastolic activation block to its peak)
+  const aw = (r) => { const { aAct, Pla } = r.rec, n = aAct.length; let on = n - 1; while (on > 0 && aAct[on - 1] > 0.02) on--; let off = 0; while (aAct[off] > 0.02) off++;
+    let pk = -Infinity; for (let k = on; k < n; k++) pk = Math.max(pk, Pla[k]); for (let k = 0; k < off; k++) pk = Math.max(pk, Pla[k]); return pk - Pla[on]; };
+  check('limits: LA a wave of 5 mmHg or more in grade I, as found and in the breathing trial', aw(solveCond(GRADES[1].params).r) > 5 && aw(solveCond(GRADES[1].params, { sbt: true }).r) > 5);
+  // breathing trial (text of diastolic.html and the sbt question)
+  q('extubation: trial recruitment (mL)', SBT.recruit, 500, 0); q('extubation: trial rate', SBT.hr, 85, 0); q('extubation: SVR fall (%)', (1 - SBT.svrX) * 100, 20, 1e-9);
+  q('extubation: grade I rate as found', O[1].HR, 70, 0.5); q('extubation: grade I E/A as found', e[1].EA, 0.70, 0.006); q('extubation: grade I LAP as found', O[1].LAP, 8, 0.5);
+  q('extubation: grade I LAP in the trial', s1.LAP, 16, 0.5); q('extubation: grade II LAP as found', O[2].LAP, 16, 0.5); q('extubation: grade II LAP in the trial', s2.LAP, 25, 0.5);
+  check('extubation: grade II passes the congestion threshold in the trial', s2.LAP > CONSEQ.wet);
+  check('extubation: grade I E/A stays below 0.8, with fusion (not merged)', s1.echo.EA < CUT.EA_low && s1.echo.fused && !s1.echo.merged, `${f2(s1.echo.EA)}, ${s1.echo.EatA.toFixed(0)} cm/s`);
+  check('extubation: E/e′ rises with LA pressure in grade I', s1.echo.Eep > e[1].Eep + 3);
+  // a single merged wave is not graded by E/A
+  const m = readout(solveCond(GRADES[1].params, { vol: -1000 })).echo;
+  check('fusion: grade I after 1 L removed has merged E and A, E/A not measured, not graded', m.merged && Number.isNaN(m.EA) && m.grade === null);
+  check('fusion: the reference patients as found are not merged', e.every((x) => !x.merged));
+  q('limitations: normal LAVI', e[0].LAVI, 24, 0.5);
+}
+
 // ---------- predict-then-test answers (the model decides; these are the answers the page teaches) ----------
-const EXPECT = { pseudo: 'sup', grade1: 'relax', unmask: 'low', fixed: 'g4', fluid3: 'lap', diur: 'g1', afterload: 'small', afrate: 'g1', kick: 'mid' };
+const EXPECT = { pseudo: 'sup', grade1: 'relax', unmask: 'low', fixed: 'g4', fluid3: 'lap', diur: 'g1', afterload: 'small', sbt: 'hidden', afrate: 'g1', kick: 'mid' };
 for (const q of QUESTIONS) {
   const r = q.run();
   check(`question ${q.id}: model answer is ${EXPECT[q.id]}`, r.key === EXPECT[q.id], r.key);

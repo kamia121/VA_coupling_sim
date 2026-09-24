@@ -60,6 +60,7 @@
           <div class="hint">A change in afterload is simulated with the baroreflex open, as in a hypertensive crisis.</div>
         </div>
         <label class="status"><input type="checkbox" id="surge"> Sympathetic surge: venoconstriction moves 200 mL into the stressed volume</label>
+        <label class="status"><input type="checkbox" id="sbt"> <span id="sbt-t">Spontaneous breathing trial</span></label>
         <p class="k" style="margin:10px 0 4px">Rhythm</p>
         <div class="seg" id="rhythm" role="group" aria-label="Rhythm"><button type="button" data-v="sinus" aria-pressed="true">Sinus</button><button type="button" data-v="af" aria-pressed="false">Atrial fibrillation</button></div>
         <div class="slider" id="af-row" hidden>
@@ -112,7 +113,7 @@
   <section class="panel">
     <h2>Echocardiographic classification of the virtual patients</h2>
     <div class="dia-grid" id="c-conf"></div>
-    <p class="status">Rows are the model grades and columns the grade assigned by the ASE/EACVI 2016 algorithm from each patient's model echocardiogram <cite data-ref="nagueh2016"></cite>. The algorithm has no grade IV, the restrictive pattern that persists after preload reduction <cite data-ref="nishimura1997"></cite>.</p>
+    <p class="status">Rows are the model grades and columns the grade assigned by the ASE/EACVI 2016 algorithm from each patient's model echocardiogram <cite data-ref="nagueh2016"></cite>. The algorithm has no grade IV, the restrictive pattern that persists after preload reduction <cite data-ref="nishimura1997"></cite>. A pattern is not graded when E and A form a single wave, because early inflow does not decelerate before atrial contraction, or when there is no measurable A wave.</p>
   </section>
 
   <h2 id="course">Fluid followed by diuresis</h2>
