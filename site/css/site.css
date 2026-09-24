@@ -169,6 +169,11 @@ details.panel summary { cursor: pointer; font-weight: 600; }
 .beat-cursor { fill: #fff; stroke: var(--mon-current); stroke-width: 2; filter: drop-shadow(0 0 5px var(--mon-current)); pointer-events: none; }
 .t-cursor { stroke: #fff; stroke-opacity: 0.5; stroke-width: 1.5; pointer-events: none; }
 
+.give-sliders .slider.dose { margin-bottom: 6px; }
+.give-sliders .hint { min-height: 1.2em; }
+#dose-stop { margin-top: 4px; }
+.give:disabled { opacity: 0.45; cursor: default; }
+.sim-alert { margin: 6px 0 0; padding: 6px 10px; border: 1px solid var(--flag); border-radius: 6px; color: var(--mon-text); font-size: 0.85rem; }
 .give-row { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 8px; }
 .give {
   font: inherit; font-size: 0.9rem; font-weight: 600; text-align: left; cursor: pointer;
@@ -300,7 +305,6 @@ button.btn[aria-pressed="true"] { border-color: var(--mcw-green); box-shadow: in
   .give-scroll .give { flex: 0 0 auto; padding: 7px 10px; font-size: 0.82rem; background: #13211D; color: var(--mon-text); border-color: #2A3D37; white-space: nowrap; }
   .m-bar .chips { margin: 4px 0 0; min-height: 0; }
   .m-bar .chip { background: #13211D; border-color: #2A3D37; color: var(--mon-text); font-size: 0.72rem; }
-  .side-col .panel:first-child { display: none; }          /* full "Give" panel duplicated by the sticky bar */
   .handle .hit { r: 22; }
 
   /* echo lab */
@@ -348,6 +352,8 @@ body[data-view="both"] .hint-line.handles-hint:last-of-type { display: none; }
 .ev-mark text, .ev-text { fill: #fff; font-size: 11px; font-weight: 600; }
 .ev-line { stroke: #fff; stroke-opacity: 0.35; stroke-dasharray: 3 3; }
 .iso-band { fill: var(--mon-current); fill-opacity: 0.12; }
+.legend-flag { color: var(--flag); }
+.ev-mark text { pointer-events: none; }
 .ev-wave { fill: var(--mon-flag); font-size: 13px; font-weight: 700; font-style: italic; }
 .iso-key { display: inline-block; width: 16px; height: 10px; background: rgba(95, 208, 189, 0.25); margin-right: 4px; vertical-align: middle; }
 .atr-h { font-size: 0.92rem; margin: 10px 0 2px; color: var(--mon-text); font-family: "Source Sans 3", system-ui, sans-serif; }

@@ -157,11 +157,18 @@ function pericardialP(vol, p) {
   return x <= xm ? p.pcdP0 * (Math.exp(x) - 1) : p.pcdPmax + (p.pcdPmax + p.pcdP0) * (x - xm);
 }
 
+// A fully activated wall is never more compliant than a relaxed one: the end-systolic pressure is at least
+// the passive pressure at the same volume (a smooth maximum, rounded over SMAX mmHg). Otherwise a low Ees on
+// a stiff or overfilled chamber puts the ESPVR below the EDPVR, and contraction would lower the pressure.
+// At working volumes the passive pressure is far below the ESPVR and this changes nothing measurable.
+const SMAX = 0.5;
 function wallP(V, e, Ees, V0, A, beta) {
-  return e * Ees * (V - V0) + (1 - e) * A * (Math.exp(beta * (V - V0)) - 1);
+  const act = Ees * (V - V0), pas = A * (Math.exp(beta * (V - V0)) - 1), d = act - pas;
+  return e * (act + pas + Math.sqrt(d * d + SMAX * SMAX)) / 2 + (1 - e) * pas;
 }
 function wallDP(V, e, Ees, V0, A, beta) {
-  return e * Ees + (1 - e) * A * beta * Math.exp(beta * (V - V0));
+  const ex = Math.exp(beta * (V - V0)), d = Ees * (V - V0) - A * (ex - 1), dPas = A * beta * ex;
+  return e * (Ees + dPas + d * (Ees - dPas) / Math.sqrt(d * d + SMAX * SMAX)) / 2 + (1 - e) * dPas;
 }
 
 // Flow through a valve: resistance R in series with a Bernoulli orifice of area A (cm²).
@@ -479,7 +486,8 @@ function dist(a, b) { return Math.max(...a.map((x, i) => Math.abs(x - b[i]))); }
  */
 export function simulate(params, opt = {}) {
   const p = { ...NORMAL, ...params };
-  const dt = opt.dt ?? 0.0005, maxBeats = opt.maxBeats ?? 400, tol = opt.tol ?? 0.05;
+  let dt = opt.dt ?? 0.0005;
+  const maxBeats = opt.maxBeats ?? 400, tol = opt.tol ?? 0.05;
   // a warm start carries the reflex state; ischemia is always recomputed from an unischemic heart,
   // so the result depends only on the parameters. holdSlow keeps the slow state as given (ischemia
   // included), for beat-by-beat sequences run with maxBeats 0 from a converged state.
@@ -493,7 +501,8 @@ export function simulate(params, opt = {}) {
   const pv = opt.prev, prevT = opt.prevT ?? (pv ? pv.rec.t.length * pv.dt : undefined);
   const ctx = { spt: p.sptV0, w: 0, vL0: pv?.state[0] ?? null, vR0: pv?.state[3] ?? null,
     lvEes: pv?.eff.lvEes ?? null, rvEes: pv?.eff.rvEes ?? null };
-  let beats = 0, converged = false;
+  let beats = 0, converged = false, dtc = Math.max(dt, 0.001), retries = 0;
+  if (!s.every(Number.isFinite)) s = initialState(q);
   for (; beats < maxBeats; beats++) {
     // carry the reflex change in venous tone as a change of stressed volume
     const dV = q.vStressed - stressed(s, q);
@@ -501,7 +510,17 @@ export function simulate(params, opt = {}) {
     const T = 60 / q.hr;
     const act = makeActivation(T, q);
     act.a = makeAtrialActivation(T, q);
-    const { s: s1, acc } = simulateBeat(s, q, act, T, Math.max(dt, 0.001), false, ctx);
+    const { s: s1, acc } = simulateBeat(s, q, act, T, dtc, false, ctx);
+    if (!s1.every(Number.isFinite)) {
+      // the step is too long for this circulation (a very small resistance or a very stiff chamber):
+      // start again from a relaxed distribution with half the step
+      if (++retries > 4) break;
+      dtc /= 2;
+      Object.assign(sl, initialSlow());
+      q = effective(p, sl); s = initialState(q);
+      Object.assign(ctx, { spt: p.sptV0, vL0: null, vR0: null, lvEes: null, rvEes: null });
+      continue;
+    }
     const dS = dist(s1, s);
     // hold the controllers until the circulation itself has nearly settled
     const dSlow = dS < 2 || beats > 20 ? updateSlow(sl, acc, p, q) : 1;
@@ -517,6 +536,7 @@ export function simulate(params, opt = {}) {
   const act = makeActivation(T, q, beats === 0 && prevT ? prevT : T);
   act.a = makeAtrialActivation(T, q);
   const startState = s.slice();
+  dt = Math.min(dt, dtc);
   const { s: endState, rec, acc } = simulateBeat(s, q, act, T, dt, true, ctx);
   const iEs = Math.round(act.tPeak / dt);
   const lv = ventricleMetrics(rec.Vlv, rec.Plv, rec.Pao, iEs, q.lvEes, q.lvV0, q.hr,
@@ -563,7 +583,9 @@ export function simulate(params, opt = {}) {
   rv.EaClin = hemo.mPAP / rv.SVout;
   rv.pmaxRatio = rv.pIso / rv.Pes - 1;          // single-beat Pmax/Pes − 1 (Brimioulle 2003)
   const eff = { hr: q.hr, svr: q.svr, vStressed: q.vStressed, lvEes: q.lvEes, rvEes: q.rvEes, reflex: q.reflex, ffr: q.ffrFactor };
-  return { params: p, eff, T, dt, tEs: act.tPeak, beats, converged, rec, lv, rv, hemo, state: startState, endState, slow: { ...sl }, acc };
+  // failed: the circulation has no finite solution with these parameters (the UI keeps the last good one)
+  const failed = ![lv.EDV, lv.ESV, lv.Pes, rv.EDV, rv.ESV, hemo.MAP, hemo.LAP, hemo.RAP].every(Number.isFinite) || lv.SV < 1 || rv.SV < 1;
+  return { params: p, eff, T, dt, tEs: act.tPeak, beats, converged, failed, rec, lv, rv, hemo, state: startState, endState, slow: { ...sl }, acc };
 }
 
 // ESPVR, EDPVR and Ea line of one ventricle as the model's chamber sees them, for plotting.
