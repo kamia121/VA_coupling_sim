@@ -4,11 +4,13 @@ These rules apply to all prose on the site: paragraphs, figure captions, table n
 
 ## Model paragraph
 
-Every paragraph should read like this one:
+Paragraphs should read like these two:
 
 > Early diastole is active: myocardial relaxation drives an exponential fall in LV pressure (τ), generating a suction gradient that pulls blood from the left atrium. Once relaxation ceases, late diastolic pressure is governed passively by LV volume and passive chamber stiffness along the end-diastolic pressure–volume relation (EDPVR). Diastolic dysfunction typically begins with impaired relaxation before progressing to increased myocardial stiffness—two mechanically distinct processes tracked by different echocardiographic parameters.
 
-The paragraph opens on physiology. It names each variable precisely (LV pressure, τ, EDPVR) and states mechanism and sequence in complete sentences. It stays in one register from start to finish.
+> Left ventricular filling is driven by the transmitral pressure gradient at valve opening. Early filling velocity (E) initially declines as active relaxation slows, but it rises again as progressive diastolic failure forces left atrial pressure upward. Conversely, late filling (A) reflects compensatory atrial contraction against ventricular compliance. Because transmitral flow couples relaxation rate with filling pressure, pulsed-wave Doppler alone cannot distinguish a normal filling pattern from a pseudonormal one—a poorly compliant ventricle filling under high atrial pressure produces the same E/A ratio as a healthy heart. Resolving this ambiguity requires parameters that isolate relaxation from preload. Mitral annular tissue Doppler (e′) provides a relatively preload-independent surrogate for myocardial relaxation; indexing inflow velocity to annular motion (E/e′) therefore correlates directly with elevated left atrial pressure.
+
+Each paragraph opens on physiology. It names each variable precisely (LV pressure, τ, EDPVR) and states mechanism and sequence in complete sentences. It stays in one register from start to finish.
 
 ## What to avoid
 
