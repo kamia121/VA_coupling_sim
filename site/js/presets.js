@@ -7,7 +7,7 @@ export const PRESETS = [
   {
     id: 'normal', side: 'both', label: 'Normal adult at rest',
     params: {},
-    text: 'A resting adult, in whom the LV Ea/Ees is 0.62, matching the Ees/Ea of 1.62 measured by Starling in normal human hearts, and the RV Ees/Ea is 2.0, within the normal range of 1.5 to 2. The baroreflex sits at its set point, and the response of this heart to each intervention button is the reference against which the disease scenarios are compared.',
+    text: 'A resting adult, in whom the LV Ea/Ees is 0.62, matching the Ees/Ea of 1.62 measured by Starling in normal human hearts, and the RV Ees/Ea is 2.0, within the normal range of 1.5 to 2. The baroreflex sits at its set point, and the response of this heart to one standard dose of each treatment is the reference against which the disease scenarios are compared.',
     refs: ['starling1993', 'tello2019hf', 'naeije2014'],
   },
   {
@@ -228,3 +228,44 @@ export const INTERVENTIONS = [
 ];
 
 export function presetById(id) { return PRESETS.find((p) => p.id === id); }
+
+// Treatment sliders on the simulator. A dose of 1 is exactly the matching intervention above, so every
+// number the scenario texts quote for "the inotrope" or "a 150-mL fluid bolus" is one standard dose.
+// The drug effects saturate: E(d) = 2d/(1 + d) is 1 at one dose, 1.5 at the largest dose on the slider
+// and never more than 2, so no dose drives a parameter out of the range the model can solve.
+// Stressed volume after fluid stays between VOL_MIN and VOL_MAX mL.
+export const VOL_MIN = 450, VOL_MAX = 1800;
+export const doseEffect = (d) => (d > 0 ? 2 * d / (1 + d) : 0);
+export const DOSES = [
+  { id: 'fluid', label: 'Fluid bolus (+) or volume removal (−)', unit: 'mL', min: -450, max: 900, step: 50,
+    hint: 'Change in stressed volume. One step of 150 mL is the standard bolus.' },
+  { id: 'norepi', label: 'Norepinephrine', min: 0, max: 3, step: 0.25, fx: { svr: 0.35, lvEes: 0.1, rvEes: 0.1 } },
+  { id: 'dilate', label: 'Arterial vasodilator', min: 0, max: 3, step: 0.25, fx: { svr: -0.3 } },
+  { id: 'dobut', label: 'Inotrope', min: 0, max: 3, step: 0.25, fx: { lvEes: 0.35, rvEes: 0.35, svr: -0.1 }, hr: 10 },
+  { id: 'pvd', label: 'Pulmonary vasodilator', min: 0, max: 3, step: 0.25, fx: { pvr: -0.3, cPa: 0.2 } },
+];
+export const NO_DOSES = Object.freeze(Object.fromEntries(DOSES.map((x) => [x.id, 0])));
+
+// Parameters with the treatments in `doses` ({ id: dose }) applied on top of the patient `p`.
+export function applyDoses(p, doses) {
+  const q = { ...p };
+  for (const x of DOSES) {
+    const d = doses?.[x.id] || 0;
+    if (!d) continue;
+    if (x.id === 'fluid') { q.vStressed = Math.min(VOL_MAX, Math.max(Math.min(VOL_MIN, p.vStressed), p.vStressed + d)); continue; }
+    const E = doseEffect(d);
+    for (const [k, f] of Object.entries(x.fx)) q[k] *= 1 + f * E;
+    if (x.hr) q.hr = Math.min(160, q.hr + x.hr * E);
+  }
+  return q;
+}
+
+// What the current dose does, for the slider readout: "SVR ×1.35 · Ees ×1.10".
+export function doseSummary(x, d) {
+  if (x.id === 'fluid') return d ? `${d > 0 ? '+' : '−'}${Math.abs(d)} mL stressed volume` : 'none';
+  if (!d) return 'none';
+  const E = doseEffect(d), names = { svr: 'SVR', lvEes: 'Ees', pvr: 'PVR', cPa: 'PA compliance' };
+  const parts = Object.entries(x.fx).filter(([k]) => k !== 'rvEes').map(([k, f]) => `${names[k]} ×${(1 + f * E).toFixed(2)}`);
+  if (x.hr) parts.splice(1, 0, `HR +${(x.hr * E).toFixed(0)}`);
+  return parts.join(' · ');
+}

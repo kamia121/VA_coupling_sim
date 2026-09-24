@@ -1,7 +1,7 @@
 // Engine tests. Run with: node tests/engine.test.mjs  (no dependencies)
 import { simulate, NORMAL, WU, cardiacPhases, pvRelations, relationAt } from '../site/js/engine.js';
 import { _pac } from '../site/js/pacsim.js';
-import { PRESETS, INTERVENTIONS, presetById } from '../site/js/presets.js';
+import { PRESETS, INTERVENTIONS, presetById, DOSES, applyDoses } from '../site/js/presets.js';
 import { buildPalette, makeIndexer, GifWriter } from '../site/js/gif.js';
 
 let failed = 0;
@@ -342,6 +342,56 @@ function decodeGif(buf) {
   const h = simulate({ hr: 160 });
   check('baroreflex does not drive HR above 160/min', h.eff.hr <= 160.01, h.eff.hr.toFixed(1));
   check('normotensive HFpEF: MAP 85–100, EF > 50%, LAP > 15', within(byId.hfpefNormo.hemo.MAP, 85, 100) && byId.hfpefNormo.lv.EF > 0.5 && byId.hfpefNormo.hemo.LAP > 15);
+}
+
+// The ESPVR never falls below the EDPVR, however low Ees is set on a stiff, full ventricle, so contraction
+// never lowers ventricular pressure (dragging the ESPVR handle down in HFpEF used to invert the loop).
+{
+  let worst = Infinity, worstId = '';
+  for (const [id, prm] of [['HFpEF, Ees 0.3', { ...presetById('hfpef').params, lvEes: 0.3 }], ['stiff and full, Ees 0.3', { lvEes: 0.3, lvBeta: 0.07, vStressed: 1400 }],
+    ['RV Ees 0.15, stiff', { rvEes: 0.15, rvBeta: 0.06, vStressed: 1400 }]]) {
+    const r = simulate(prm);
+    for (const sd of ['lv', 'rv']) {
+      const R = pvRelations(r, sd, 300);
+      for (let i = 0; i < R.espvr.length; i++) {
+        const ed = relationAt(R.edpvr, R.espvr[i][0]), d = R.espvr[i][1] - ed + 0.02 * ed;   // 2%: the two curves hold the other chambers at different volumes
+        if (R.espvr[i][0] > R.edpvr[0][0] && ed < 200 && d < worst) { worst = d; worstId = `${id} ${sd} at ${R.espvr[i][0].toFixed(0)} mL`; }
+      }
+    }
+    check(`${id}: finite circulation`, !r.failed && r.lv.SV > 1);
+  }
+  check('ESPVR never below the EDPVR (> −1 mmHg)', worst > -1, `${worst.toFixed(2)} ${worstId}`);
+}
+
+// A state that went non-finite recovers from a relaxed start instead of carrying NaN forward.
+{
+  const r = simulate({}, { state: [NaN, 150, 400, 125, 60, 100, 40, 50] });
+  check('NaN warm start recovers', !r.failed && Math.abs(r.lv.EDV - n.lv.EDV) < 1, r.lv.EDV.toFixed(1));
+  const x = simulate({ pvr: 1e-6 });
+  check('an unsolvable parameter set is flagged, not thrown', typeof x.failed === 'boolean');
+}
+
+// Treatment sliders: one dose is exactly the old intervention; the effect saturates; every scenario solves
+// with every treatment at its largest dose.
+{
+  let diff = 0;
+  for (const pr of PRESETS) {
+    const P = { ...NORMAL, ...pr.params };
+    for (const [iv, d] of [['fluid', { fluid: 150 }], ['diurese', { fluid: -150 }], ['norepi', { norepi: 1 }], ['dilate', { dilate: 1 }], ['dobut', { dobut: 1 }], ['pvd', { pvd: 1 }]]) {
+      const a = { ...P, ...INTERVENTIONS.find((x) => x.id === iv).apply(P) }, b = applyDoses(P, d);
+      for (const k of Object.keys(a)) diff = Math.max(diff, Math.abs(a[k] - b[k]));
+    }
+  }
+  check('one standard dose equals the intervention exactly', diff === 0, String(diff));
+  const big = applyDoses(NORMAL, { norepi: 1e6, dilate: 1e6, pvd: 1e6 });
+  check('dose effect saturates at twice one dose', big.pvr > NORMAL.pvr * 0.39 && big.svr > NORMAL.svr * 0.39 * 1.69);
+  const maxed = Object.fromEntries(DOSES.map((x) => [x.id, x.max])), drained = { ...Object.fromEntries(DOSES.map((x) => [x.id, x.max])), fluid: -450 };
+  let bad = [];
+  for (const pr of PRESETS) for (const d of [maxed, drained]) {
+    const r = simulate(applyDoses({ ...NORMAL, ...pr.params }, d));
+    if (r.failed || !r.converged) bad.push(pr.id);
+  }
+  check('every scenario solves with every treatment at its largest dose', bad.length === 0, bad.join(' '));
 }
 
 console.log(failed ? `\n${failed} test(s) failed` : '\nall tests passed');
