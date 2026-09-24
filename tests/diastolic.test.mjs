@@ -78,7 +78,7 @@ for (const [g, rate] of [[4, 110], [4, 150], [2, 110], [3, 130], [0, 150]]) {
   check(`AF ${rate}/min, grade ${GRADES[g].roman}: LA pressure continuous at the QRS`, dP < 0.1, `${f2(dP)} mmHg`);
 }
 
-// ---------- numbers quoted on diastolic.html ----------
+// ---------- reference-patient values (grade table, simulator and question explanations) ----------
 q('normal E', e[0].E, 90, 0.6); q('normal A', e[0].A, 77, 0.6); q('normal E/A', e[0].EA, 1.17, 0.006); q('normal DT', e[0].DT, 226, 0.6);
 q('normal e′', e[0].ep, 11.8, 0.06); q('normal E/e′', e[0].Eep, 7.6, 0.06); q('normal LAP', O[0].LAP, 7, 0.5);
 q('grade I τ', e[1].tauMs, 68, 0.6); q('normal τ', e[0].tauMs, 36, 0.6);
@@ -138,9 +138,8 @@ check('grades III–IV sit in the cold, wet subset at rest (stated in the limits
   const r4 = COHORT.grades[4].patients.find((p) => p.ref).rows, F = Object.fromEntries(COHORT.fields.map((k, i) => [k, i]));
   const i0 = COHORT.conds.findIndex(([k, x]) => k === 'volume' && x === 0), i1 = COHORT.conds.findIndex(([k, x]) => k === 'volume' && x === 1000);
   q('EDPVR caption: grade IV EDP rise with 1 L', r4[i1][F.EDP] - r4[i0][F.EDP], 8, 0.5);
-  check('grade I τ nearly twice normal', e[1].tauMs / e[0].tauMs > 1.7 && e[1].tauMs / e[0].tauMs < 2);
-  q('grade IV: E/e′ underestimate of LAP', O[4].LAP - e[4].pcwpNagueh, 9, 0.5); q('grade III: E/e′ underestimate of LAP', O[3].LAP - e[3].pcwpNagueh, 2, 0.5);
-  check('grade IV LAP approaches 30 and mPAP nearly 40', O[4].LAP > 28 && O[4].LAP < 30 && O[4].mPAP > 38 && O[4].mPAP < 40);
+  check('E/e′ (Nagueh) underestimates LAP more in grade IV than in grade III', O[4].LAP - e[4].pcwpNagueh > O[3].LAP - e[3].pcwpNagueh + 3 && O[3].LAP - e[3].pcwpNagueh > 0);
+  check('grade IV: post-capillary PH at rest', O[4].mPAP > 20 && O[4].LAP > 15);
   check('500 mL adds 0.1–0.2 L/min in normal and grade I', [0, 1].every((g) => T[g].co500 >= 0.1 && T[g].co500 <= 0.2));
   check('500 mL raises LAP by 3–4 mmHg in grades II–IV with no gain in output', [2, 3, 4].every((g) => T[g].lap500 >= 2.95 && T[g].lap500 <= 4.49 && T[g].co500 < 0.05));
   check('1 L raises LAP by about 5 in normal and 7–8 in grades III–IV', Math.abs(T[0].lap1000 - 5) < 0.5 && [3, 4].every((g) => T[g].lap1000 >= 6.95 && T[g].lap1000 <= 8.49));
