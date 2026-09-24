@@ -17,19 +17,23 @@ const LA_SCALE = 0.6;            // echo LA volume per model LA volume (the mode
 // Grades. Each one adds to the grade before it: slower relaxation (τ), a steeper EDPVR (β, A), atrial
 // remodeling (larger LA, stiffer LA, first a stronger then a weaker atrial kick), volume retention,
 // arterial stiffening and, in the late grades, pulmonary vascular disease.
-const G1 = { tau: 0.065, lvBeta: 0.033, lvA: 0.24, lvEes: 2.8, lvMass: 1.2, laV0: 16, laEmax: 2.0, laEmin: 0.2,
+// The LA contracts with a length–tension plateau and a force–velocity limit (engine laPiso, laKej) in
+// every grade, so that a stretched atrium neither develops unbounded pressure nor empties at an
+// unbounded rate; laEmax sets the ascending limb and was refitted to each grade's A wave.
+const ATRIUM = { laPiso: 80, laKej: 0.0015 };
+const G1 = { ...ATRIUM, tau: 0.065, lvBeta: 0.033, lvA: 0.24, lvEes: 2.8, lvMass: 1.2, laV0: 16, laEmax: 7.6, laEmin: 0.2,
   vStressed: 650, svr: 1.15, cSys: 1.0 };
 export const GRADES = [
-  { id: 0, key: 'g0', roman: '0', label: 'Normal diastolic function', short: 'Normal', params: { mvArea: MV_AREA },
+  { id: 0, key: 'g0', roman: '0', label: 'Normal diastolic function', short: 'Normal', params: { ...ATRIUM, mvArea: MV_AREA, laEmax: 2.9 },
     text: 'Relaxation and chamber stiffness are normal. Most LV filling occurs in early diastole, driven by the suction gradient of relaxation, so that E exceeds A and lateral e′ is normal.' },
   { id: 1, key: 'g1', roman: 'I', label: 'Grade I: impaired relaxation', short: 'Grade I', params: { ...G1, mvArea: MV_AREA },
     text: 'Impaired relaxation at a normal filling pressure. With τ near 70 ms, LV pressure is still falling at mitral valve opening, the early transmitral gradient narrows and E declines, while a stronger atrial kick raises A; E/A falls below 0.8 and the deceleration time lengthens. Mean LA pressure remains normal at rest.' },
   { id: 2, key: 'g2', roman: 'II', label: 'Grade II: pseudonormal', short: 'Grade II',
-    params: { ...G1, mvArea: MV_AREA, tau: 0.068, lvBeta: 0.04, lvA: 0.27, lvEes: 3.1, lvMass: 1.35, laV0: 50, laEmax: 1.2, laEmin: 0.34,
+    params: { ...G1, mvArea: MV_AREA, tau: 0.068, lvBeta: 0.04, lvA: 0.27, lvEes: 3.1, lvMass: 1.35, laV0: 50, laEmax: 1.9, laEmin: 0.34,
       vStressed: 950, svr: 1.25, cSys: 0.85, pvr: 0.06 },
     text: 'The pseudonormal pattern. Relaxation remains slow and chamber stiffness has increased, but a raised mean LA pressure restores the early transmitral gradient and returns E/A to the normal range. The relatively preload-independent indices stay abnormal: e′ is low, E/e′ is raised and the LA is enlarged. Preload reduction uncovers the impaired relaxation pattern.' },
   { id: 3, key: 'g3', roman: 'III', label: 'Grade III: restrictive, reversible', short: 'Grade III',
-    params: { ...G1, mvArea: MV_AREA, tau: 0.068, lvBeta: 0.055, lvA: 0.3, lvEes: 3.2, lvMass: 1.45, laV0: 75, laEmax: 0.9, laEmin: 0.4,
+    params: { ...G1, mvArea: MV_AREA, tau: 0.068, lvBeta: 0.055, lvA: 0.3, lvEes: 3.2, lvMass: 1.45, laV0: 75, laEmax: 1.08, laEmin: 0.4,
       vStressed: 1000, svr: 1.3, cSys: 0.8, pvr: 0.09, cPa: 2.6 },
     text: 'Reversible restrictive filling. A stiff LV fills from a stiff atrium at high pressure, so that E is tall with a short deceleration time, and the atrial kick contributes little against a full, stiff ventricle. Preload reduction returns the pattern toward pseudonormal.' },
   { id: 4, key: 'g4', roman: 'IV', label: 'Grade IV: restrictive, fixed', short: 'Grade IV',
@@ -48,7 +52,8 @@ export function mapSetFor(p) {
 
 /**
  * Parameters for a grade (or an individual) under a set of interventions.
- * cond: { vol: intravascular volume change, mL; svrX: afterload multiplier; rhythm: 'sinus' | 'af'; afRate: /min }
+ * cond: { vol: intravascular volume change, mL; svrX: afterload multiplier; recruit: mL moved into the
+ *   stressed volume; sbt: spontaneous breathing trial; rhythm: 'sinus' | 'af'; afRate: /min }
  */
 export function condParams(base, cond = {}) {
   const p = { ...NORMAL, ...base };
@@ -60,10 +65,23 @@ export function condParams(base, cond = {}) {
   // is the same state as baseline.
   if (cond.svrX) { q.svr = p.svr * cond.svrX; q.baro = 0; }
   if (cond.recruit) q.vStressed = (q.vStressed ?? p.vStressed) + cond.recruit;
+  if (cond.sbt) {
+    q.vStressed = (q.vStressed ?? p.vStressed) + SBT.recruit;
+    q.svr = (q.svr ?? p.svr) * SBT.svrX; q.baro = 0; q.hr = SBT.hr; q.gHR = 0;
+  }
   // AF: no atrial contraction, and a ventricular rate fixed by the AV node (the reflex keeps its other arms)
   if (cond.rhythm === 'af') { q.aKick = 0; q.hr = cond.afRate ?? 110; q.gHR = 0; }
   return q;
 }
+
+// Spontaneous breathing trial after positive-pressure ventilation. Venous return rises as mean
+// intrathoracic pressure falls (Lemaire 1988: esophageal pressure from +5 to −2 mmHg), represented by
+// recruiting SBT.recruit mL into the stressed volume; sympathetic activation raises the sinus rate and
+// overrides the baroreflex; SVR falls as the respiratory muscles take a larger share of the output
+// (Lemaire 1988: cardiac index 3.2 to 4.3 L/min/m², blood pressure 77 to 90 mmHg, HR 97 to 112/min).
+// The rise in LV afterload from negative pleural pressure swings is not represented, because the
+// model has no pleural pressure.
+export const SBT = { recruit: 500, hr: 85, svrX: 0.8 };
 
 // RR intervals in AF as multiples of the mean (as on the PA catheter page): irregularly irregular.
 export const AF_RR = [0.78, 1.21, 0.92, 1.34, 0.84, 1.07, 0.72, 1.16, 0.95, 1.27, 0.81, 1.02];
@@ -112,10 +130,24 @@ export function echo(r) {
   let iE = -1, E = 0, A = 0, aVol = 0;
   let iAVC = -1, iMVO = -1;
   for (let i = 0; i < n; i++) {
-    if (aAct[i] < 0.02 && t[i] > r.tEs && Qmv[i] > E) { E = Qmv[i]; iE = i; }
+    if (aAct[i] === 0 && t[i] > r.tEs && Qmv[i] > E) { E = Qmv[i]; iE = i; }
     if (aAct[i] > 0.02) { if (Qmv[i] > A) A = Qmv[i]; aVol += Qmv[i] * dt; }
     if (iAVC < 0 && t[i] > r.tEs && Qao[i] <= 0 && i > 0 && Qao[i - 1] > 0) iAVC = i;
     if (iAVC >= 0 && iMVO < 0 && Qmv[i] > 0) iMVO = i;
+  }
+  // Early inflow still running when the atrium contracts (E–A fusion, as at fast rates with slow
+  // relaxation) adds to A. EatA is the velocity at the E–A junction, the lowest velocity between the
+  // early peak (before any atrial activation) and the A peak of late diastole. When inflow never
+  // decelerates between them, E and A form one wave and E/A is not measured.
+  let EatA = 0, merged = false;
+  if (aAct[n - 1] > 0.02 && iE >= 0) {
+    let iA0 = n - 1; while (iA0 > 0 && aAct[iA0 - 1] > 0.02) iA0--;
+    let iAp = iA0; for (let i = iA0; i < n; i++) if (Qmv[i] > Qmv[iAp]) iAp = i;
+    let iE0 = -1; for (let i = 0; i < iA0; i++) if (aAct[i] === 0 && t[i] > r.tEs && (iE0 < 0 || Qmv[i] > Qmv[iE0])) iE0 = i;
+    if (iE0 >= 0) {
+      let lo = Infinity; for (let i = iE0; i <= iAp; i++) lo = Math.min(lo, Qmv[i]);
+      EatA = lo / MV_AREA; merged = A > 1 && lo >= 0.99 * Qmv[iE0];
+    }
   }
   let i9 = iE, i4;
   while (i9 < n - 1 && Qmv[i9] > 0.9 * E) i9++;
@@ -137,7 +169,7 @@ export function echo(r) {
   const ep = EP_N * (TAU_N * 1000) / tauMs;
   const Ev = E / MV_AREA, Av = A / MV_AREA;
   const out = {
-    E: Ev, A: Av, EA: A > 1 ? Ev / Av : Infinity, DT,
+    E: Ev, A: Av, EA: merged ? NaN : A > 1 ? Ev / Av : Infinity, DT, EatA, fused: EatA > 20, merged,
     IVRT: iAVC >= 0 && iMVO >= 0 ? (iMVO - iAVC) * dt * 1000 : NaN,
     ep, ap: 9 * aVol / AVOL_N, Eep: Ev / ep,
     LAVI: LA_SCALE * Math.max(...Vla) / BSA,
@@ -152,7 +184,7 @@ export function echo(r) {
 }
 let AVOL_N = 1;
 {
-  const r = simulate({ mvArea: MV_AREA });
+  const r = simulate(GRADES[0].params);
   let v = 0;
   for (let i = 0; i < r.rec.t.length; i++) if (r.rec.aAct[i] > 0.02) v += r.rec.Qmv[i] * r.dt;
   AVOL_N = v;
@@ -163,7 +195,7 @@ let AVOL_N = 1;
 export const CUT = { EA_low: 0.8, E_low: 50, EA_high: 2, Eep: 13, ep: 10, TR: 2.8, LAVI: 34 };
 export function gradeFromEcho(d) {
   const n = [d.Eep > CUT.Eep, d.TRv > CUT.TR, d.LAVI > CUT.LAVI].filter(Boolean).length;
-  if (!(d.A > 5)) return null;               // no A wave (AF): not graded; see lapHigh
+  if (!(d.A > 5) || d.merged) return null;   // no A wave (AF) or E and A merged: not graded; see lapHigh
   if (d.EA >= CUT.EA_high) return 3;
   if (d.EA <= CUT.EA_low && d.E <= CUT.E_low) return 1;
   // E/A ≤ 0.8 with E > 50, or E/A between 0.8 and 2: two or three positive criteria mean raised LAP

@@ -1285,6 +1285,50 @@ export const REFS = [
   "doi": "10.1016/j.jacc.2020.07.009"
  },
  {
+  "key": "lemaire1988",
+  "authors": "Lemaire F, Teboul JL, Cinotti L, et al.",
+  "title": "Acute left ventricular dysfunction during unsuccessful weaning from mechanical ventilation",
+  "journal": "Anesthesiology",
+  "year": 1988,
+  "volume": "69",
+  "pages": "171-9",
+  "pmid": "3044189",
+  "doi": "10.1097/00000542-198808000-00004"
+ },
+ {
+  "key": "lamia2009",
+  "authors": "Lamia B, Maizel J, Ochagavia A, et al.",
+  "title": "Echocardiographic diagnosis of pulmonary artery occlusion pressure elevation during weaning from mechanical ventilation",
+  "journal": "Crit Care Med",
+  "year": 2009,
+  "volume": "37",
+  "pages": "1696-701",
+  "pmid": "19325473",
+  "doi": "10.1097/CCM.0b013e31819f13d0"
+ },
+ {
+  "key": "shroff1983",
+  "authors": "Shroff SG, Janicki JS, Weber KT",
+  "title": "Left ventricular systolic dynamics in terms of its chamber mechanical properties",
+  "journal": "Am J Physiol",
+  "year": 1983,
+  "volume": "245",
+  "pages": "H110-24",
+  "pmid": "6869552",
+  "doi": "10.1152/ajpheart.1983.245.1.H110"
+ },
+ {
+  "key": "anwar2007",
+  "authors": "Anwar AM, Geleijnse ML, Soliman OI, et al.",
+  "title": "Left atrial Frank-Starling law assessed by real-time, three-dimensional echocardiographic left atrial volume changes",
+  "journal": "Heart",
+  "year": 2007,
+  "volume": "93",
+  "pages": "1393-7",
+  "pmid": "17502327",
+  "doi": "10.1136/hrt.2006.099366"
+ },
+ {
   "key": "guyton1959",
   "authors": "Guyton AC, Lindsey AW",
   "title": "Effect of elevated left atrial pressure and decreased plasma protein concentration on the development of pulmonary edema",

@@ -1,9 +1,9 @@
 // Predict-then-test questions for the Diastolic lab. Each question is answered by running the model,
 // so the correct choice and the numbers in the explanation always follow the model. Pure (no DOM):
 // tests/diastolic.test.mjs checks every answer.
-//   setup: the state the "show me" button puts in the simulator ({ g, vol, svrX, surge, rhythm, afRate })
+//   setup: the state the "show me" button puts in the simulator ({ g, vol, svrX, surge, sbt, rhythm, afRate })
 //   run(): { key, facts, explain } with key the correct choice
-import { GRADES, solveCond, readout, consequences, CUT, CONSEQ } from './diastcore.js';
+import { GRADES, solveCond, readout, consequences, CUT, CONSEQ, SBT } from './diastcore.js';
 
 const cache = new Map();
 function state(g, cond = {}) {
@@ -87,6 +87,16 @@ export const QUESTIONS = [
       const d = b.LAP - a.LAP;
       return { key: d < 2 ? 'small' : d <= 5 ? 'mid' : 'large',
         explain: `Mean LA pressure rises by ${f1(d)} mmHg while stroke volume falls by ${f0(-pct(a.SV, b.SV))}%. When the rise in SVR is accompanied by sympathetic venoconstriction that moves 200 mL into the stressed volume, mean LA pressure rises by ${f1(c.LAP - a.LAP)} mmHg, to ${f0(c.LAP)} mmHg, because the stiff ventricle converts a small central shift of volume into a large rise in filling pressure. The “Sympathetic surge” option in the simulator adds this recruitment.` };
+    },
+  },
+  {
+    id: 'sbt', topic: 'Extubation', setup: { g: 1, sbt: true },
+    prompt: `During mechanical ventilation, a patient's mitral inflow shows E/A 0.70 and mean LA pressure is 8 mmHg, a grade I pattern. In a spontaneous breathing trial, venous return rises and the heart rate rises from 70 to ${SBT.hr}/min. What happens?`,
+    choices: [['normal', 'Mean LA pressure stays normal, as the grade I pattern predicted'], ['pseudo', 'Mean LA pressure rises and E/A rises into the pseudonormal range'], ['hidden', 'Mean LA pressure rises by more than 5 mmHg while E/A stays below 0.8']],
+    run() {
+      const a = state(1), b = state(1, { sbt: true }), c = state(2, { sbt: true }), dl = b.LAP - a.LAP;
+      return { key: dl < 5 ? 'normal' : b.echo.EA <= CUT.EA_low ? 'hidden' : 'pseudo',
+        explain: `The grade I pattern recorded during positive-pressure ventilation reflects the filling pressure under those loading conditions. During the trial, mean LA pressure rises from ${f0(a.LAP)} to ${f0(b.LAP)} mmHg, while E/A changes only from ${f2(a.echo.EA)} to ${f2(b.echo.EA)}. Withdrawal of positive intrathoracic pressure raises venous return, and at ${SBT.hr}/min the slowly relaxing ventricle is still filling from the E wave when the atrium contracts; early inflow at the onset of atrial contraction runs at ${f0(b.echo.EatA)} cm/s and adds to A, so that A rises with E. Lateral E/e′ rises from ${f1(a.echo.Eep)} to ${f1(b.echo.Eep)}, because e′, a relatively preload-independent surrogate of relaxation, is set by τ in the model and does not rise with E. A grade II ventricle, stiffer along its EDPVR, reaches ${f0(c.LAP)} mmHg under the same load, above the ${CONSEQ.wet} mmHg threshold for pulmonary congestion.` };
     },
   },
   {
