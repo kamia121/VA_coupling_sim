@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script>try{var t=localStorage.getItem('vac-theme');if(t==='light'||t==='dark')document.documentElement.setAttribute('data-theme',t)}catch(e){}</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Code+Pro:wght@400;500&family=Source+Sans+3:ital,wght@0,400;0,600;1,400&family=Source+Serif+4:wght@600&display=swap">
+<link rel="stylesheet" href="css/tokens.css">
+<link rel="stylesheet" href="css/site.css">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='5' fill='%232F6E66'/%3E%3Cpath d='M8 24 V10 L24 8 V22 Z' fill='none' stroke='white' stroke-width='2.5' stroke-linejoin='round'/%3E%3C/svg%3E">
+<title>Diastolic Simulator</title>
+<meta name="description" content="Live simulation of LV diastolic dysfunction grades 0 to IV with Doppler echocardiography, bedside hemodynamic consequences and a virtual cohort of tolerance to volume, afterload and atrial fibrillation.">
+</head>
+<body class="dia-page dia-sim">
+<main>
+  <div class="sim-head" id="sim">
+    <h1>Diastolic simulator</h1>
+    <a class="btn" href="diastolic.html" target="vac-dia-text">Open the text in a separate window</a>
+  </div>
+  <div id="grade-text" class="prose preset-text"></div>
+
+  <div class="dia-bar" id="dia-bar">
+    <div class="dia-bar-row">
+      <span class="k">Grade</span>
+      <span class="seg speed" id="grades" role="group" aria-label="Grade of diastolic dysfunction"></span>
+      <span class="dia-cond" id="cond-sum" aria-live="polite"></span>
+    </div>
+    <div class="tiles dia-tiles" id="tiles" aria-live="polite"></div>
+    <div class="dia-conseq" id="conseq" aria-live="polite"></div>
+  </div>
+
+  <div class="sim2">
+    <div>
+      <section class="monitor" id="echo-panel">
+        <div class="mon-head"><h2>Doppler echocardiogram</h2><span class="status" id="live-status" aria-live="polite"></span></div>
+        <div class="dia-screens">
+          <canvas id="scr-mv" role="img" aria-label="Mitral inflow pulsed-wave Doppler with E and A waves"></canvas>
+          <canvas id="scr-tdi" role="img" aria-label="Lateral mitral annular tissue Doppler with s′, e′ and a′ waves"></canvas>
+          <canvas id="scr-pv" role="img" aria-label="Pulmonary venous pulsed-wave Doppler with S, D and atrial reversal waves"></canvas>
+        </div>
+        <p class="hint-line">Mitral and pulmonary venous velocities are model flows divided by an orifice area. Tissue Doppler timing comes from the model, and the <b>e′</b> amplitude is scaled from the fitted relaxation time constant (<a href="diastolic.html#limits" target="vac-dia-text" style="color:inherit">limitations</a>).</p>
+      </section>
+    </div>
+    <div class="side-col">
+      <section class="panel dia-controls">
+        <h2>Interventions</h2>
+        <div class="slider">
+          <div class="row"><label for="vol">Volume given (+) or removed (−)</label><span class="val" id="vol-v"></span></div>
+          <input type="range" id="vol" min="-2000" max="2000" step="250" value="0">
+        </div>
+        <div class="give-row" id="quick">
+          <button type="button" class="give" data-dv="500">IV fluid<small>+500 mL</small></button>
+          <button type="button" class="give" data-dv="-500">Diurese<small>−500 mL</small></button>
+        </div>
+        <div class="slider">
+          <div class="row"><label for="svr">Afterload</label><span class="val" id="svr-v"></span></div>
+          <input type="range" id="svr" min="0.7" max="1.75" step="0.05" value="1">
+          <div class="hint">A change in afterload is simulated with the baroreflex open, as in a hypertensive crisis.</div>
+        </div>
+        <label class="status"><input type="checkbox" id="surge"> Sympathetic surge: venoconstriction moves 200 mL into the stressed volume</label>
+        <p class="k" style="margin:10px 0 4px">Rhythm</p>
+        <div class="seg" id="rhythm" role="group" aria-label="Rhythm"><button type="button" data-v="sinus" aria-pressed="true">Sinus</button><button type="button" data-v="af" aria-pressed="false">Atrial fibrillation</button></div>
+        <div class="slider" id="af-row" hidden>
+          <div class="row"><label for="afrate">Mean ventricular rate</label><span class="val" id="af-v"></span></div>
+          <input type="range" id="afrate" min="70" max="150" step="10" value="110">
+        </div>
+        <button type="button" class="btn" id="reset">Back to the patient as found</button>
+      </section>
+      <section class="panel">
+        <h2>Echo measurements</h2>
+        <div id="echo-table"></div>
+        <p class="status">An asterisk marks a value beyond the ASE/EACVI 2016 cutoff <cite data-ref="nagueh2016"></cite>, applied to lateral e′ and lateral E/e′ because the model has a single e′.</p>
+      </section>
+      <figure class="monitor fig">
+        <svg id="pv"></svg>
+        <figcaption>LV pressure–volume loop after the intervention (green), before it (dashed navy) and in the normal ventricle (gray). Dotted curves are the chamber EDPVR of the current grade and of the normal ventricle.</figcaption>
+      </figure>
+    </div>
+  </div>
+
+  <h2 id="cohort">Virtual cohort</h2>
+  <p class="status">Forty patients per grade. Lines are medians and bands interquartile ranges; hovering over a chart shows the values at each step.</p>
+  <div class="dia-grid">
+    <figure class="plot-card"><h3>Fluid and diuresis: LA pressure</h3><div class="legend g-legend"></div><svg id="c-lap-vol"></svg>
+      <figcaption>Dashed line, PAWP 18 mmHg, above which the patient is classified as congested <cite data-ref="forrester1976"></cite>.</figcaption></figure>
+    <figure class="plot-card"><h3>Fluid and diuresis: cardiac output</h3><div class="legend g-legend"></div><svg id="c-co-vol"></svg>
+      <figcaption>Intravascular volume at the end of a rapid infusion or removed by diuresis; 40% of each milliliter changes the stressed volume.</figcaption></figure>
+  </div>
+  <figure class="plot-card"><h3>Volume window</h3><svg id="c-window"></svg>
+    <figcaption>Range of intravascular volume change over which mean LA pressure stays below 18 mmHg and cardiac output stays within 10% of its plateau. Thin lines are individual patients, thick lines the grade medians, and zero the patient at baseline.</figcaption></figure>
+  <div class="dia-grid">
+    <figure class="plot-card"><h3>Afterload: LA pressure</h3><div class="legend g-legend"></div><svg id="c-lap-svr"></svg></figure>
+    <figure class="plot-card"><h3>Afterload: stroke volume</h3><div class="legend g-legend"></div><svg id="c-sv-svr"></svg></figure>
+    <figure class="plot-card"><h3>AF: cardiac output</h3><div class="legend g-legend"></div><svg id="c-co-af"></svg>
+      <figcaption>Change from the same patient in sinus rhythm. At 70/min, the atrial kick and the regular rhythm are lost without a change in rate.</figcaption></figure>
+    <figure class="plot-card"><h3>AF: LA pressure</h3><div class="legend g-legend"></div><svg id="c-lap-af"></svg></figure>
+  </div>
+  <section class="panel">
+    <h2>Tolerance by grade <span class="status">median [interquartile range]</span></h2>
+    <div class="table-wrap" id="c-table"></div>
+    <button type="button" class="btn" id="csv">Download the cohort (CSV, one row per patient per condition)</button>
+    <p class="status">The same data, with each patient's parameters, are in <code>R/diastolic_cohort_long.csv</code>, <code>R/diastolic_cohort_summary.csv</code> and <code>R/diastolic_course.csv</code> in the repository, and <code>R/diastolic_microsim.R</code> draws the figures and tables in R.</p>
+  </section>
+  <section class="panel">
+    <h2>Clinical consequences across the cohort <span class="status">% of the 40 patients of each grade</span></h2>
+    <div class="seg" id="cq-pick" role="group" aria-label="Consequence"></div>
+    <div class="table-wrap" id="cq-table"></div>
+    <p class="status">Thresholds as in the bar above. Volume is intravascular volume given (+) or removed (−), and the surge is SVR × 1.5 with 200 mL of venous recruitment. A dash marks a volume removal that exceeds the stressed volume available in the model.</p>
+  </section>
+  <section class="panel">
+    <h2>Echocardiographic classification of the virtual patients</h2>
+    <div class="dia-grid" id="c-conf"></div>
+    <p class="status">Rows are the model grades and columns the grade assigned by the ASE/EACVI 2016 algorithm from each patient's model echocardiogram <cite data-ref="nagueh2016"></cite>. The algorithm has no grade IV, the restrictive pattern that persists after preload reduction <cite data-ref="nishimura1997"></cite>.</p>
+  </section>
+
+  <h2 id="course">Fluid followed by diuresis</h2>
+  <p class="status">Reference patient of each grade: 1 L of crystalloid over 30 minutes, then diuresis of 500 mL/h from 60 to 240 minutes. The normal and grade I curves end when stressed volume reaches the lower limit of the model.</p>
+  <div class="dia-grid">
+    <figure class="plot-card"><h3>LA pressure</h3><div class="legend g-legend"></div><svg id="t-lap"></svg></figure>
+    <figure class="plot-card"><h3>Cardiac output</h3><div class="legend g-legend"></div><svg id="t-co"></svg></figure>
+    <figure class="plot-card"><h3>Mitral E/A</h3><div class="legend g-legend"></div><svg id="t-ea"></svg>
+      <figcaption>Dashed line, E/A 2, the restrictive cutoff.</figcaption></figure>
+  </div>
+
+  <div class="prose"><div id="page-refs"></div></div>
+</main>
+<script type="module">
+  import { initLayout } from './js/layout.js';
+  import { initDiastolicSim } from './js/diastsim.js';
+  initLayout();
+  initDiastolicSim();
+</script>
+</body>
+</html>
