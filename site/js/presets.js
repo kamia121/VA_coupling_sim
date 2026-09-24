@@ -23,6 +23,18 @@ export const PRESETS = [
     },
   },
   {
+    id: 'hfpefNormo', side: 'lv', label: 'HFpEF, normotensive',
+    params: { lvEes: 3.0, lvBeta: 0.042, lvA: 0.3, tau: 0.056, lvMass: 1.3, vStressed: 1000, cSys: 1.1 },
+    text: 'The same stiff, slowly relaxing ventricle as in the hypertensive scenario, but with a normal SVR and a baroreflex at its normal set point. Blood pressure is 115/68 mmHg and EF is 61%, yet LAP is 16.5 mmHg and LV end-diastolic pressure is 26 mmHg, because τ is 61 ms and the EDPVR is steep. Ea/Ees is 0.50, so the coupling ratio looks normal, and nothing in the arterial side points to the disease.',
+    refs: ['zile2004', 'pieske2019'],
+    detail: {
+      mech: 'Slow relaxation and a steep EDPVR, not a raised afterload, are what raise the filling pressure here. τ is 61 ms, against 37 ms in the normal heart, in line with the 59 ± 14 ms measured in HFpEF <cite data-ref="zile2004"></cite>, and the end-diastolic point sits high on a steep EDPVR at a smaller EDV (118 mL, against 138 mL). Ees is mildly raised at 3.0 mmHg/mL, and SVR, arterial compliance and the baroreflex set point are close to normal, so MAP is 94 mmHg. The model does not represent why the myocardium stiffens (age, obesity, diabetes, or fibrosis); it only sets the relaxation time constant and the EDPVR.',
+      see: 'Blood pressure and EF are normal, so the diagnosis rests on evidence of raised filling pressure, such as a PAWP above 15 mmHg at rest, as the HFA-PEFF algorithm uses <cite data-ref="pieske2019"></cite>. Here mean LAP is 16.5 mmHg and mPAP is 23 mmHg, a post-capillary pattern.',
+      manage: 'A 150-mL fluid bolus raises LAP by 2.4 mmHg here and by 1.9 mmHg in the normal heart. Loss of atrial contraction lowers stroke volume by 15%, against 10% in the normal heart. The arterial vasodilator lowers MAP and raises stroke volume, but does not lower LAP, because the problem lies in the ventricle and not in its afterload.',
+      note: 'Compare this scenario with the hypertensive one: the loops and filling pressures are similar, whereas the arterial load differs. A normal blood pressure does not exclude HFpEF, and a normal Ea/Ees does not exclude diastolic disease.',
+    },
+  },
+  {
     id: 'hfref', side: 'lv', label: 'HFrEF (dilated, low Ees)',
     params: { lvEes: 0.8, lvV0: 40, lvBeta: 0.021, lvA: 0.3, svr: 1.26, hr: 85, vStressed: 917, kFFR: 0, pcdV0: 350 },
     text: 'Ees is reduced, the ESPVR is shifted to the right with a V₀ of 40 mL, and neurohormonal activation constricts the arteries, so Ea/Ees exceeds 2 and SW/PVA is low. Because the ESPVR is flat, stroke volume depends heavily on afterload; the arterial vasodilator (SVR × 0.7) raises it by about 15% here and by about 9% in the normal heart.',

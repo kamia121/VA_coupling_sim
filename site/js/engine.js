@@ -61,7 +61,7 @@ export const NORMAL = Object.freeze({
   pericardium: 1, septum: 1, baseDescent: 1, relax: 1, ffr: 1, baro: 1, coronary: 1,
 
   // Pericardium: P = P0·(exp(λ·(Vheart + fluid − V0)) − 1), added to all four chambers
-  pcdP0: 0.5, pcdLambda: 0.03, pcdV0: 285, pcdFluid: 0,
+  pcdP0: 0.5, pcdLambda: 0.03, pcdV0: 285, pcdFluid: 0, pcdPmax: 50,
   // Septum (Smith et al. 2004): time-varying elastance between the ventricles
   sptEes: 48, sptVd: -2, sptA: 1.11, sptBeta: 0.435, sptBetaL: 0.2, sptV0: -3.5,
   // AV-plane descent and leaflet bulging, as changes in effective atrial volume
@@ -78,6 +78,7 @@ export const NORMAL = Object.freeze({
   mapSet: 96.1,         // mmHg, the calibrated normal MAP
   baroSlope: 14,      // mmHg; smaller is steeper
   gHR: 0.35, gSVR: 0.2, gEes: 0.15, gVol: 200,
+  hrMax: 160,         // the reflex does not drive the rate above this (or above the intrinsic rate, if higher), /min
   // Coronary supply and demand
   cfr: 5,             // coronary flow reserve (maximal / resting flow)
   lvMass: 1, rvMass: 1,   // muscle mass relative to normal (hypertrophy)
@@ -148,6 +149,14 @@ function makeAtrialActivation(T, p) {
   };
 }
 
+// Pericardial pressure for a total enclosed volume (four chambers + fluid). Above pcdPmax the exponential
+// continues as a straight line with the same slope: no pericardium holds more, and the exponential
+// alone makes the equations too stiff to integrate when a large heart meets a large effusion.
+function pericardialP(vol, p) {
+  const x = p.pcdLambda * (vol - p.pcdV0), xm = Math.log(1 + p.pcdPmax / p.pcdP0);
+  return x <= xm ? p.pcdP0 * (Math.exp(x) - 1) : p.pcdPmax + (p.pcdPmax + p.pcdP0) * (x - xm);
+}
+
 function wallP(V, e, Ees, V0, A, beta) {
   return e * Ees * (V - V0) + (1 - e) * A * (Math.exp(beta * (V - V0)) - 1);
 }
@@ -210,8 +219,7 @@ function pressures(s, e, ea, p, ctx) {
   const lvEes = p.lvEes + w * (ctx.lvEesP - p.lvEes), rvEes = p.rvEes + w * (ctx.rvEesP - p.rvEes);
   let Vspt = 0;
   if (p.septum) { Vspt = solveSeptum(s[0], s[3], e, p, ctx.spt, lvEes, rvEes); ctx.spt = Vspt; }
-  const Ppcd = p.pericardium
-    ? p.pcdP0 * (Math.exp(p.pcdLambda * (s[0] + s[3] + s[6] + s[7] + p.pcdFluid - p.pcdV0)) - 1) : 0;
+  const Ppcd = p.pericardium ? pericardialP(s[0] + s[3] + s[6] + s[7] + p.pcdFluid, p) : 0;
   const Plv = wallP(s[0] - Vspt, e, lvEes, p.lvV0, p.lvA, p.lvBeta) + Ppcd;
   const Prv = wallP(s[3] + Vspt, e, rvEes, p.rvV0, p.rvA, p.rvBeta) + Ppcd;
   const Psa = s[1] / p.cSys, Psv = s[2] / p.cSv;
@@ -344,7 +352,8 @@ function initialSlow() { return { map: null, sym: 0.5, ischL: 1, ischR: 1 }; }
 function effective(p, sl) {
   const q = { ...p };
   const u = p.baro ? 2 * sl.sym - 1 : 0;         // −1 … 1, 0 at the set point
-  q.hr = p.hr * (1 + p.gHR * u);
+  // bounded, or a fast intrinsic rate plus hypotension spirals: less filling, lower MAP, faster still
+  q.hr = Math.min(p.hr * (1 + p.gHR * u), Math.max(p.hr, p.hrMax));
   q.svr = p.svr * (1 + p.gSVR * u);
   q.vStressed = p.vStressed + p.gVol * u;
   const ff = p.ffr ? Math.min(1.4, Math.max(0.7, 1 + p.kFFR * (q.hr - 70) / 70)) : 1;
@@ -408,6 +417,7 @@ function relaxationTau(P, t, iEs, pEnd) {
 
 function ventricleMetrics(V, P, Part, tIdxEs, Ees, V0, hr, flows, dt) {
   const EDV = Math.max(...V), ESV = Math.min(...V);
+  const Ves = V[tIdxEs];                       // volume at end-systole (with MR or AS it exceeds ESV)
   const SV = EDV - ESV;
   const Pes = P[tIdxEs];                       // pressure at peak elastance (end-systole)
   const Ea = Pes / SV;
@@ -421,7 +431,7 @@ function ventricleMetrics(V, P, Part, tIdxEs, Ees, V0, hr, flows, dt) {
   return {
     EDV, ESV, SV, EF: SV / EDV, fwdSV, SVout: ejected, CO: fwdSV * hr / 1000,
     RVol: backIn + backOut, RF: (backIn + backOut) / Math.max(SV, 1e-6),
-    Pes, Ees, Ea, EaEes: Ea / Ees, EesEa: Ees / Ea,
+    Pes, Ves, Ees, Ea, EaEes: Ea / Ees, EesEa: Ees / Ea,
     EDP: P[0],                                 // at the QRS (start of activation)
     Pmax: Math.max(...P),
     SW, PVA, eff: SW / PVA,
@@ -446,7 +456,7 @@ export function filling(q) {
     if (q.pericardium) {
       for (let i = 0; i < 50; i++) {
         const m = (lo + hi) / 2;
-        const f = q.pcdP0 * (Math.exp(q.pcdLambda * (heart(m) + q.pcdFluid - q.pcdV0)) - 1);
+        const f = pericardialP(heart(m) + q.pcdFluid, q);
         if (f > m) lo = m; else hi = m;
       }
       ppcd = (lo + hi) / 2;
@@ -556,12 +566,49 @@ export function simulate(params, opt = {}) {
   return { params: p, eff, T, dt, tEs: act.tPeak, beats, converged, rec, lv, rv, hemo, state: startState, endState, slow: { ...sl }, acc };
 }
 
-// ESPVR / Ea line endpoints for plotting.
-export function couplingLines(m, V0) {
-  return {
-    espvr: [[V0, 0], [m.ESV + (m.EDV - m.ESV) * 0.6, m.Ees * (m.ESV + (m.EDV - m.ESV) * 0.6 - V0)]],
-    ea: [[m.ESV, m.Pes], [m.EDV, 0]],
+// ESPVR, EDPVR and Ea line of one ventricle as the model's chamber sees them, for plotting.
+// The free-wall equations (Ees·(V − V0) and A·(exp(β(V − V0)) − 1)) are not what the loop follows:
+// the septum moves with the transseptal gradient and the pericardium adds its pressure to every chamber,
+// so a stiff or dilated heart, a pressure-loaded RV or an effusion would leave the loop's corners off
+// the free-wall lines. Here the chamber pressure is computed with the model's own equations while the
+// ventricle's volume is swept and the other chambers are held where they were: fully activated (e = 1)
+// with the volumes at end-systole for the ESPVR, fully relaxed (e = 0) with the volumes at end-diastole
+// (the QRS) for the EDPVR. The ESPVR therefore passes through the end-systolic point, and the end-diastolic
+// point lies on the EDPVR unless relaxation is still incomplete at the QRS, when it sits above it.
+export function pvRelations(r, side, xmax, n = 60) {
+  const q = effective(r.params, r.slow), rec = r.rec, m = r[side], lv = side === 'lv';
+  const iEs = Math.round(r.tEs / r.dt), V0 = lv ? q.lvV0 : q.rvV0;
+  const curve = (i, e) => {
+    const s = [rec.Vlv[i], 0, 0, rec.Vrv[i], 0, 0, rec.Vra[i], rec.Vla[i]];
+    const ctx = { spt: rec.Vspt[i], w: 0, lvEesP: q.lvEes, rvEesP: q.rvEes, vL0: s[0], vL0p: s[0], vR0: s[3], vR0p: s[3] };
+    const P = (v) => { s[lv ? 0 : 3] = v; const pr = pressures(s, e, 0, q, ctx); return lv ? pr.Plv : pr.Prv; };
+    // start where the chamber pressure crosses zero, so the line leaves the volume axis; always n + 1
+    // points, so two relations can be interpolated point by point
+    let a = 0, b = xmax;
+    if (P(a) < 0 && P(b) > 0) for (let k = 0; k < 40; k++) { const c = (a + b) / 2; if (P(c) < 0) a = c; else b = c; }
+    else b = 0;
+    const pts = [];
+    for (let k = 0; k <= n; k++) { const v = b + (xmax - b) * k / n; pts.push([v, P(v)]); }
+    return pts;
   };
+  const espvr = curve(iEs, 1), edpvr = curve(0, 0);
+  return { V0, Ees: m.Ees, espvr, edpvr, ea: [[m.Ves, m.Pes], [m.EDV, 0]], es: [m.Ves, m.Pes], ed: [lv ? rec.Vlv[0] : rec.Vrv[0], m.EDP] };
+}
+
+// Chamber pressure on a relation at volume V (linear interpolation), for drag handles and labels.
+export function relationAt(pts, V) {
+  if (V <= pts[0][0]) return pts[0][1];
+  for (let i = 1; i < pts.length; i++) if (V <= pts[i][0]) {
+    const [v1, p1] = pts[i - 1], [v2, p2] = pts[i];
+    return p1 + (p2 - p1) * (V - v1) / (v2 - v1);
+  }
+  return pts[pts.length - 1][1];
+}
+
+// ESPVR / Ea line for plotting (see pvRelations), the ESPVR cut short above the end-systolic point.
+export function couplingLines(r, side) {
+  const R = pvRelations(r, side, r[side].Ves + (r[side].EDV - r[side].Ves) * 0.6, 30);
+  return { espvr: R.espvr, ea: R.ea };
 }
 
 // Cardiac phases and valve events for one recorded beat.

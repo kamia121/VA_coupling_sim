@@ -1,5 +1,5 @@
 // Engine tests. Run with: node tests/engine.test.mjs  (no dependencies)
-import { simulate, NORMAL, WU, cardiacPhases } from '../site/js/engine.js';
+import { simulate, NORMAL, WU, cardiacPhases, pvRelations, relationAt } from '../site/js/engine.js';
 import { _pac } from '../site/js/pacsim.js';
 import { PRESETS, INTERVENTIONS, presetById } from '../site/js/presets.js';
 import { buildPalette, makeIndexer, GifWriter } from '../site/js/gif.js';
@@ -307,6 +307,41 @@ function decodeGif(buf) {
   for (let i = 0; i < W * H; i++) { const c = (i * 7919) % 216; img.set([(c % 6) * 51, (Math.floor(c / 6) % 6) * 51, Math.floor(c / 36) * 51, 255], i * 4); }
   const P2 = buildPalette([img]), idx2 = makeIndexer(P2)(img, new Uint8Array(W * H));
   check('GIF palette: plot-like image (216 colours) reproduced exactly', Array.from(idx2).every((v, j) => [0, 1, 2].every((c) => P2.pal[v * 3 + c] === img[j * 4 + c])));
+}
+
+// Drawn relations: the loop's corners lie on the chamber ESPVR and EDPVR (septum and pericardium included),
+// in every preset and at the ends of the slider ranges, and the loop never rises above the ESPVR.
+{
+  const cases = [...PRESETS.map((x) => [x.id, x.params]), ['stiff, volume-loaded', { lvBeta: 0.07, vStressed: 1400 }],
+    ['stiff, dry', { lvBeta: 0.07, vStressed: 600 }], ['LV V0 100', { lvV0: 100 }], ['RV V0 120', { rvV0: 120 }], ['Ees 0.3', { lvEes: 0.3 }]];
+  let esErr = 0, edErr = 0, above = -Infinity, worst = '';
+  for (const [id, prm] of cases) {
+    const r = simulate(prm);
+    for (const sd of ['lv', 'rv']) {
+      const R = pvRelations(r, sd, 300), V = sd === 'lv' ? r.rec.Vlv : r.rec.Vrv, P = sd === 'lv' ? r.rec.Plv : r.rec.Prv;
+      const e1 = Math.abs(r[sd].Pes - relationAt(R.espvr, R.es[0]));
+      const active = r.rec.eAct[0] * r[sd].Ees * (R.ed[0] - R.V0);   // pressure still owed to the last beat at the QRS
+      const e2 = active < 0.3 ? Math.abs(R.ed[1] - relationAt(R.edpvr, R.ed[0])) : 0;
+      if (e1 > esErr) esErr = e1;
+      if (e2 > edErr) { edErr = e2; worst = `${id} ${sd}`; }
+      for (let i = 0; i < V.length; i++) above = Math.max(above, P[i] - relationAt(R.espvr, V[i]));
+      if (R.espvr.length !== R.edpvr.length || R.espvr.length !== 61) esErr = Infinity;
+    }
+  }
+  check('end-systolic point on the drawn ESPVR (< 0.1 mmHg)', esErr < 0.1, esErr.toFixed(3));
+  check('end-diastolic point on the drawn EDPVR when relaxed (< 0.5 mmHg)', edErr < 0.5, `${edErr.toFixed(3)} ${worst}`);
+  check('loop never above the drawn ESPVR (< 0.1 mmHg)', above < 0.1, above.toFixed(3));
+  const t = simulate({ hr: 160, tau: 0.09 }), R = pvRelations(t, 'lv', 200);
+  check('incomplete relaxation leaves the end-diastolic point above the EDPVR', R.ed[1] - relationAt(R.edpvr, R.ed[0]) > 3);
+}
+
+// Large changes stay finite: a big effusion around a dilated RV, and a fast intrinsic rate
+{
+  const r = simulate({ pcdFluid: 300, rvV0: 120 });
+  check('effusion 300 mL with RV V0 120: converges, finite', r.converged && Number.isFinite(r.lv.SV) && Number.isFinite(r.hemo.Ppcd), `Ppcd ${r.hemo.Ppcd.toFixed(1)}`);
+  const h = simulate({ hr: 160 });
+  check('baroreflex does not drive HR above 160/min', h.eff.hr <= 160.01, h.eff.hr.toFixed(1));
+  check('normotensive HFpEF: MAP 85–100, EF > 50%, LAP > 15', within(byId.hfpefNormo.hemo.MAP, 85, 100) && byId.hfpefNormo.lv.EF > 0.5 && byId.hfpefNormo.hemo.LAP > 15);
 }
 
 console.log(failed ? `\n${failed} test(s) failed` : '\nall tests passed');

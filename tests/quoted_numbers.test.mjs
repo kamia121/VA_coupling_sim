@@ -55,6 +55,19 @@ q('Concepts/PE: septal shift mL', -pe.hemo.VsptED, 12, 0.6);
 
 // Scenario texts
 q('HFpEF: τ ms', hfpef.lv.tau * 1000, 60, 0.6);
+{ const h = sim('hfN', P('hfpefNormo'));
+  q('HFpEF normotensive: SBP', h.hemo.SBP, 115, 0.6); q('HFpEF normotensive: DBP', h.hemo.DBP, 68, 0.6);
+  q('HFpEF normotensive: EF %', h.lv.EF * 100, 61, 0.6); q('HFpEF normotensive: LAP', h.hemo.LAP, 16.5, 0.06);
+  q('HFpEF normotensive: LVEDP', h.lv.EDP, 26, 0.6); q('HFpEF normotensive: τ ms', h.lv.tau * 1000, 61, 0.6);
+  q('HFpEF normotensive: Ea/Ees', h.lv.EaEes, 0.50, 0.006); q('HFpEF normotensive: EDV', h.lv.EDV, 118, 0.6);
+  q('HFpEF normotensive: normal EDV', n.lv.EDV, 138, 0.6); q('HFpEF normotensive: Ees', h.lv.Ees, 3.0, 0.06);
+  q('HFpEF normotensive: MAP', h.hemo.MAP, 94, 0.6); q('HFpEF normotensive: mPAP', h.hemo.mPAP, 23, 0.6);
+  q('HFpEF normotensive: fluid raises LAP', sim('hfNF', iv('fluid', P('hfpefNormo'))).hemo.LAP - h.hemo.LAP, 2.4, 0.06);
+  q('HFpEF normotensive: AF lowers SV %', -pct(h.lv.SV, sim('hfNAF', { ...P('hfpefNormo'), aKick: 0 }).lv.SV), 15, 0.6);
+  const d = sim('hfND', iv('dilate', P('hfpefNormo')));
+  const ok = d.hemo.MAP < h.hemo.MAP && d.lv.SV > h.lv.SV && d.hemo.LAP >= h.hemo.LAP;
+  console.log(`${ok ? 'ok  ' : 'FAIL'}  HFpEF normotensive: vasodilator lowers MAP, raises SV, does not lower LAP`);
+  if (!ok) failed++; }
 q('HFrEF: inotrope CO', sim('hfrefI', iv('dobut', P('hfref'))).hemo.CO, 5.6, 0.06);
 q('HFrEF: CO', hfref.hemo.CO, 4.4, 0.06); q('HFrEF: Ea/Ees', hfref.lv.EaEes, 2.75, 0.006); q('HFrEF: inotrope Ea/Ees', S.hfrefI.lv.EaEes, 1.83, 0.006);
 q('HFrEF: diuresis LAP', sim('hfrefR', iv('diurese', P('hfref'))).hemo.LAP, 10.8, 0.06); q('HFrEF: LAP', hfref.hemo.LAP, 13.4, 0.06);

@@ -263,7 +263,7 @@ function drawLoops() {
     const Pk = side === 'lv' ? 'Plv' : 'Prv', m = r[side];
     const xmax = niceMax(Math.max(m.EDV, NORM[side].EDV, st.start[side].EDV) * 1.12);
     const ymax = niceMax(Math.max(...r.rec[Pk], ...NORM.rec[Pk], ...st.start.rec[Pk]) * 1.1);
-    const cl = couplingLines(m, r.params[side + 'V0']);
+    const cl = couplingLines(r, side);
     drawPlot(svg, {
       width: W, height: H, xTicks: 5, yTicks: 5, title: `${side.toUpperCase()} pressure–volume loop`,
       x: { min: 0, max: xmax, label: `${side.toUpperCase()} volume (mL)` }, y: { min: 0, max: ymax, label: `${side.toUpperCase()} pressure (mmHg)` },
