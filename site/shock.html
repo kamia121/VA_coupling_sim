@@ -30,6 +30,15 @@
   <div id="scn-text" class="prose preset-text"></div>
   <p class="status">At 1× one second of real time is one minute of simulated time. The circulation is solved again at every half-second tick, while drug levels, fluid distribution, bleeding and lactate change over minutes. Drug effect sizes are illustrative and are not dosing guidance.</p>
 
+  <div class="shock-bar" id="shock-bar">
+    <div class="bar-row">
+      <button class="btn primary" id="play2" type="button" aria-pressed="false">▶ Run</button>
+      <span class="clock" aria-live="off">t = <b id="clock2">0:00</b> <span class="status">h:min</span></span>
+      <span class="bar-note" id="shock-note"></span>
+    </div>
+    <div class="tiles" id="shock-tiles" aria-live="polite"></div>
+  </div>
+
   <div class="sim2">
     <div>
       <div class="monitor mon-bed">

@@ -6,6 +6,7 @@ import { DRUGS, DRUG, FLUIDS } from './pharm.js';
 import { SHOCK, SHOCK_BY, createPatient, advance, setDrug, give, setBleed, setUF, action, interfaces } from './shockcore.js';
 import { drawPlot, niceMax, swatch } from './plot.js';
 import { addExport, header, even } from './export.js';
+import { floatWindow } from './float.js';
 
 const $ = (s) => document.querySelector(s);
 const TICK = 500;                    // ms of real time per tick
@@ -151,8 +152,39 @@ function drawMonitor(tEnd, target) {
 }
 
 function frame(now) {
-  if (st.beat) drawMonitor(now);
+  if (st.beat) { drawMonitor(now); drawMiniMonitor(now); }
   if (!reduce) requestAnimationFrame(frame);
+}
+
+// ---------- floating mini monitor and the values that stay at the top ----------
+let fw = null;
+function drawMiniMonitor(now) {
+  if (!fw || !fw.visible || !st.beat) return;
+  let c = fw.body.querySelector('canvas');
+  if (!c) { fw.body.innerHTML = '<canvas role="img" aria-label="Bedside monitor, floating copy"></canvas>'; c = fw.body.querySelector('canvas'); }
+  const w = 324, h = 230, dpr = window.devicePixelRatio || 1, bw = Math.round(w * dpr), bh = Math.round(h * dpr);
+  if (c.width !== bw) { c.width = bw; c.height = bh; c.style.width = w + 'px'; c.style.height = h + 'px'; }
+  const g = c.getContext('2d'); g.setTransform(dpr, 0, 0, dpr, 0, 0);
+  drawMonitor(reduce ? 0 : (now - st.t0) / 1000, { g, w, h });
+}
+
+const SHOCK_TILES = [
+  ['MAP', (o) => `${o.map.toFixed(0)}`, (o) => `${o.sbp.toFixed(0)}/${o.dbp.toFixed(0)}`, (o) => o.map < 65],
+  ['HR', (o) => o.hr.toFixed(0), () => '/min', (o) => o.hr > 100 || o.hr < 50],
+  ['CI', (o) => o.ci.toFixed(1), (o) => `CO ${o.co.toFixed(1)}`, (o) => o.ci < 2.2],
+  ['CVP', (o) => o.cvp.toFixed(0), () => 'mmHg', (o) => o.cvp > 12],
+  ['LAP', (o) => o.lap.toFixed(0), () => 'mmHg', (o) => o.lap > 18],
+  ['ScvO₂', (o) => (o.svo2 * 100).toFixed(0), () => '%', (o) => o.svo2 < 0.7],
+  ['Lactate', (o) => o.lac.toFixed(1), () => 'mmol/L', (o) => o.lac > 2],
+  ['LV Ea/Ees', (o) => o.lvEaEes.toFixed(2), () => '', (o) => o.lvEaEes > 1.36],
+  ['RV Ees/Ea', (o) => o.rvEesEa.toFixed(2), () => '', (o) => o.rvEesEa < 0.805],
+];
+function shockBar(o) {
+  $('#shock-tiles').innerHTML = SHOCK_TILES.map(([k, v, sub, bad]) =>
+    `<div class="tile${bad(o) ? ' off' : ''}"><div class="tile-v">${v(o)}</div><div class="tile-k">${k} <span>${sub(o)}</span></div></div>`).join('');
+  $('#clock2').textContent = hm(st.pt.t);
+  const on = DRUGS.filter((d) => st.pt.drugs[d.id].rate > 0).map((d) => `${d.name} ${st.pt.drugs[d.id].rate}`);
+  $('#shock-note').textContent = `${st.pt.sc.label}${on.length ? ' · ' + on.join(', ') : ''}${st.pt.bleed ? ` · bleeding ${st.pt.bleed} mL/min` : ''}`;
 }
 
 // ---------- clock ----------
@@ -169,8 +201,7 @@ function setRunning(on) {
   st.running = on;
   clearInterval(st.timer);
   if (on) st.timer = setInterval(tick, TICK);
-  $('#play').textContent = on ? '❚❚ Pause' : '▶ Run';
-  $('#play').setAttribute('aria-pressed', String(on));
+  for (const b of [$('#play'), $('#play2')]) { b.textContent = on ? '❚❚ Pause' : '▶ Run'; b.setAttribute('aria-pressed', String(on)); }
 }
 
 function load(id) {
@@ -338,8 +369,8 @@ function refresh() {
   const o = st.pt.out;
   buildBeat();
   $('#clock').textContent = hm(st.pt.t);
-  interfacePanel(o); numbers(o); drugLevels(); drawLoops(); drawTrends(); drawFK(); logPanel();
-  if (reduce) drawMonitor(0);
+  shockBar(o); interfacePanel(o); numbers(o); drugLevels(); drawLoops(); drawTrends(); drawFK(); logPanel();
+  if (reduce) { drawMonitor(0); drawMiniMonitor(0); }
 }
 
 // ---------- export ----------
@@ -371,6 +402,9 @@ export function initShock() {
   $('#scn').innerHTML = SHOCK.map((s) => `<option value="${s.id}">${s.label}</option>`).join('');
   $('#scn').addEventListener('change', () => { setRunning(false); load($('#scn').value); });
   $('#play').addEventListener('click', () => setRunning(!st.running));
+  $('#play2').addEventListener('click', () => setRunning(!st.running));
+  fw = floatWindow({ anchor: $('.mon-bed'), title: 'Bedside monitor', key: 'shock' });
+  fw.onShow(() => drawMiniMonitor(performance.now()));
   $('#step').addEventListener('click', () => { advance(st.pt, 5); refresh(); });
   $('#reset').addEventListener('click', () => { setRunning(false); load(st.id); });
   $('#speed').addEventListener('click', (e) => {

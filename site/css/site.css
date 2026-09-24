@@ -255,6 +255,7 @@ a.btn.primary { background: var(--mcw-green); border-color: var(--mcw-green); co
 a.btn.primary:hover { filter: brightness(1.1); }
 .btn.ghost { background: transparent; color: var(--mon-text); border-color: #3A4F48; }
 button.btn[aria-pressed="true"] { border-color: var(--mcw-green); box-shadow: inset 0 0 0 1px var(--mcw-green); color: var(--link); font-weight: 600; }
+button.btn.primary[aria-pressed="true"] { color: #fff; }
 .link-card { text-decoration: none; color: var(--text); transition: border-color 0.15s, transform 0.15s; border-top: 3px solid var(--mcw-green); }
 .link-card:hover { border-color: var(--mcw-green); transform: translateY(-2px); }
 .link-card p { color: var(--text-muted); margin: 0; font-size: 0.95rem; }
@@ -592,3 +593,47 @@ td.flagged { color: var(--flag); font-weight: 600; }
   .dia-conseq { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: thin; }
   .minis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
+
+/* ---------- values that stay at the top, and a floating copy of the main display (simulator, shock lab) ---------- */
+.sim-bar { background: var(--bg); }
+@media (min-width: 701px) {
+  .sim-bar { position: sticky; top: 0; z-index: 20; margin: 0 -16px 12px; padding: 6px 16px 8px;
+    border-bottom: 1px solid var(--border); box-shadow: 0 6px 12px -10px rgba(0, 0, 0, 0.35); }
+  .sim-bar .tiles { margin: 6px 0 0; gap: 6px; }
+  .sim-bar .tile { padding: 4px 10px; }
+  .sim-bar .tile-v { font-size: 1.15rem; }
+}
+.bar-row { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; }
+.bar-note { font-size: 0.8rem; color: var(--text-muted); margin-left: auto; }
+.shock-bar { position: sticky; top: 0; z-index: 20; background: var(--bg); margin: 0 -16px 12px; padding: 6px 16px 8px;
+  border-bottom: 1px solid var(--border); box-shadow: 0 6px 12px -10px rgba(0, 0, 0, 0.35); }
+.shock-bar .tiles { grid-template-columns: repeat(9, minmax(0, 1fr)); gap: 6px; margin: 6px 0 0; }
+.shock-bar .tile { padding: 3px 8px 4px; border-left-width: 3px; }
+.shock-bar .tile-v { font-size: 1.1rem; }
+.shock-bar .tile-k { font-size: 0.72rem; white-space: nowrap; }
+@media (max-width: 900px) {
+  .shock-bar .tiles { display: flex; overflow-x: auto; scrollbar-width: thin; }
+  .shock-bar .tile { flex: 0 0 84px; }
+}
+@media (max-width: 700px) {
+  .shock-bar { margin: 0 -12px 12px; padding: 6px 12px; }
+  .shock-bar .bar-note { display: none; }
+  .shock-bar .tile { flex: 0 0 72px; }
+}
+
+.float-win { position: fixed; right: 16px; bottom: 16px; z-index: 30; width: 340px; padding: 6px 8px 8px; margin: 0;
+  border-radius: 8px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45); }
+.float-win[hidden], .float-tab[hidden] { display: none; }
+.fw-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 2px; }
+.fw-head button { font: inherit; background: none; border: 0; color: var(--mon-text); cursor: pointer; padding: 2px 4px; }
+.fw-title { font-size: 0.85rem; font-weight: 600; }
+.fw-title:hover { color: var(--mon-current); }
+.fw-fold { font-size: 1.1rem; line-height: 1; }
+.fw-plots { display: flex; gap: 4px; }
+.fw-body svg, .fw-body canvas { display: block; width: 100%; height: auto; }
+.fw-line { font-family: "Source Code Pro", ui-monospace, monospace; font-size: 0.72rem; color: var(--mon-axis); margin-top: 3px; }
+.float-tab { position: fixed; right: 16px; bottom: 16px; z-index: 30; font: inherit; font-size: 0.85rem; font-weight: 600; cursor: pointer;
+  background: var(--mon-bg); color: var(--mon-text); border: 1px solid var(--mon-current); border-radius: 99px; padding: 6px 14px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.4); }
+@media (max-width: 700px) { .float-win, .float-tab { display: none !important; } }
+@media print { .float-win, .float-tab { display: none !important; } }

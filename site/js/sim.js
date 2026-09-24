@@ -5,6 +5,7 @@ import { PRESETS, presetById, DOSES, NO_DOSES, applyDoses, doseSummary } from '.
 import { addExport, svgCapture, header, even } from './export.js';
 import { drawPlot, niceMax, swatch, svgPoint, svgEl, placeLabels } from './plot.js';
 import { REF_INDEX } from './refs.js';
+import { floatWindow } from './float.js';
 
 const C = { cur: 'var(--series-current)', ref: 'var(--series-ref)', snap: 'var(--series-snap)' };
 
@@ -253,6 +254,11 @@ function drawCursor() {
     const V = sd === 'lv' ? result.rec.Vlv[i] : result.rec.Vrv[i];
     const P = sd === 'lv' ? result.rec.Plv[i] : result.rec.Prv[i];
     c.setAttribute('cx', m.sx(V)); c.setAttribute('cy', m.sy(P));
+  }
+  for (const sd of ['lv', 'rv']) {
+    const c = document.getElementById('mcursor-' + sd), m = miniMaps[sd];
+    if (!c || !m || busy) continue;
+    c.setAttribute('cx', m.sx(sd === 'lv' ? result.rec.Vlv[i] : result.rec.Vrv[i])); c.setAttribute('cy', m.sy(sd === 'lv' ? result.rec.Plv[i] : result.rec.Prv[i]));
   }
   for (const pm of ptMaps) { const x = pm.map.sx(result.rec.t[i] * 1000); pm.line.setAttribute('x1', x); pm.line.setAttribute('x2', x); }
   const strip = $('#phase');
@@ -702,6 +708,38 @@ const TILES = {
   ],
 };
 
+// ---------- floating copy of the loop, and the line under the sticky values ----------
+let fw = null;
+const miniMaps = {};
+function drawMini() {
+  if (!fw || !fw.visible || !result) return;
+  const sides = sidesInView(), w = sides.length > 1 ? 162 : 324;
+  fw.body.innerHTML = `<div class="fw-plots">${sides.map((sd) => `<svg id="mini-${sd}"></svg>`).join('')}</div><div class="fw-line" id="mini-line"></div>`;
+  for (const sd of ['lv', 'rv']) miniMaps[sd] = null;
+  for (const sd of sides) {
+    const { xmax, ymax } = axes(sd), R = rel(result, xmax, sd);
+    const m = drawPlot(document.getElementById('mini-' + sd), {
+      width: w, height: Math.round(w * (sides.length > 1 ? 0.95 : 0.66)), xTicks: 3, yTicks: 3,
+      title: `${sd.toUpperCase()} pressure–volume loop (floating copy)`,
+      x: { min: 0, max: xmax, label: `${sd.toUpperCase()} volume` }, y: { min: 0, max: ymax, label: 'mmHg' },
+      series: [{ points: loopPts(REF, sd), color: C.ref, width: 1.2 }, ...(snapshot ? [{ points: loopPts(snapshot, sd), color: C.snap, width: 1.2 }] : []),
+        ...relSeries(R, C.cur, false), { points: loopPts(result, sd), color: C.cur, width: 2.2 }],
+    });
+    miniMaps[sd] = m;
+    svgEl('circle', { id: 'mcursor-' + sd, r: 4, class: 'beat-cursor', cx: -20, cy: -20 }, m.svg);
+  }
+  const r = result, h = r.hemo;
+  $('#mini-line').textContent = view === 'rv' ? `Ees/Ea ${r.rv.EesEa.toFixed(2)} · SV ${r.rv.SV.toFixed(0)} · mPAP ${h.mPAP.toFixed(0)} · RAP ${h.RAP.toFixed(0)}`
+    : `Ea/Ees ${r.lv.EaEes.toFixed(2)} · SV ${r.lv.SV.toFixed(0)} · MAP ${h.MAP.toFixed(0)} · LAP ${h.LAP.toFixed(0)} · CO ${h.CO.toFixed(1)}`;
+  drawCursor();
+}
+
+function renderBarNote() {
+  const pid = $('#preset').value, treat = DOSES.filter((x) => doses[x.id]);
+  $('#bar-note').textContent = `${pid ? presetById(pid).label : 'Custom settings'}${treat.length ? ' · ' + treat.map((x) =>
+    `${x.label.split(' (')[0]} ${x.id === 'fluid' ? `${doses[x.id] > 0 ? '+' : '−'}${Math.abs(doses[x.id])} mL` : `${doses[x.id]}×`}`).join(', ') : ''}`;
+}
+
 function renderTiles() {
   $('#tiles').innerHTML = TILES[view].map(([name, val, bad]) =>
     `<div class="tile${bad(result) ? ' off' : ''}"><div class="tile-v">${val(result)}</div><div class="tile-k">${name()}<span> · normal ${val(REF)}</span></div></div>`).join('');
@@ -872,7 +910,7 @@ function renderMetrics() {
 function render(light = false) {
   document.body.dataset.view = view;   // before drawing: the RV cell must be laid out to size its plot
   drawPV();
-  renderTiles(); renderChips();
+  renderTiles(); renderChips(); renderBarNote(); drawMini();
   if (light) return;
   renderLegend(); renderGauge(); renderPT(); renderMetrics();
   const pn = $('#phys-note'); if (pn) pn.textContent = physNote(result);
@@ -1115,6 +1153,8 @@ export function initSimulator() {
   window.addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(() => result && render(), 150); });
   setupDrag();
   buildControls();
+  fw = floatWindow({ anchor: $('.pv-card'), title: 'Pressure–volume loop', key: 'sim' });
+  fw.onShow(drawMini);
   if (!readHash()) commit();
   requestAnimationFrame(tick);
 }
