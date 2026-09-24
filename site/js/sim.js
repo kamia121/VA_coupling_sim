@@ -1,6 +1,6 @@
 // Simulator page controller: drag handles on the PV loop, intervention buttons,
 // animated transitions, a beat cursor, and a step-by-step replay of each change.
-import { simulate, NORMAL, WU, DYN, MECHANISMS, cardiacPhases } from './engine.js';
+import { simulate, NORMAL, WU, DYN, MECHANISMS, cardiacPhases, pvRelations, relationAt } from './engine.js';
 import { PRESETS, INTERVENTIONS, presetById } from './presets.js';
 import { addExport, svgCapture, header, even } from './export.js';
 import { drawPlot, niceMax, swatch, svgPoint, svgEl } from './plot.js';
@@ -126,6 +126,7 @@ let prev = null;         // state before the last change (for chips and replay)
 let warm = null;
 let busy = false;        // an animation owns the plot
 let dragAxes = null;     // frozen axis limits while dragging
+let dragStart = null;    // result and parameters when the drag began
 let showHidden = false;
 let map = null;          // current PV plot mapping (primary side)
 const maps = {};         // PV mapping per side on screen
@@ -395,12 +396,13 @@ function loopPts(r, s = side) {
   return pts;
 }
 
+// ESPVR, EDPVR and Ea line of the chamber (septum and pericardium included), so the loop's corners sit on them.
+const relCache = new WeakMap();
 function rel(r, xmax, s = side) {
-  const m = r[s], p = r.params;
-  const V0 = V0of(p, s), A = s === 'lv' ? p.lvA : p.rvA, b = s === 'lv' ? p.lvBeta : p.rvBeta;
-  const edpvr = [];
-  for (let v = V0; v <= xmax; v += (xmax - V0) / 60) edpvr.push([v, A * (Math.exp(b * (v - V0)) - 1)]);
-  return { V0, Ees: m.Ees, espvr: [[V0, 0], [xmax, m.Ees * (xmax - V0)]], ea: [[m.ESV, m.Pes], [m.EDV, 0]], edpvr, es: [m.ESV, m.Pes] };
+  let c = relCache.get(r);
+  if (!c) relCache.set(r, c = {});
+  const k = s + xmax;
+  return c[k] ??= pvRelations(r, s, xmax);
 }
 
 function relSeries(R, color, strong) {
@@ -451,7 +453,10 @@ function drawPVFor(sd, sel, extraSeries = [], opts = {}) {
     x: { min: 0, max: xmax, label: `${sd.toUpperCase()} volume (mL)` },
     y: { min: 0, max: ymax, label: `${sd.toUpperCase()} pressure (mmHg)` },
     series,
-    annotations: showHidden ? HIDDEN[sd].map(([id, nm]) => ({ x: hiddenRes[id][sd].EDV, y: hiddenRes[id][sd].EDP, text: nm, dx: 6, dy: 14, color: 'var(--flag)' })) : [],
+    annotations: [
+      ...(showHidden ? HIDDEN[sd].map(([id, nm]) => ({ x: hiddenRes[id][sd].EDV, y: hiddenRes[id][sd].EDP, text: nm, dx: 6, dy: 14, color: 'var(--flag)' })) : []),
+      ...(opts.noCurrent ? [] : relaxNote(sd, xmax)),
+    ],
   });
   maps[sd] = m;
   if (!opts.noCurrent) {
@@ -460,6 +465,13 @@ function drawPVFor(sd, sel, extraSeries = [], opts = {}) {
     svgEl('circle', { id: 'cursor-' + sd, r: 6, class: 'beat-cursor', cx: -20, cy: -20 }, m.svg);
   }
   return m;
+}
+
+// The chamber EDPVR is the fully relaxed curve. When the QRS arrives before relaxation is over (fast rate,
+// long τ) the end-diastolic point sits above it; say so, since the gap is physiology, not a drawing error.
+function relaxNote(sd, xmax) {
+  const R = rel(result, xmax, sd), gap = R.ed[1] - relationAt(R.edpvr, R.ed[0]);
+  return gap > 1.5 ? [{ x: R.ed[0], y: R.ed[1], text: `+${gap.toFixed(0)} mmHg above EDPVR: relaxation incomplete`, dx: -8, dy: -10, anchor: 'end', color: 'var(--flag)' }] : [];
 }
 
 // Valve events at the loop corners: inflow closes, outflow opens, outflow closes, inflow opens.
@@ -480,11 +492,12 @@ function addEventMarks(m, sd) {
 
 // Drag handles: ESPVR (Ees), Ea line (afterload), end-diastolic volume (preload).
 function addHandles(pm, xmax, ymax) {
-  const m = result[side], V0 = V0of(params);
-  const Ph = Math.min(m.Ees * (xmax - V0), ymax * 0.9);
+  const m = result[side], es = rel(result, xmax).espvr;
+  const Ph = Math.min(es[es.length - 1][1], ymax * 0.9);
+  const hi = es.findIndex(([, p]) => p >= Ph), [v1, p1] = es[Math.max(0, hi - 1)], [v2, p2] = es[Math.max(1, hi)];
   const hs = [
-    { id: 'ees', x: V0 + Ph / m.Ees, y: Ph, label: `Drag to change ${side.toUpperCase()} Ees (contractility)` },
-    { id: 'ea', x: (m.ESV + m.EDV) / 2, y: m.Pes / 2, label: `Drag to change ${side === 'lv' ? 'SVR' : 'PVR'} (afterload)` },
+    { id: 'ees', x: p2 > p1 ? v1 + (v2 - v1) * (Ph - p1) / (p2 - p1) : v2, y: Ph, label: `Drag to change ${side.toUpperCase()} Ees (contractility)` },
+    { id: 'ea', x: (m.Ves + m.EDV) / 2, y: m.Pes / 2, label: `Drag to change ${side === 'lv' ? 'SVR' : 'PVR'} (afterload)` },
     { id: 'edv', x: m.EDV, y: 0, label: 'Drag to change stressed volume (preload)' },
   ];
   for (const h of hs) {
@@ -497,13 +510,14 @@ function addHandles(pm, xmax, ymax) {
 
 function applyHandle(id, V, P) {
   const m = result[side], V0 = V0of(params);
-  if (id === 'ees' && V > V0 + 3 && P > 0) {
+  if (id === 'ees' && dragStart && V > V0 + 3 && P > 0) {
     const k = side === 'lv' ? 'lvEes' : 'rvEes';
     const sl = SLIDERS.find((s) => s.key === k);
-    const gain = m.Ees / params[k];      // reflex, force–frequency and ischemia act on top of the intrinsic Ees
-    params[k] = clamp(P / (V - V0) / gain, sl.min, sl.max);
+    // scale Ees by how far the pointer sits above or below the chamber ESPVR at the start of the drag
+    const d = dragStart, Pc = relationAt(rel(d.result, dragAxes ? dragAxes.xmax : axes().xmax).espvr, V);
+    if (Pc > 1) params[k] = clamp(d.params[k] * P / Pc, sl.min, sl.max);
   } else if (id === 'ea' && V < m.EDV - 3 && P > 0) {
-    const f = clamp((P / (m.EDV - V)) / m.Ea, 0.8, 1.25);   // limited step per move keeps the solver stable
+    const f = clamp((P / (m.EDV - V)) / (m.Pes / (m.EDV - m.Ves)), 0.8, 1.25);   // limited step per move keeps the solver stable
     if (side === 'lv') params.svr = clamp(params.svr * f, 250 * DYN, 3000 * DYN);
     else params.pvr = clamp(params.pvr * f, 0.3 * WU, 20 * WU);
   } else if (id === 'edv') {
@@ -522,6 +536,7 @@ function setupDrag() {
     active = h.dataset.h;
     markChange();
     dragAxes = axes();
+    dragStart = { result, params: { ...params } };
     svg.setPointerCapture(e.pointerId);
     svg.classList.add('dragging');
     e.preventDefault();

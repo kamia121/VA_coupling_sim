@@ -1,7 +1,7 @@
 // Diastolic lab page: one patient of the chosen grade, live (PV loop, monitor numbers and the Doppler
 // echocardiogram as volume, afterload and rhythm change), and the virtual cohort (precomputed by
 // tools/diastolic_cohort.mjs) for fluid, afterload and AF tolerance and the fluid-then-diuresis course.
-import { simulate, NORMAL } from './engine.js';
+import { simulate, NORMAL, pvRelations } from './engine.js';
 import { GRADES, MV_AREA, CUT, LAP_WET, SURGE, COURSE, BSA, CONSEQ, solveCond, readout, condParams, consequences } from './diastcore.js';
 import { QUESTIONS } from './diastquiz.js';
 import { COHORT } from './diastdata.js';
@@ -71,11 +71,8 @@ function loopPts(r) {
   out.push(out[0]);
   return out;
 }
-function edpvr(p, vmax) {
-  const out = [];
-  for (let v = p.lvV0; v <= vmax; v += 2) out.push([v, p.lvA * (Math.exp(p.lvBeta * (v - p.lvV0)) - 1)]);
-  return out;
-}
+// The chamber EDPVR (septum and pericardium included), so the end of filling lies on it.
+function edpvr(r, vmax) { return pvRelations(r, 'lv', vmax).edpvr; }
 const NORM = simulate({ mvArea: MV_AREA });
 function drawLoop() {
   const svg = $('#pv'), r = st.curSol.r, b = baseline(st.g).sol.r;
@@ -86,9 +83,9 @@ function drawLoop() {
     width: W, height: H, xTicks: 5, yTicks: 5, title: 'LV pressure–volume loop',
     x: { min: 0, max: xmax, label: 'LV volume (mL)' }, y: { min: 0, max: ymax, label: 'LV pressure (mmHg)' },
     series: [
-      { points: edpvr(NORM.params, xmax), color: 'var(--series-ref)', width: 1, dash: '3 3' },
+      { points: edpvr(NORM, xmax), color: 'var(--series-ref)', width: 1, dash: '3 3' },
       { points: loopPts(NORM), color: 'var(--series-ref)', width: 1.4 },
-      { points: edpvr(r.params, xmax), color: 'var(--series-current)', width: 1, dash: '3 3' },
+      { points: edpvr(r, xmax), color: 'var(--series-current)', width: 1, dash: '3 3' },
       ...(st.curSol === baseline(st.g).sol ? [] : [{ points: loopPts(b), color: 'var(--series-snap)', width: 1.4, dash: '5 4' }]),
       { points: loopPts(r), color: 'var(--series-current)', width: 2.4 },
     ],
