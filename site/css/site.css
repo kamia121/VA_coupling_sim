@@ -637,3 +637,21 @@ td.flagged { color: var(--flag); font-weight: 600; }
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.4); }
 @media (max-width: 700px) { .float-win, .float-tab { display: none !important; } }
 @media print { .float-win, .float-tab { display: none !important; } }
+
+/* Explanations under each graphic of the Diastolic simulator */
+.info { margin: 6px 0 0; font-size: 0.88rem; }
+.info > summary { list-style: none; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; font-weight: 600; font-size: 0.82rem; color: var(--link); }
+.info > summary::-webkit-details-marker { display: none; }
+.info > summary::before { content: "i"; display: inline-grid; place-items: center; width: 1.25em; height: 1.25em; border-radius: 50%; border: 1px solid currentColor; font-size: 0.8em; font-style: italic; font-family: "Source Serif 4", Georgia, serif; }
+.info > summary::after { content: "▸"; font-size: 0.8em; }
+.info[open] > summary::after { content: "▾"; }
+.info .info-body { margin-top: 6px; padding: 8px 12px; border-left: 3px solid var(--border); background: var(--surface); color: var(--text); line-height: 1.55; }
+.info .info-body p { margin: 0 0 6px; max-width: 62em; }
+.info .info-body p:last-child { margin-bottom: 0; }
+.info-row { display: flex; flex-wrap: wrap; gap: 4px 16px; align-items: flex-start; }
+.info-row .info[open] { flex-basis: 100%; }
+.monitor .info > summary { color: var(--mon-text); }
+.monitor .info .info-body { background: #13211D; color: var(--mon-text); border-left-color: #2A3D37; }
+.dia-bar .info { position: relative; margin: 0; }
+.dia-bar .info[open] .info-body { position: absolute; right: 0; top: calc(100% + 4px); z-index: 30; width: min(560px, calc(100vw - 32px)); box-shadow: 0 6px 20px rgba(0, 0, 0, 0.18); }
+@media (max-width: 640px) { .dia-bar .info > summary { font-size: 0; gap: 0; } .dia-bar .info > summary::before { font-size: 0.8rem; } .dia-bar .info > summary::after { display: none; } }

@@ -93,6 +93,10 @@ export const NORMAL = Object.freeze({
   // (s/mL) in series with the mitral orifice while the atrium empties (the ejection effect, Shroff 1983),
   // so that emptying flow is bounded by 1/laKej mL/s.
   laPiso: 0, laKej: 0,
+  // Mean pleural pressure relative to quiet spontaneous breathing, mmHg (0 = off). It adds to the pressure
+  // around the heart and the pulmonary vessels, so a positive value (positive-pressure ventilation) impedes
+  // venous return and a negative value (labored inspiration) raises LV transmural afterload.
+  ppl: 0,
   // Dynamic LVOT obstruction: the outflow orifice narrows as the LV empties below lvoto mL
   // during contraction (0 = off). Area runs from lvotAmax to lvotAmin (cm²) over a width lvotW mL.
   lvoto: 0, lvotW: 5, lvotAmax: 3.5, lvotAmin: 0.2,
@@ -233,10 +237,12 @@ function pressures(s, e, ea, p, ctx) {
   let Vspt = 0;
   if (p.septum) { Vspt = solveSeptum(s[0], s[3], e, p, ctx.spt, lvEes, rvEes); ctx.spt = Vspt; }
   const Ppcd = p.pericardium ? pericardialP(s[0] + s[3] + s[6] + s[7] + p.pcdFluid, p) : 0;
-  const Plv = wallP(s[0] - Vspt, e, lvEes, p.lvV0, p.lvA, p.lvBeta) + Ppcd;
-  const Prv = wallP(s[3] + Vspt, e, rvEes, p.rvV0, p.rvA, p.rvBeta) + Ppcd;
+  // mean pleural pressure (opt-in) surrounds the heart and the pulmonary vessels but not the systemic ones
+  const ppl = p.ppl || 0, Pth = Ppcd + ppl;
+  const Plv = wallP(s[0] - Vspt, e, lvEes, p.lvV0, p.lvA, p.lvBeta) + Pth;
+  const Prv = wallP(s[3] + Vspt, e, rvEes, p.rvV0, p.rvA, p.rvBeta) + Pth;
   const Psa = s[1] / p.cSys, Psv = s[2] / p.cSv;
-  const Ppa = s[4] / p.cPa, Ppv = s[5] / p.cPv;
+  const Ppa = s[4] / p.cPa + ppl, Ppv = s[5] / p.cPv + ppl;
   const Era = p.raEmin + ea * (p.raEmax - p.raEmin), Ela = p.laEmin + ea * (p.laEmax - p.laEmin);
   let VraE = s[6], VlaE = s[7];
   if (p.baseDescent) {
@@ -249,7 +255,7 @@ function pressures(s, e, ea, p, ctx) {
     const refR = ctx.vR0 + w * (ctx.vR0p - ctx.vR0), refL = ctx.vL0 + w * (ctx.vL0p - ctx.vL0);
     VraE -= p.baseAlpha * eB * (refR - s[3]);
     VlaE -= p.baseAlpha * eB * (refL - s[0]);
-    const gR = Prv - (Era * (VraE - p.raV0) + Ppcd), gL = Plv - (Ela * (VlaE - p.laV0) + Ppcd);
+    const gR = Prv - (Era * (VraE - p.raV0) + Pth), gL = Plv - (Ela * (VlaE - p.laV0) + Pth);
     // the bulge starts with ventricular contraction and gives way to the AV-plane descent once the
     // ventricle has ejected cFade mL, so the c wave is followed by the x descent
     const fE = Math.min(1, e / 0.05);
@@ -257,14 +263,14 @@ function pressures(s, e, ea, p, ctx) {
     if (gR > 0) VraE += fR * p.cBulge * gR / (gR + p.cP);
     if (gL > 0) VlaE += fL * p.cBulge * gL / (gL + p.cP);
   }
-  const Pra = Era * (VraE - p.raV0) + Ppcd;
+  const Pra = Era * (VraE - p.raV0) + Pth;
   let Pla, Rint = 0;
   if (p.laPiso > 0 || p.laKej > 0) {
     const st = VlaE - p.laV0, x = (p.laEmax - p.laEmin) * st;
     const act = ea * (p.laPiso > 0 && x > 0 ? p.laPiso * Math.tanh(x / p.laPiso) : x);
-    Pla = p.laEmin * st + act + Ppcd;
+    Pla = p.laEmin * st + act + Pth;
     if (p.laKej > 0 && act > 0) Rint = p.laKej * act;
-  } else Pla = Ela * (VlaE - p.laV0) + Ppcd;
+  } else Pla = Ela * (VlaE - p.laV0) + Pth;
   const Qao = valveFlow(Plv - Psa, p.zcAo, seriesArea(p.avArea, lvotArea(s[0], e, p)));   // aortic valve + Zc (+ stenotic or dynamic LVOT orifice)
   const Qar = leak(Psa - Plv, p.arEroa);                 // aortic regurgitation
   const Qmv = valveFlow(Pla - Plv, p.rMv + Rint, p.mvArea);   // mitral inflow (+ Bernoulli orifice when mvArea > 0)
@@ -557,7 +563,9 @@ export function simulate(params, opt = {}) {
   const rv = ventricleMetrics(rec.Vrv, rec.Prv, rec.Ppa, iEs, q.rvEes, q.rvV0, q.hr,
     { out: rec.Qpv, inBack: rec.Qtr }, dt);
   const RAP = mean(rec.Pra), LAP = mean(rec.Pla);
-  lv.tau = relaxationTau(rec.Plv, rec.t, iEs, lv.EDP);
+  // τ is fitted to transmural LV pressure, so a pleural pressure does not bias the zero-asymptote fit
+  const ppl = q.ppl || 0;
+  lv.tau = relaxationTau(ppl ? rec.Plv.map((x) => x - ppl) : rec.Plv, rec.t, iEs, lv.EDP - ppl);
   // LV filling during atrial systole (mitral flow while the atrium is active), as a share of SV
   let aFill = 0;
   for (let i = 0; i < rec.t.length; i++) if (rec.aAct[i] > 0.02) aFill += rec.Qmv[i] * dt;
