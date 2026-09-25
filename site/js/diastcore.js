@@ -53,7 +53,8 @@ export function mapSetFor(p) {
 /**
  * Parameters for a grade (or an individual) under a set of interventions.
  * cond: { vol: intravascular volume change, mL; svrX: afterload multiplier; recruit: mL moved into the
- *   stressed volume; sbt: spontaneous breathing trial; rhythm: 'sinus' | 'af'; afRate: /min }
+ *   stressed volume; breath: 'vent' | 'sbt' (ventilator or breathing trial; spontaneous otherwise);
+ *   ischemia: acute myocardial ischemia; rhythm: 'sinus' | 'af'; afRate: /min }
  */
 export function condParams(base, cond = {}) {
   const p = { ...NORMAL, ...base };
@@ -65,23 +66,32 @@ export function condParams(base, cond = {}) {
   // is the same state as baseline.
   if (cond.svrX) { q.svr = p.svr * cond.svrX; q.baro = 0; }
   if (cond.recruit) q.vStressed = (q.vStressed ?? p.vStressed) + cond.recruit;
-  if (cond.sbt) {
+  if (cond.breath === 'vent') q.ppl = VENT.ppl;
+  if (cond.breath === 'sbt') {
+    q.ppl = SBT.ppl;
     q.vStressed = (q.vStressed ?? p.vStressed) + SBT.recruit;
     q.svr = (q.svr ?? p.svr) * SBT.svrX; q.baro = 0; q.hr = SBT.hr; q.gHR = 0;
   }
+  if (cond.ischemia) { q.tau = p.tau * ISCHEMIA.tauX; q.lvEes = p.lvEes * ISCHEMIA.eesX; }
   // AF: no atrial contraction, and a ventricular rate fixed by the AV node (the reflex keeps its other arms)
   if (cond.rhythm === 'af') { q.aKick = 0; q.hr = cond.afRate ?? 110; q.gHR = 0; }
   return q;
 }
 
-// Spontaneous breathing trial after positive-pressure ventilation. Venous return rises as mean
-// intrathoracic pressure falls (Lemaire 1988: esophageal pressure from +5 to −2 mmHg), represented by
-// recruiting SBT.recruit mL into the stressed volume; sympathetic activation raises the sinus rate and
-// overrides the baroreflex; SVR falls as the respiratory muscles take a larger share of the output
-// (Lemaire 1988: cardiac index 3.2 to 4.3 L/min/m², blood pressure 77 to 90 mmHg, HR 97 to 112/min).
-// The rise in LV afterload from negative pleural pressure swings is not represented, because the
-// model has no pleural pressure.
-export const SBT = { recruit: 500, hr: 85, svrX: 0.8 };
+// Breathing. The reference (pleural pressure 0) is spontaneous breathing. Positive-pressure ventilation
+// raises mean pleural pressure by 7 mmHg (Lemaire 1988: mean esophageal pressure +5 mmHg on the ventilator,
+// −2 mmHg breathing spontaneously), which impedes venous return. A spontaneous breathing trial that is
+// failing brings labored inspiration, represented by a mean pleural pressure 4 mmHg below quiet breathing
+// (an illustrative value: the model has a mean pleural pressure and no respiratory cycle), so LV transmural
+// afterload rises and venous return increases; sympathetic activation raises the sinus rate, moves 200 mL
+// into the stressed volume by venoconstriction and overrides the baroreflex; SVR falls as the respiratory
+// muscles take a larger share of the output (Lemaire 1988: cardiac index 3.2 to 4.3 L/min/m², blood
+// pressure 77 to 90 mmHg, HR 97 to 112/min).
+export const VENT = { ppl: 7 };
+export const SBT = { ppl: -4, recruit: 200, hr: 85, svrX: 0.85 };
+// Acute myocardial ischemia: relaxation slows (coronary microembolization in dogs lengthened τ from 31 to
+// 49 ms, Steine 1999) and contractility falls (Ees × 0.85, an illustrative value).
+export const ISCHEMIA = { tauX: 1.6, eesX: 0.85 };
 
 // RR intervals in AF as multiples of the mean (as on the PA catheter page): irregularly irregular.
 export const AF_RR = [0.78, 1.21, 0.92, 1.34, 0.84, 1.07, 0.72, 1.16, 0.95, 1.27, 0.81, 1.02];
@@ -224,6 +234,11 @@ export function readout(sol) {
     atrialFill: h.atrialFill, echo: e,
   };
   if (avg) Object.assign(o, avg);
+  // With a pleural pressure, intrathoracic pressures are reported transmural (relative to pleural pressure),
+  // the pressure that distends the chambers and drives filtration in the lung.
+  const ppl = r.params.ppl || 0;
+  if (ppl) for (const k of ['LAP', 'EDP', 'mPAP', 'PASP', 'RAP']) o[k] -= ppl;
+  o.ppl = ppl;
   return o;
 }
 
