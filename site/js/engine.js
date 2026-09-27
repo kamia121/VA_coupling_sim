@@ -93,6 +93,9 @@ export const NORMAL = Object.freeze({
   // (s/mL) in series with the mitral orifice while the atrium empties (the ejection effect, Shroff 1983),
   // so that emptying flow is bounded by 1/laKej mL/s.
   laPiso: 0, laKej: 0,
+  // pvSleeve: the venoatrial junction resistance rises by this factor times atrial activation, so less
+  // of the atrial stroke is ejected back into the pulmonary veins (0 = off).
+  pvSleeve: 0,
   // Mean pleural pressure relative to quiet spontaneous breathing, mmHg (0 = off). It adds to the pressure
   // around the heart and the pulmonary vessels, so a positive value (positive-pressure ventilation) impedes
   // venous return and a negative value (labored inspiration) raises LV transmural afterload.
@@ -282,7 +285,8 @@ function pressures(s, e, ea, p, ctx) {
   const Qsys = (Psa - Psv) / p.svr;
   const Qpul = (Ppa - Ppv) / p.pvr;
   const Qra = (Psv - Pra) / p.rSvRa;                     // venae cavae → RA (can reverse during atrial systole)
-  const Qla = (Ppv - Pla) / p.rPvLa;                     // pulmonary veins → LA
+  const rPv = p.rPvLa * (1 + (p.pvSleeve || 0) * ea);   // venoatrial junction, narrowed by atrial contraction
+  const Qla = (Ppv - Pla) / rPv;                         // pulmonary veins → LA
   return { Plv, Prv, Psa, Psv, Ppa, Ppv, Pra, Pla, Ppcd, Vspt, Qao, Qar, Qmv, Qmr, Qpv, Qtv, Qtr, Qsys, Qpul, Qra, Qla };
 }
 
@@ -313,7 +317,7 @@ function initialState(p) {
 }
 
 const REC_KEYS = ['t', 'Vlv', 'Plv', 'Pao', 'Vrv', 'Prv', 'Ppa', 'Psv', 'Ppv', 'Pra', 'Pla', 'Vla', 'Vra',
-  'Qao', 'Qar', 'Qpv', 'Qmv', 'Qmr', 'Qtv', 'Qtr', 'aAct', 'eAct', 'Ppcd', 'Vspt'];
+  'Qao', 'Qar', 'Qpv', 'Qmv', 'Qmr', 'Qtv', 'Qtr', 'aAct', 'eAct', 'Ppcd', 'Vspt', 'Qla'];
 
 // One beat. Always accumulates the per-beat quantities the slow controllers need;
 // records every sample when `record` is set.
@@ -352,7 +356,7 @@ function simulateBeat(s0, p, act, T, dt, record, ctx) {
       rec.Pra.push(q.Pra); rec.Pla.push(q.Pla); rec.Vra.push(s[6]); rec.Vla.push(s[7]);
       rec.Qao.push(q.Qao); rec.Qar.push(q.Qar); rec.Qpv.push(q.Qpv);
       rec.Qmv.push(q.Qmv); rec.Qmr.push(q.Qmr); rec.Qtv.push(q.Qtv); rec.Qtr.push(q.Qtr);
-      rec.aAct.push(a0); rec.eAct.push(e0); rec.Ppcd.push(q.Ppcd); rec.Vspt.push(q.Vspt);
+      rec.aAct.push(a0); rec.eAct.push(e0); rec.Ppcd.push(q.Ppcd); rec.Vspt.push(q.Vspt); rec.Qla.push(q.Qla);
     }
     const e2 = act.e(t + dt / 2), e3 = act.e(t + dt);
     const a2 = act.a(t + dt / 2), a3 = act.a(t + dt);

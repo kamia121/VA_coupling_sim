@@ -91,7 +91,7 @@ export const QUESTIONS = [
   },
   {
     id: 'sbt', topic: 'Extubation', setup: { g: 1, breath: 'sbt' },
-    prompt: 'During positive-pressure ventilation, a patient has a mitral E/A of 0.53, a lateral E/e′ of 8.2 and a transmural LA pressure of 5 mmHg, a grade I pattern. What happens during a spontaneous breathing trial?',
+    prompt: 'During positive-pressure ventilation, a patient has a mitral E/A of 0.57, a lateral E/e′ of 8.6 and a transmural LA pressure of 5 mmHg, a grade I pattern. What happens during a spontaneous breathing trial?',
     choices: [['normal', 'Mean LA pressure stays normal, as the grade I pattern predicted'], ['pseudo', 'Mean LA pressure rises and E/A rises into the pseudonormal range'], ['hidden', 'Mean LA pressure rises by more than 5 mmHg while E/A stays below 0.8']],
     run() {
       const a = state(1, { breath: 'vent' }), b = state(1, { breath: 'sbt' }), c = state(2, { breath: 'vent' }), d = state(2, { breath: 'sbt' }), dl = b.LAP - a.LAP;

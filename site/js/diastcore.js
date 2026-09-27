@@ -19,25 +19,29 @@ const LA_SCALE = 0.6;            // echo LA volume per model LA volume (the mode
 // arterial stiffening and, in the late grades, pulmonary vascular disease.
 // The LA contracts with a length–tension plateau and a force–velocity limit (engine laPiso, laKej) in
 // every grade, so that a stretched atrium neither develops unbounded pressure nor empties at an
-// unbounded rate; laEmax sets the ascending limb and was refitted to each grade's A wave.
-const ATRIUM = { laPiso: 80, laKej: 0.0015 };
-const G1 = { ...ATRIUM, tau: 0.065, lvBeta: 0.033, lvA: 0.24, lvEes: 2.8, lvMass: 1.2, laV0: 16, laEmax: 7.6, laEmin: 0.2,
+// unbounded rate; laEmax sets the ascending limb and was refitted to each grade's A wave. Atrial
+// contraction lasts 140 ms and so ends 10 ms after the QRS, and the venoatrial junction narrows as the
+// atrium contracts (pvSleeve), which limits reflux into the pulmonary veins. AV-plane descent
+// (baseAlpha) is reduced in grades III and IV, whose long-axis systolic motion is smaller; both shape
+// pulmonary venous S and D waves.
+const ATRIUM = { laPiso: 80, laKej: 0.0015, pvSleeve: 3, aDur: 0.14 };
+const G1 = { ...ATRIUM, tau: 0.065, lvBeta: 0.033, lvA: 0.24, lvEes: 2.8, lvMass: 1.2, laV0: 16, laEmax: 3.0, laEmin: 0.2,
   vStressed: 650, svr: 1.15, cSys: 1.0 };
 export const GRADES = [
-  { id: 0, key: 'g0', roman: '0', label: 'Normal diastolic function', short: 'Normal', params: { ...ATRIUM, mvArea: MV_AREA, laEmax: 2.9 },
+  { id: 0, key: 'g0', roman: '0', label: 'Normal diastolic function', short: 'Normal', params: { ...ATRIUM, mvArea: MV_AREA, laEmax: 1.6 },
     text: 'Relaxation and chamber stiffness are normal. Most LV filling occurs in early diastole, driven by the suction gradient of relaxation, so that E exceeds A and lateral e′ is normal.' },
   { id: 1, key: 'g1', roman: 'I', label: 'Grade I: impaired relaxation', short: 'Grade I', params: { ...G1, mvArea: MV_AREA },
     text: 'Impaired relaxation at a normal filling pressure. With τ near 70 ms, LV pressure is still falling at mitral valve opening, the early transmitral gradient narrows and E declines, while a stronger atrial kick raises A; E/A falls below 0.8 and the deceleration time lengthens. Mean LA pressure remains normal at rest.' },
   { id: 2, key: 'g2', roman: 'II', label: 'Grade II: pseudonormal', short: 'Grade II',
-    params: { ...G1, mvArea: MV_AREA, tau: 0.068, lvBeta: 0.04, lvA: 0.27, lvEes: 3.1, lvMass: 1.35, laV0: 50, laEmax: 1.9, laEmin: 0.34,
+    params: { ...G1, mvArea: MV_AREA, tau: 0.068, lvBeta: 0.038, lvA: 0.27, lvEes: 3.1, lvMass: 1.35, laV0: 50, laEmax: 1.2, laEmin: 0.34,
       vStressed: 950, svr: 1.25, cSys: 0.85, pvr: 0.06 },
     text: 'The pseudonormal pattern. Relaxation remains slow and chamber stiffness has increased, but a raised mean LA pressure restores the early transmitral gradient and returns E/A to the normal range. The relatively preload-independent indices stay abnormal: e′ is low, E/e′ is raised and the LA is enlarged. Preload reduction uncovers the impaired relaxation pattern.' },
   { id: 3, key: 'g3', roman: 'III', label: 'Grade III: restrictive, reversible', short: 'Grade III',
-    params: { ...G1, mvArea: MV_AREA, tau: 0.068, lvBeta: 0.055, lvA: 0.3, lvEes: 3.2, lvMass: 1.45, laV0: 75, laEmax: 1.08, laEmin: 0.4,
+    params: { ...G1, mvArea: MV_AREA, tau: 0.068, lvBeta: 0.055, lvA: 0.3, lvEes: 3.2, lvMass: 1.45, laV0: 75, laEmax: 0.79, laEmin: 0.4, baseAlpha: 0.15,
       vStressed: 1000, svr: 1.3, cSys: 0.8, pvr: 0.09, cPa: 2.6 },
     text: 'Reversible restrictive filling. A stiff LV fills from a stiff atrium at high pressure, so that E is tall with a short deceleration time, and the atrial kick contributes little against a full, stiff ventricle. Preload reduction returns the pattern toward pseudonormal.' },
   { id: 4, key: 'g4', roman: 'IV', label: 'Grade IV: restrictive, fixed', short: 'Grade IV',
-    params: { ...G1, mvArea: MV_AREA, tau: 0.07, lvBeta: 0.065, lvA: 0.34, lvEes: 3.2, lvMass: 1.5, laV0: 80, laEmax: 0.7, laEmin: 0.5,
+    params: { ...G1, mvArea: MV_AREA, tau: 0.07, lvBeta: 0.068, lvA: 0.34, lvEes: 3.2, lvMass: 1.5, laV0: 80, laEmax: 0.63, laEmin: 0.5, baseAlpha: 0.1,
       vStressed: 1110, svr: 1.3, cSys: 0.8, pvr: 0.14, cPa: 2.0, rvEes: 0.6, rvMass: 1.3, hr: 78 },
     text: 'Fixed restrictive filling. Chamber stiffness is high enough that the restrictive pattern persists after preload reduction. Mean LA pressure is high at rest, retrograde transmission of that pressure has produced pulmonary hypertension, and the atrial kick contributes little. Of the five grades, this one has the narrowest volume window.' },
 ];
@@ -167,11 +171,14 @@ export function echo(r) {
   // A may start before E has fallen to 40%; the slope is then fitted to the part before A, and DT
   // is not measured if E has not fallen below 70% (E and A fused, as at fast rates)
   const DT = Qmv[i4] > 0.7 * E || !(slope > 0) ? NaN : (Qmv[i9] / slope + (i9 - iE) * dt) * 1000;
+  // S: peak pulmonary venous inflow from the QRS to mitral valve opening (ventricular systole and
+  // isovolumic relaxation); D: peak inflow after mitral valve opening (inflow reverses during atrial
+  // contraction, so the atrial reversal cannot be taken for D, and a D wave fused with A is still measured)
   let S = 0, D = 0;
-  const tS = r.tEs + 0.12;
+  const iSD = iMVO >= 0 ? iMVO : Math.round((r.tEs + 0.12) / dt);
   for (let i = 0; i < n; i++) {
-    const q = (Ppv[i] - Pla[i]) / pr.rPvLa;
-    if (t[i] < tS) { if (q > S) S = q; } else if (aAct[i] < 0.02 && q > D) D = q;
+    const q = r.rec.Qla[i];
+    if (i < iSD) { if (q > S) S = q; } else if (q > D) D = q;
   }
   let rvra = 0;
   for (let i = 0; i < n; i++) rvra = Math.max(rvra, Prv[i] - Pra[i]);
@@ -183,7 +190,7 @@ export function echo(r) {
     IVRT: iAVC >= 0 && iMVO >= 0 ? (iMVO - iAVC) * dt * 1000 : NaN,
     ep, ap: 9 * aVol / AVOL_N, Eep: Ev / ep,
     LAVI: LA_SCALE * Math.max(...Vla) / BSA,
-    TRv: Math.sqrt(Math.max(0, rvra) / 4), SD: D > 0 ? S / D : Infinity,
+    TRv: Math.sqrt(Math.max(0, rvra) / 4), SD: D > 0 ? S / D : Infinity, S, D,
     pcwpNagueh: 1.24 * (Ev / ep) + 1.9,        // Nagueh 1997 regression, PCWP = 1.24·E/Ea + 1.9
     tauMs,
   };
@@ -224,7 +231,8 @@ export function readout(sol) {
     const all = beats.map(echo).filter((x) => x.E > 1);
     const m = (k) => { const v = all.map((x) => x[k]).filter(Number.isFinite); return v.length ? v.reduce((a, b) => a + b, 0) / v.length : NaN; };
     e = { ...all[0] };
-    for (const k of ['E', 'A', 'DT', 'IVRT', 'ep', 'ap', 'LAVI', 'TRv', 'SD', 'tauMs']) e[k] = m(k);
+    for (const k of ['E', 'A', 'DT', 'IVRT', 'ep', 'ap', 'LAVI', 'TRv', 'S', 'D', 'tauMs']) e[k] = m(k);
+    e.SD = e.S / e.D;   // ratio of the mean waves; a mean of beat-by-beat ratios is dominated by short cycles
     e.EA = Infinity; e.Eep = e.E / e.ep; e.pcwpNagueh = 1.24 * e.Eep + 1.9; e.grade = null;
     e.lapHigh = [e.Eep > CUT.Eep, e.TRv > CUT.TR, e.LAVI > CUT.LAVI].filter(Boolean).length >= 2;
   } else e = echo(r);
