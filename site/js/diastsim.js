@@ -230,11 +230,11 @@ function drawTDI() {
   if (st.rhythm !== 'af') { const iA = peakIdx(s.v, Math.round(n0 * 0.8), n0, -1); if (iA >= 0 && s.v[iA] < -1) mark(g, x0 + iA, yb - s.v[iA] * px, 'a′', false); }
 }
 // Pulmonary venous flow into the LA: systolic (S) and diastolic (D) forward waves, atrial reversal (Ar).
-const PV_AREA = (() => { let m = 0; const r = NORM; for (let i = 0; i < r.rec.t.length; i++) m = Math.max(m, (r.rec.Ppv[i] - r.rec.Pla[i]) / r.params.rPvLa); return m / 55; })();
+const PV_AREA = (() => { let m = 0; const r = NORM; for (let i = 0; i < r.rec.t.length; i++) m = Math.max(m, r.rec.Qla[i]); return m / 55; })();
 function drawPV() {
   const { g, w, h } = screen('scr-pv');
   const x0 = 40, pw = w - x0 - 10, top = 26, yb = top + (h - 70) * 0.72, vmax = 80, px = (yb - top) / vmax;
-  const sw = sweep(), s = sample(sw, pw, (b, i) => (b.rec.Ppv[i] - b.rec.Pla[i]) / b.params.rPvLa / PV_AREA);
+  const sw = sweep(), s = sample(sw, pw, (b, i) => b.rec.Qla[i] / PV_AREA);
   axes(g, x0, pw, yb, px, -20, vmax, 20, 'Pulmonary vein, PW (cm/s)');
   spectrum(g, x0, pw, yb, px, s.v.map((v) => Math.max(-40, Math.min(vmax, v))));
   ecgRow(g, x0, pw, h - 14, s);
@@ -258,7 +258,7 @@ function echoTable() {
     ['Lateral E/e′', f1(e.Eep), e.Eep > CUT.Eep ? `> ${CUT.Eep}` : null],
     ['Peak TR velocity', `${f2(e.TRv)} m/s`, e.TRv > CUT.TR ? `> ${CUT.TR}` : null],
     ['LA volume index', `${f0(e.LAVI)} mL/m²`, e.LAVI > CUT.LAVI ? `> ${CUT.LAVI}` : null],
-    ['Pulmonary vein S/D', f2(e.SD), e.SD < 1 ? '< 1' : null],
+    ['Pulmonary vein S/D', e.SD > 4 ? 'D wave absent' : f2(e.SD), e.SD < 1 ? '< 1' : null],
   ];
   const why = af ? 'In AF the pattern cannot be graded' : 'With E and A merged into one wave, the pattern cannot be graded by E/A';
   const verdict = af || e.merged
