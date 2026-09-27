@@ -2,7 +2,7 @@
 // every number quoted on diastolic.html, and that the shipped cohort data match the code.
 // Run with: node tests/diastolic.test.mjs
 import { simulate } from '../site/js/engine.js';
-import { GRADES, solveCond, readout, protocol, tolerance, gradeFromEcho, CUT, SBT, CONSEQ } from '../site/js/diastcore.js';
+import { GRADES, solveCond, readout, protocol, tolerance, gradeFromEcho, CUT, SBT, VENT, ISCHEMIA, CONSEQ } from '../site/js/diastcore.js';
 import { COHORT } from '../site/js/diastdata.js';
 import { QUESTIONS } from '../site/js/diastquiz.js';
 import { consequences } from '../site/js/diastcore.js';
@@ -22,8 +22,8 @@ const f2 = (v) => v.toFixed(2);
 // ---------- engine: the mitral orifice is opt-in ----------
 const n0 = simulate({}), nA = simulate({ mvArea: 0 });
 check('mvArea 0 (default) leaves the engine unchanged', Math.abs(n0.hemo.CO - nA.hemo.CO) < 1e-12 && Math.abs(n0.hemo.LAP - nA.hemo.LAP) < 1e-12);
-const nL = simulate({ laPiso: 0, laKej: 0 });
-check('laPiso and laKej 0 (default) leave the engine unchanged', Math.abs(n0.hemo.CO - nL.hemo.CO) < 1e-12 && Math.abs(n0.hemo.LAP - nL.hemo.LAP) < 1e-12);
+const nL = simulate({ laPiso: 0, laKej: 0, ppl: 0 });
+check('laPiso, laKej and ppl 0 (default) leave the engine unchanged', Math.abs(n0.hemo.CO - nL.hemo.CO) < 1e-12 && Math.abs(n0.hemo.LAP - nL.hemo.LAP) < 1e-12);
 
 // ---------- each grade as found ----------
 const O = GRADES.map((g) => readout(solveCond(g.params, {})));
@@ -160,22 +160,32 @@ check('grades III–IV sit in the cold, wet subset at rest (stated in the limits
 // ---------- atrial contraction limits, E–A fusion and the breathing trial ----------
 {
   const lin = { ...GRADES[1].params, laPiso: 0, laKej: 0, laEmax: 2.0 };   // the linear atrium the limits replaced
-  const s1 = readout(solveCond(GRADES[1].params, { sbt: true })), s1lin = readout(solveCond(lin, { sbt: true }));
-  const s2 = readout(solveCond(GRADES[2].params, { sbt: true })), v1 = readout(solveCond(GRADES[1].params, { vol: 1000 }));
+  const s1 = readout(solveCond(GRADES[1].params, { breath: 'sbt' })), s1lin = readout(solveCond(lin, { breath: 'sbt' }));
+  const s2 = readout(solveCond(GRADES[2].params, { breath: 'sbt' })), v1 = readout(solveCond(GRADES[1].params, { vol: 1000 }));
   q('README: grade I A in the breathing trial', s1.echo.A, 124, 0.6);
-  q('limitations: linear atrium, grade I A in the breathing trial', s1lin.echo.A, 167, 0.6);
+  q('limitations: linear atrium, grade I A in the breathing trial', s1lin.echo.A, 164, 0.6);
   check('limits: 1 L raises grade I E/A more than the linear atrium does', v1.echo.EA > readout(solveCond(lin, { vol: 1000 })).echo.EA + 0.05);
   // the LA a wave is kept: pressure rise during atrial systole (onset of the late-diastolic activation block to its peak)
   const aw = (r) => { const { aAct, Pla } = r.rec, n = aAct.length; let on = n - 1; while (on > 0 && aAct[on - 1] > 0.02) on--; let off = 0; while (aAct[off] > 0.02) off++;
     let pk = -Infinity; for (let k = on; k < n; k++) pk = Math.max(pk, Pla[k]); for (let k = 0; k < off; k++) pk = Math.max(pk, Pla[k]); return pk - Pla[on]; };
-  check('limits: LA a wave of 5 mmHg or more in grade I, as found and in the breathing trial', aw(solveCond(GRADES[1].params).r) > 5 && aw(solveCond(GRADES[1].params, { sbt: true }).r) > 5);
-  // breathing trial (text of diastolic.html and the sbt question)
-  q('extubation: trial recruitment (mL)', SBT.recruit, 500, 0); q('extubation: trial rate', SBT.hr, 85, 0); q('extubation: SVR fall (%)', (1 - SBT.svrX) * 100, 20, 1e-9);
-  q('extubation: grade I rate as found', O[1].HR, 70, 0.5); q('extubation: grade I E/A as found', e[1].EA, 0.70, 0.006); q('extubation: grade I LAP as found', O[1].LAP, 8, 0.5);
-  q('extubation: grade I LAP in the trial', s1.LAP, 16, 0.5); q('extubation: grade II LAP as found', O[2].LAP, 16, 0.5); q('extubation: grade II LAP in the trial', s2.LAP, 25, 0.5);
+  check('limits: LA a wave of 5 mmHg or more in grade I, as found and in the breathing trial', aw(solveCond(GRADES[1].params).r) > 5 && aw(solveCond(GRADES[1].params, { breath: 'sbt' }).r) > 5);
+  // ventilator and breathing trial (text of diastolic.html and the sbt question)
+  const v1v = readout(solveCond(GRADES[1].params, { breath: 'vent' })), v2v = readout(solveCond(GRADES[2].params, { breath: 'vent' }));
+  const s2i = readout(solveCond(GRADES[2].params, { breath: 'sbt', ischemia: true }));
+  q('extubation: ventilator pleural pressure', VENT.ppl, 7, 0); q('extubation: trial pleural pressure', SBT.ppl, -4, 0);
+  q('extubation: trial rate', SBT.hr, 85, 0); q('extubation: trial venoconstriction (mL)', SBT.recruit, 200, 0); q('extubation: SVR fall (%)', (1 - SBT.svrX) * 100, 15, 1e-9);
+  q('extubation: ischemia τ factor', ISCHEMIA.tauX, 1.6, 0); q('extubation: ischemia Ees fall (%)', (1 - ISCHEMIA.eesX) * 100, 15, 1e-9);
+  q('extubation: grade I E/A on the ventilator', v1v.echo.EA, 0.53, 0.006); q('extubation: grade I E/e′ on the ventilator', v1v.echo.Eep, 8.2, 0.06);
+  q('extubation: grade I LAP on the ventilator', v1v.LAP, 5, 0.5); q('extubation: grade I LAP in the trial', s1.LAP, 14, 0.5);
+  q('extubation: grade II LAP on the ventilator', v2v.LAP, 11, 0.5); q('extubation: grade II LAP in the trial', s2.LAP, 23, 0.5);
+  q('extubation: grade II LAP in the trial with ischemia', s2i.LAP, 25, 0.5);
+  check('extubation: ischemia merges E and A in grade II during the trial', s2i.echo.merged);
+  check('extubation: both classified grade I on the ventilator', v1v.echo.grade === 1 && v2v.echo.grade === 1);
   check('extubation: grade II passes the congestion threshold in the trial', s2.LAP > CONSEQ.wet);
   check('extubation: grade I E/A stays below 0.8, with fusion (not merged)', s1.echo.EA < CUT.EA_low && s1.echo.fused && !s1.echo.merged, `${f2(s1.echo.EA)}, ${s1.echo.EatA.toFixed(0)} cm/s`);
-  check('extubation: E/e′ rises with LA pressure in grade I', s1.echo.Eep > e[1].Eep + 3);
+  check('pleural pressure: LAP reported transmural (ventilator lowers transmural LAP in grade I)', v1v.LAP < O[1].LAP - 2);
+  check('pleural pressure: τ fit unchanged by the ventilator', Math.abs(v1v.echo.tauMs - e[1].tauMs) < 2, `${v1v.echo.tauMs.toFixed(1)} vs ${e[1].tauMs.toFixed(1)}`);
+  check('extubation: E/e′ rises with LA pressure in grade I', s1.echo.Eep > v1v.echo.Eep + 3);
   // a single merged wave is not graded by E/A
   const m = readout(solveCond(GRADES[1].params, { vol: -1000 })).echo;
   check('fusion: grade I after 1 L removed has merged E and A, E/A not measured, not graded', m.merged && Number.isNaN(m.EA) && m.grade === null);

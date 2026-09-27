@@ -26,6 +26,8 @@
       <span class="k">Grade</span>
       <span class="seg speed" id="grades" role="group" aria-label="Grade of diastolic dysfunction"></span>
       <span class="dia-cond" id="cond-sum" aria-live="polite"></span>
+      <details class="info"><summary>About these values</summary><div class="info-body"><p>Each tile gives a model value for the patient in the current state, and beneath it the change from the patient as found. A tile outlined in red is outside the usual range: mean arterial pressure below 65 mmHg, mean LA pressure above 18 mmHg, LVEDP above 16 mmHg, mean PA pressure above 20 mmHg or RA pressure above 12 mmHg. LA, LV, PA and RA pressures are transmural, measured against pleural pressure; the distinction matters only when the ventilator or the breathing trial is selected.</p>
+        <p>The chips beneath the tiles give the bedside consequences of those values. The Forrester subset combines cardiac index, low below 2.2 L/min/m² (cold), with PAWP, high above 18 mmHg (wet). The lungs are congested above a PAWP of 18 mmHg and in the range of alveolar edema above 25 mmHg. The systemic veins are congested with an RA pressure above 12 mmHg. Pulmonary hypertension is a mean PA pressure above 20 mmHg and is post-capillary when PAWP exceeds 15 mmHg.</p></div></details>
     </div>
     <div class="tiles dia-tiles" id="tiles" aria-live="polite"></div>
     <div class="dia-conseq" id="conseq" aria-live="polite"></div>
@@ -41,6 +43,14 @@
           <canvas id="scr-pv" role="img" aria-label="Pulmonary venous pulsed-wave Doppler with S, D and atrial reversal waves"></canvas>
         </div>
         <p class="hint-line">Mitral and pulmonary venous velocities are model flows divided by an orifice area. Tissue Doppler timing comes from the model, and the <b>e′</b> amplitude is scaled from the fitted relaxation time constant (<a href="diastolic.html#limits" target="vac-dia-text" style="color:inherit">limitations</a>).</p>
+        <div class="info-row">
+        <details class="info"><summary>Mitral inflow</summary><div class="info-body"><p>Pulsed-wave Doppler at the tips of the mitral leaflets records the velocity of blood entering the LV, plotted above the baseline over successive beats, with the ECG beneath. The E wave is early filling. Its height follows the transmitral gradient at mitral valve opening, which rises with LA pressure and falls as LV relaxation slows. The A wave is filling by atrial contraction.</p>
+          <p>Slow relaxation lowers E and shifts filling to the atrial kick, so E/A falls below 0.8 (impaired relaxation). A raised LA pressure restores the early gradient and returns E/A to the normal range (pseudonormal). A stiff ventricle fills rapidly and briefly, so E is tall with a short deceleration time and A is small (restrictive). At fast heart rates the atrium contracts before early inflow has stopped; residual early flow then adds to A, and when inflow never decelerates between the two, a single wave is labeled E+A.</p></div></details>
+        <details class="info"><summary>Tissue Doppler</summary><div class="info-body"><p>Tissue Doppler at the lateral mitral annulus records the velocity of the myocardium rather than of blood. The annulus moves toward the apex in systole (s′, above the baseline) and back toward the atrium in early diastole (e′) and during atrial contraction (a′), both below the baseline.</p>
+          <p>e′ follows the rate of LV relaxation and changes relatively little with preload, so it stays low in every grade of dysfunction while mitral E rises and falls with LA pressure. The ratio E/e′ therefore rises with filling pressure. In the model, e′ is scaled from the fitted relaxation time constant τ and does not change with volume, which overstates its preload independence.</p></div></details>
+        <details class="info"><summary>Pulmonary venous flow</summary><div class="info-body"><p>Pulsed-wave Doppler in a pulmonary vein records flow into the LA. The systolic wave (S) occurs during ventricular systole, as the atrium relaxes and the AV plane descends. The diastolic wave (D) follows mitral valve opening and mirrors mitral E. Atrial reversal (Ar), below the baseline, is blood pushed back into the veins by atrial contraction.</p>
+          <p>As LA pressure rises and the atrium stiffens, systolic inflow falls relative to diastolic inflow, and S/D drops below 1. A large atrial reversal reflects atrial contraction into a full, stiff ventricle. The model's S wave is larger than in patients, so S/D is higher than clinical values in grades 0 to III.</p></div></details>
+        </div>
       </section>
     </div>
     <div class="side-col">
@@ -60,7 +70,10 @@
           <div class="hint">A change in afterload is simulated with the baroreflex open, as in a hypertensive crisis.</div>
         </div>
         <label class="status"><input type="checkbox" id="surge"> Sympathetic surge: venoconstriction moves 200 mL into the stressed volume</label>
-        <label class="status"><input type="checkbox" id="sbt"> <span id="sbt-t">Spontaneous breathing trial</span></label>
+        <p class="k" style="margin:10px 0 4px">Breathing</p>
+        <div class="seg" id="breath" role="group" aria-label="Breathing"><button type="button" data-v="spont" aria-pressed="true">Spontaneous</button><button type="button" data-v="vent" aria-pressed="false">Ventilator</button><button type="button" data-v="sbt" aria-pressed="false">Breathing trial</button></div>
+        <div class="hint" id="breath-t"></div>
+        <label class="status"><input type="checkbox" id="isch"> <span id="isch-t">Myocardial ischemia</span></label>
         <p class="k" style="margin:10px 0 4px">Rhythm</p>
         <div class="seg" id="rhythm" role="group" aria-label="Rhythm"><button type="button" data-v="sinus" aria-pressed="true">Sinus</button><button type="button" data-v="af" aria-pressed="false">Atrial fibrillation</button></div>
         <div class="slider" id="af-row" hidden>
@@ -73,10 +86,14 @@
         <h2>Echo measurements</h2>
         <div id="echo-table"></div>
         <p class="status">An asterisk marks a value beyond the ASE/EACVI 2016 cutoff <cite data-ref="nagueh2016"></cite>, applied to lateral e′ and lateral E/e′ because the model has a single e′.</p>
+        <details class="info"><summary>What this shows</summary><div class="info-body"><p>These are the indices of the ASE/EACVI 2016 algorithm, measured from the model echocardiogram. E/A and deceleration time come from the mitral inflow, e′ and E/e′ from tissue Doppler, peak TR velocity from the RV–RA systolic gradient, and LA volume index from the largest LA volume of the beat.</p>
+          <p>An E/A of 0.8 or less with E of 50 cm/s or less indicates impaired relaxation with normal LA pressure, and an E/A of 2 or more indicates restrictive filling. Between those limits, two or more of E/e′ above 13, TR velocity above 2.8 m/s and LA volume index above 34 mL/m² indicate a raised LA pressure. An E velocity at A onset above 20 cm/s means that A includes residual early inflow. The PAWP estimate applies the Nagueh regression to E/e′, and the model's mean LA pressure beneath it is the quantity these indices estimate.</p></div></details>
       </section>
       <figure class="monitor fig">
         <svg id="pv"></svg>
         <figcaption>LV pressure–volume loop after the intervention (green), before it (dashed navy) and in the normal ventricle (gray). Dotted curves are the chamber EDPVR of the current grade and of the normal ventricle.</figcaption>
+        <details class="info"><summary>What this shows</summary><div class="info-body"><p>Each loop traces LV pressure against LV volume through one beat. Filling runs along the bottom from mitral valve opening to end-diastole at the lower right corner, isovolumic contraction rises at constant volume, ejection runs across the top toward smaller volumes, and isovolumic relaxation falls back to the start.</p>
+          <p>The dotted EDPVR gives the pressure the relaxed ventricle reaches at each volume, and the end-diastolic point lies on it. The steeper the EDPVR, the more pressure each milliliter of filling costs, which is why the same volume raises LVEDP more in the late grades. Volume loading moves the loop to the right and the end-diastolic point up the EDPVR. A rise in afterload makes the loop taller and narrower and leaves a larger end-systolic volume.</p></div></details>
       </figure>
     </div>
   </div>
@@ -85,22 +102,30 @@
   <p class="status">Forty patients per grade. Lines are medians and bands interquartile ranges; hovering over a chart shows the values at each step.</p>
   <div class="dia-grid">
     <figure class="plot-card"><h3>Fluid and diuresis: LA pressure</h3><div class="legend g-legend"></div><svg id="c-lap-vol"></svg>
-      <figcaption>Dashed line, PAWP 18 mmHg, above which the patient is classified as congested <cite data-ref="forrester1976"></cite>.</figcaption></figure>
+      <figcaption>Dashed line, PAWP 18 mmHg, above which the patient is classified as congested <cite data-ref="forrester1976"></cite>.</figcaption>
+      <details class="info"><summary>What this shows</summary><div class="info-body"><p>Mean LA pressure of the 40 patients of each grade after an intravascular volume change from 2 L removed to 2 L given, as the median (line) and interquartile range (band). The slope of each curve is the rise in LA pressure per liter, which grows with LV chamber stiffness. The volume at which a curve crosses the dashed line is the volume that makes the median patient of that grade congested.</p></div></details></figure>
     <figure class="plot-card"><h3>Fluid and diuresis: cardiac output</h3><div class="legend g-legend"></div><svg id="c-co-vol"></svg>
-      <figcaption>Intravascular volume at the end of a rapid infusion or removed by diuresis; 40% of each milliliter changes the stressed volume.</figcaption></figure>
+      <figcaption>Intravascular volume at the end of a rapid infusion or removed by diuresis; 40% of each milliliter changes the stressed volume.</figcaption>
+      <details class="info"><summary>What this shows</summary><div class="info-body"><p>Cardiac output against the same volume change. A rising curve means that the ventricle responds to preload. A flat curve means that added volume no longer raises stroke volume, the plateau of the Frank–Starling relation. Where output has flattened while LA pressure in the chart beside it keeps rising, fluid raises filling pressure without raising cardiac output.</p></div></details></figure>
   </div>
   <figure class="plot-card"><h3>Volume window</h3><svg id="c-window"></svg>
-    <figcaption>Range of intravascular volume change over which mean LA pressure stays below 18 mmHg and cardiac output stays within 10% of its plateau. Thin lines are individual patients, thick lines the grade medians, and zero the patient at baseline.</figcaption></figure>
+    <figcaption>Range of intravascular volume change over which mean LA pressure stays below 18 mmHg and cardiac output stays within 10% of its plateau. Thin lines are individual patients, thick lines the grade medians, and zero the patient at baseline.</figcaption>
+    <details class="info"><summary>What this shows</summary><div class="info-body"><p>Each bar spans the volume change, from removal (left of zero) to loading (right of zero), over which the patient is neither congested, with mean LA pressure below 18 mmHg, nor underfilled, with cardiac output within 10% of its plateau. A wide bar that straddles zero describes a patient who tolerates both fluid and diuresis. A bar that lies entirely left of zero belongs to a patient who must lose volume to leave congestion, and a missing bar means that no volume meets both conditions.</p></div></details></figure>
   <div class="dia-grid">
-    <figure class="plot-card"><h3>Afterload: LA pressure</h3><div class="legend g-legend"></div><svg id="c-lap-svr"></svg></figure>
-    <figure class="plot-card"><h3>Afterload: stroke volume</h3><div class="legend g-legend"></div><svg id="c-sv-svr"></svg></figure>
+    <figure class="plot-card"><h3>Afterload: LA pressure</h3><div class="legend g-legend"></div><svg id="c-lap-svr"></svg>
+      <details class="info"><summary>What this shows</summary><div class="info-body"><p>Mean LA pressure as SVR is changed from 0.7 to 1.75 times baseline with the baroreflex open. A higher SVR leaves a larger LV end-systolic volume, and in a stiff ventricle that residual volume raises the next end-diastolic pressure. With no change in venous tone, the rise is small in every grade; the sympathetic surge in the tables adds venoconstriction, which moves blood into the central circulation.</p></div></details></figure>
+    <figure class="plot-card"><h3>Afterload: stroke volume</h3><div class="legend g-legend"></div><svg id="c-sv-svr"></svg>
+      <details class="info"><summary>What this shows</summary><div class="info-body"><p>Stroke volume across the same range of SVR. Stroke volume falls as afterload rises because the LV ejects against a higher arterial pressure and stops ejecting at a larger end-systolic volume. The fall is similar across grades, since the grades differ in diastolic properties more than in contractility.</p></div></details></figure>
     <figure class="plot-card"><h3>AF: cardiac output</h3><div class="legend g-legend"></div><svg id="c-co-af"></svg>
-      <figcaption>Change from the same patient in sinus rhythm. At 70/min, the atrial kick and the regular rhythm are lost without a change in rate.</figcaption></figure>
-    <figure class="plot-card"><h3>AF: LA pressure</h3><div class="legend g-legend"></div><svg id="c-lap-af"></svg></figure>
+      <figcaption>Change from the same patient in sinus rhythm. At 70/min, the atrial kick and the regular rhythm are lost without a change in rate.</figcaption>
+      <details class="info"><summary>What this shows</summary><div class="info-body"><p>Cardiac output in AF at mean ventricular rates of 70 to 150/min with irregular RR intervals, as the change from the same patient in sinus rhythm. At 70/min the loss reflects the atrial kick. At faster rates the shortened filling period adds to it, most in grades I and II, whose filling depends on slow relaxation and on atrial contraction. In grades III and IV the atrium contributes little and chamber stiffness fixes stroke volume, so cardiac output stays near its sinus value up to 110/min.</p></div></details></figure>
+    <figure class="plot-card"><h3>AF: LA pressure</h3><div class="legend g-legend"></div><svg id="c-lap-af"></svg>
+      <details class="info"><summary>What this shows</summary><div class="info-body"><p>Change in mean LA pressure in AF from the same patient in sinus rhythm. When the RR interval is too short for a slowly relaxing ventricle to fill, blood backs up in the atrium and LA pressure rises. In grade IV, whose atrium contributes little, mean LA pressure falls slightly at 130/min.</p></div></details></figure>
   </div>
   <section class="panel">
     <h2>Tolerance by grade <span class="status">median [interquartile range]</span></h2>
     <div class="table-wrap" id="c-table"></div>
+    <details class="info"><summary>What this shows</summary><div class="info-body"><p>Each cell gives the median and, in brackets, the interquartile range across the 40 patients of a grade. The rows describe the patient as found; the volume window and the volume that raises LA pressure to 18 mmHg; the response to 1 L of fluid, 500 mL of fluid and 1 L removed; the response to a 50% rise in SVR and to the sympathetic surge; and the change in AF at 70 and 130/min.</p></div></details>
     <button type="button" class="btn" id="csv">Download the cohort (CSV, one row per patient per condition)</button>
     <p class="status">The same data, with each patient's parameters, are in <code>R/diastolic_cohort_long.csv</code>, <code>R/diastolic_cohort_summary.csv</code> and <code>R/diastolic_course.csv</code> in the repository, and <code>R/diastolic_microsim.R</code> draws the figures and tables in R.</p>
   </section>
@@ -109,11 +134,13 @@
     <div class="seg" id="cq-pick" role="group" aria-label="Consequence"></div>
     <div class="table-wrap" id="cq-table"></div>
     <p class="status">Thresholds as in the bar above. Volume is intravascular volume given (+) or removed (−), and the surge is SVR × 1.5 with 200 mL of venous recruitment. A dash marks a volume removal that exceeds the stressed volume available in the model.</p>
+    <details class="info"><summary>What this shows</summary><div class="info-body"><p>Each cell gives the percentage of the 40 patients of a grade who meet the chosen criterion in the condition of that row, and cells at 50% or more are shaded. Reading down a column shows which interventions a grade tolerates; reading across a row shows how the same intervention affects each grade.</p></div></details>
   </section>
   <section class="panel">
     <h2>Echocardiographic classification of the virtual patients</h2>
     <div class="dia-grid" id="c-conf"></div>
     <p class="status">Rows are the model grades and columns the grade assigned by the ASE/EACVI 2016 algorithm from each patient's model echocardiogram <cite data-ref="nagueh2016"></cite>. The algorithm has no grade IV, the restrictive pattern that persists after preload reduction <cite data-ref="nishimura1997"></cite>. A pattern is not graded when E and A form a single wave, because early inflow does not decelerate before atrial contraction, or when there is no measurable A wave.</p>
+    <details class="info"><summary>What this shows</summary><div class="info-body"><p>Each row counts the patients of one model grade by the grade that the echocardiographic algorithm assigns them. Counts on the diagonal agree with the underlying stage; counts off it are patients near a grade boundary whose pattern resembles the neighboring grade. The second table repeats the classification after 1.5 L removed: grade II patients who move to grade I show the impaired relaxation beneath the pseudonormal pattern, and grade III and IV patients who leave grade III have reversible restrictive filling.</p></div></details>
   </section>
 
   <h2 id="course">Fluid followed by diuresis</h2>
@@ -124,6 +151,7 @@
     <figure class="plot-card"><h3>Mitral E/A</h3><div class="legend g-legend"></div><svg id="t-ea"></svg>
       <figcaption>Dashed line, E/A 2, the restrictive cutoff.</figcaption></figure>
   </div>
+  <details class="info"><summary>What this shows</summary><div class="info-body"><p>The reference patient of each grade over five hours. Two 500 mL boluses of crystalloid are infused over the first 30 minutes, and diuresis of 500 mL/h runs from 60 to 240 minutes. Only 18% of crystalloid remains intravascular, and the rest leaves the circulation with a time constant of 10 minutes, so LA pressure rises during the infusion and drifts back before diuresis begins. In grades III and IV, the fluid raises LA pressure without changing cardiac output, and diuresis lowers LA pressure at a small cost in output. The E/A chart follows the mitral pattern over the same period: E/A falls from 1.37 to 0.84 in grade II and below the restrictive cutoff in grade III, while grade IV stays above it.</p></div></details>
 
   <div class="prose"><div id="page-refs"></div></div>
 </main>

@@ -1329,6 +1329,17 @@ export const REFS = [
   "doi": "10.1136/hrt.2006.099366"
  },
  {
+  "key": "steine1999",
+  "authors": "Steine K, Stugaard M, Smiseth OA",
+  "title": "Mechanisms of retarded apical filling in acute ischemic left ventricular failure",
+  "journal": "Circulation",
+  "year": 1999,
+  "volume": "99",
+  "pages": "2048-54",
+  "pmid": "10209011",
+  "doi": "10.1161/01.cir.99.15.2048"
+ },
+ {
   "key": "guyton1959",
   "authors": "Guyton AC, Lindsey AW",
   "title": "Effect of elevated left atrial pressure and decreased plasma protein concentration on the development of pulmonary edema",

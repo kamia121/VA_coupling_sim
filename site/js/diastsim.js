@@ -6,7 +6,7 @@
 // The text page sends a question's case to an open simulator window on a BroadcastChannel; when none
 // answers, the link opens the simulator in a named window with the case in the URL hash.
 import { simulate, NORMAL, pvRelations } from './engine.js';
-import { GRADES, MV_AREA, CUT, LAP_WET, SURGE, SBT, COURSE, BSA, CONSEQ, solveCond, readout, condParams, consequences } from './diastcore.js';
+import { GRADES, MV_AREA, CUT, LAP_WET, SURGE, SBT, VENT, ISCHEMIA, COURSE, BSA, CONSEQ, solveCond, readout, condParams, consequences } from './diastcore.js';
 import { QUESTIONS } from './diastquiz.js';
 import { COHORT } from './diastdata.js';
 import { drawPlot, niceMax, swatch } from './plot.js';
@@ -16,7 +16,7 @@ import { addExport, header, even } from './export.js';
 const $ = (s) => document.querySelector(s);
 const GCOL = ['var(--g0)', 'var(--g1)', 'var(--g2)', 'var(--g3)', 'var(--g4)'];
 const ROMAN = GRADES.map((g) => g.roman);
-const st = { g: 2, vol: 0, svrX: 1, surge: false, sbt: false, rhythm: 'sinus', afRate: 110, base: [], cur: null, curSol: null, timer: null };
+const st = { g: 2, vol: 0, svrX: 1, surge: false, breath: 'spont', ischemia: false, rhythm: 'sinus', afRate: 110, base: [], cur: null, curSol: null, timer: null };
 
 // ---------- live patient ----------
 function baseline(g) {
@@ -30,7 +30,8 @@ function cond() {
   const c = {};
   if (st.vol) c.vol = st.vol;
   if (st.svrX !== 1 || st.surge) { c.svrX = st.svrX; if (st.surge) c.recruit = SURGE.recruit; }
-  if (st.sbt) c.sbt = 1;
+  if (st.breath !== 'spont') c.breath = st.breath;
+  if (st.ischemia) c.ischemia = 1;
   if (st.rhythm === 'af') { c.rhythm = 'af'; c.afRate = st.afRate; }
   return c;
 }
@@ -55,7 +56,7 @@ function tiles() {
     ['SV', 'Stroke volume', f0(o.SV), 'mL', o.SV - b.SV, false],
     ['HR', 'Heart rate', f0(o.HR), '/min', o.HR - b.HR, false],
     ['MAP', 'Mean arterial pressure', f0(o.MAP), 'mmHg', o.MAP - b.MAP, o.MAP < 65],
-    ['LAP', 'LA pressure (PAWP)', f0(o.LAP), 'mmHg', o.LAP - b.LAP, o.LAP > LAP_WET],
+    ['LAP', 'Mean LA pressure (PAWP), transmural', f0(o.LAP), 'mmHg', o.LAP - b.LAP, o.LAP > LAP_WET],
     ['LVEDP', 'LV end-diastolic pressure', f0(o.EDP), 'mmHg', o.EDP - b.EDP, o.EDP > 16],
     ['mPAP', 'Mean PA pressure', f0(o.mPAP), 'mmHg', o.mPAP - b.mPAP, o.mPAP > 20],
     ['RAP', 'RA pressure', f0(o.RAP), 'mmHg', o.RAP - b.RAP, o.RAP > 12],
@@ -66,13 +67,14 @@ function tiles() {
     <div class="tile-d">${Math.abs(d) >= 0.05 ? sgn(d, Math.abs(d) < 10 ? f1 : f0) : '&nbsp;'}</div></div>`).join('');
   // what has been done to the patient, since the controls scroll out of view
   const parts = [st.vol ? `${st.vol > 0 ? '+' : '−'}${Math.abs(st.vol)} mL` : '', st.svrX !== 1 ? `SVR × ${st.svrX.toFixed(2)}` : '',
-    st.surge ? 'surge' : '', st.sbt ? 'breathing trial' : '', st.rhythm === 'af' ? `AF ${st.afRate}/min` : ''].filter(Boolean);
+    st.surge ? 'surge' : '', st.breath === 'vent' ? 'ventilator' : st.breath === 'sbt' ? 'breathing trial' : '', st.ischemia ? 'ischemia' : '', st.rhythm === 'af' ? `AF ${st.afRate}/min` : ''].filter(Boolean);
   $('#cond-sum').innerHTML = parts.length ? `Now: ${parts.join(' · ')}<span class="g-long"> · change from as found below each value</span>` : 'As found';
 }
 
 function loopPts(r) {
   const out = [];
-  for (let i = 0; i < r.rec.Vlv.length; i += 4) out.push([r.rec.Vlv[i], r.rec.Plv[i]]);
+  const ppl = r.params.ppl || 0;   // transmural, as the tiles
+  for (let i = 0; i < r.rec.Vlv.length; i += 4) out.push([r.rec.Vlv[i], r.rec.Plv[i] - ppl]);
   out.push(out[0]);
   return out;
 }
@@ -283,7 +285,7 @@ function drawLive() {
   $('#af-v').textContent = `${st.afRate}/min`;
   $('#af-row').hidden = st.rhythm !== 'af';
   $('#grade-text').innerHTML = `<p>${GRADES[st.g].text}</p>`;
-  history.replaceState(null, '', `#${setupHash({ g: st.g, vol: st.vol, svrX: st.svrX, surge: st.surge, sbt: st.sbt, rhythm: st.rhythm, afRate: st.afRate })}`);
+  history.replaceState(null, '', `#${setupHash({ g: st.g, vol: st.vol, svrX: st.svrX, surge: st.surge, breath: st.breath, ischemia: st.ischemia, rhythm: st.rhythm, afRate: st.afRate })}`);
 }
 
 // ---------- cohort ----------
@@ -476,7 +478,7 @@ function downloadCSV() {
 // ---------- export: the three echo screens as one slide ----------
 function echoSpec() {
   const g = GRADES[st.g], c = cond();
-  const what = [st.vol ? `${st.vol > 0 ? '+' : ''}${st.vol} mL` : '', st.svrX !== 1 ? `SVR × ${st.svrX}` : '', st.surge ? 'sympathetic surge' : '', st.sbt ? 'spontaneous breathing trial' : '', st.rhythm === 'af' ? `AF ${st.afRate}/min` : ''].filter(Boolean).join(', ') || 'as found';
+  const what = [st.vol ? `${st.vol > 0 ? '+' : ''}${st.vol} mL` : '', st.svrX !== 1 ? `SVR × ${st.svrX}` : '', st.surge ? 'sympathetic surge' : '', st.breath === 'vent' ? 'positive-pressure ventilation' : st.breath === 'sbt' ? 'spontaneous breathing trial' : '', st.ischemia ? 'myocardial ischemia' : '', st.rhythm === 'af' ? `AF ${st.afRate}/min` : ''].filter(Boolean).join(', ') || 'as found';
   const e = st.cur.echo;
   return {
     file: `va-coupling-diastolic-${g.key}`,
@@ -586,7 +588,8 @@ function setupHash(su) {
   if (su.vol) q.push(`vol=${su.vol}`);
   if (su.svrX && su.svrX !== 1) q.push(`svr=${su.svrX}`);
   if (su.surge) q.push('surge=1');
-  if (su.sbt) q.push('sbt=1');
+  if (su.breath && su.breath !== 'spont') q.push(`breath=${su.breath}`);
+  if (su.ischemia) q.push('isch=1');
   if (su.rhythm === 'af') q.push('rhythm=af', `rate=${su.afRate ?? 110}`);
   return q.join('&');
 }
@@ -594,12 +597,22 @@ function parseHash(h) {
   const m = Object.fromEntries(h.replace(/^#/, '').split('&').filter(Boolean).map((kv) => kv.split('=')));
   const g = m.g ?? m.grade;
   if (g == null) return null;
-  return { g: Math.max(0, Math.min(4, +g || 0)), vol: +m.vol || 0, svrX: +m.svr || 1, surge: m.surge === '1', sbt: m.sbt === '1',
+  return { g: Math.max(0, Math.min(4, +g || 0)), vol: +m.vol || 0, svrX: +m.svr || 1, surge: m.surge === '1', breath: m.breath === 'vent' || m.breath === 'sbt' ? m.breath : m.sbt === '1' ? 'sbt' : 'spont', ischemia: m.isch === '1',
     rhythm: m.rhythm === 'af' ? 'af' : 'sinus', afRate: +m.rate || 110 };
 }
+// the breathing control: its buttons and the line that states what the chosen state does
+const BREATH_TEXT = {
+  spont: 'Spontaneous breathing, the reference state (mean pleural pressure 0).',
+  vent: `Positive-pressure ventilation: mean pleural pressure +${VENT.ppl} mmHg, which impedes venous return.`,
+  sbt: `Breathing trial after ventilation: labored inspiration (mean pleural pressure ${SBT.ppl} mmHg), sinus rate ${SBT.hr}/min, ${SBT.recruit} mL moved into the stressed volume, SVR × ${SBT.svrX}.`,
+};
+function syncBreath() {
+  $('#breath').querySelectorAll('button').forEach((x) => x.setAttribute('aria-pressed', String(x.dataset.v === st.breath)));
+  $('#breath-t').textContent = BREATH_TEXT[st.breath];
+}
 function applySetup(su) {
-  Object.assign(st, { g: su.g, vol: su.vol ?? 0, svrX: su.svrX ?? 1, surge: !!su.surge, sbt: !!su.sbt, rhythm: su.rhythm ?? 'sinus', afRate: su.afRate ?? 110 });
-  $('#vol').value = st.vol; $('#svr').value = st.svrX; $('#afrate').value = st.afRate; $('#surge').checked = st.surge; $('#sbt').checked = st.sbt;
+  Object.assign(st, { g: su.g, vol: su.vol ?? 0, svrX: su.svrX ?? 1, surge: !!su.surge, breath: su.breath ?? 'spont', ischemia: !!su.ischemia, rhythm: su.rhythm ?? 'sinus', afRate: su.afRate ?? 110 });
+  $('#vol').value = st.vol; $('#svr').value = st.svrX; $('#afrate').value = st.afRate; $('#surge').checked = st.surge; $('#isch').checked = st.ischemia; syncBreath();
   $('#rhythm').querySelectorAll('button').forEach((x) => x.setAttribute('aria-pressed', String(x.dataset.v === st.rhythm)));
   $('#grades').querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', String(+b.dataset.g === st.g)));
   update();
@@ -672,8 +685,9 @@ export function initDiastolicSim() {
   svr.addEventListener('input', () => { st.svrX = +svr.value; update(); });
   afr.addEventListener('input', () => { st.afRate = +afr.value; update(); });
   $('#surge').addEventListener('change', (e) => { st.surge = e.target.checked; update(); });
-  $('#sbt-t').textContent = `Spontaneous breathing trial: venous return rises (${SBT.recruit} mL into the stressed volume), sinus rate ${SBT.hr}/min, SVR × ${SBT.svrX}`;
-  $('#sbt').addEventListener('change', (e) => { st.sbt = e.target.checked; update(); });
+  $('#breath').addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; st.breath = b.dataset.v; syncBreath(); update(); });
+  $('#isch-t').textContent = `Myocardial ischemia: τ × ${ISCHEMIA.tauX}, Ees × ${ISCHEMIA.eesX}`;
+  $('#isch').addEventListener('change', (e) => { st.ischemia = e.target.checked; update(); });
   $('#rhythm').addEventListener('click', (e) => {
     const b = e.target.closest('button'); if (!b) return;
     st.rhythm = b.dataset.v; $('#rhythm').querySelectorAll('button').forEach((x) => x.setAttribute('aria-pressed', String(x === b))); update();
@@ -688,7 +702,7 @@ export function initDiastolicSim() {
   $('#cq-pick').addEventListener('click', (e) => { const b = e.target.closest('button[data-k]'); if (!b) return; cqPick = b.dataset.k; cqTable(); });
   const su = parseHash(location.hash);
   if (su) Object.assign(st, su);
-  vol.value = st.vol; svr.value = st.svrX; afr.value = st.afRate; $('#surge').checked = st.surge; $('#sbt').checked = st.sbt;
+  vol.value = st.vol; svr.value = st.svrX; afr.value = st.afRate; $('#surge').checked = st.surge; $('#isch').checked = st.ischemia; syncBreath();
   $('#rhythm').querySelectorAll('button').forEach((x) => x.setAttribute('aria-pressed', String(x.dataset.v === st.rhythm)));
   syncGrade();
   solveNow(); drawLive(); drawCohort(); cqTable();
