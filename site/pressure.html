@@ -38,11 +38,13 @@
         <label for="pl-zero" class="k">Zero offset: <b id="pl-zero-v"></b></label>
         <input type="range" id="pl-zero" min="-10" max="10" step="1" value="0" aria-label="Zero offset in mmHg">
       </div>
-      <div class="pl-figure monitor">
-        <svg id="pl-body" viewBox="0 0 440 280" role="img" aria-label="Body in the chosen posture with the heart level, the vessel measured and the transducer"></svg>
+      <div class="pl-out">
+        <div class="pl-figure monitor">
+          <svg id="pl-body" viewBox="0 0 440 300" role="img" aria-label="Patient in the chosen posture with the heart level, the vessel measured and the transducer"></svg>
+        </div>
+        <div class="tiles" id="pl-tiles" aria-live="polite"></div>
       </div>
     </div>
-    <div class="tiles" id="pl-tiles" aria-live="polite"></div>
     <table class="data" id="pl-table">
       <caption>Pressure in each vessel in this posture and the reading at this transducer height, mmHg</caption>
       <thead><tr><th>Vessel</th><th class="num">Height above the heart, cm</th><th class="num">Pressure in the vessel</th><th class="num">Reading</th></tr></thead>
@@ -62,11 +64,13 @@
         <p class="k">Share of the airway pressure that reaches the pleural space</p>
         <div class="seg stack" id="pl-frac" role="group" aria-label="Transmission"></div>
       </div>
-      <table class="data" id="pl-peep-table">
-        <caption>Effect of PEEP on the patient chosen above</caption>
-        <thead><tr><th></th><th class="num">No PEEP</th><th class="num">With PEEP</th></tr></thead>
-        <tbody></tbody>
-      </table>
+      <div class="pl-out">
+        <table class="data" id="pl-peep-table">
+          <caption>Effect of PEEP on the patient chosen above</caption>
+          <thead><tr><th></th><th class="num">No PEEP</th><th class="num">With PEEP</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
     </div>
   </section>
 
@@ -84,7 +88,7 @@
         <label for="pl-hr" class="k">Heart rate: <b id="pl-hr-v"></b></label>
         <input type="range" id="pl-hr" min="50" max="150" step="10" value="80" aria-label="Heart rate per minute">
       </div>
-      <div class="pl-plots">
+      <div class="pl-out pl-plots">
         <figure class="monitor fig"><svg id="pl-wave"></svg><figcaption>Arterial pressure at the catheter tip (gray) and as reported (green) at the heart rate set.</figcaption></figure>
         <figure class="monitor fig"><svg id="pl-flush"></svg><figcaption>Fast-flush test: the reported pressure after the flush stops, with the arterial pressure at the tip (dashed).</figcaption></figure>
       </div>

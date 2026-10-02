@@ -23,21 +23,23 @@
     <h2>Four circulations under a breath</h2>
     <p>In tamponade the fluid raises the pressure in the pericardial sac, and that pressure adds to the pressure inside every chamber. In patients with a pericardial effusion the mean right atrial pressure was 16 ± 4 mmHg before drainage and 7 ± 5 mmHg after it, and the cardiac output rose from 3.87 ± 1.77 to 7 ± 2.2 L/min <cite data-ref="reddy1978"></cite>. The wedge pressure minus the pericardial pressure, the transmural filling pressure of the left atrium, was 4 ± 2 mmHg in expiration and 0.2 ± 1.3 mmHg in inspiration <cite data-ref="boltwood1987"></cite>. An effusion of 230 mL in the model gives a mean right atrial pressure of 10.7 mmHg and a cardiac output of 3.13 L/min, both within 2 SD of the published values.</p>
     <p>The heart lies in a sac of fixed size, so a rise in right ventricular filling in inspiration is paid for by the left ventricle. The inspiratory fall in systolic arterial pressure exceeds 10 mmHg in tamponade, the criterion for pulsus paradoxus <cite data-ref="hamzaoui2012"></cite>. The model gives 15.8 mmHg with the effusion and 5.7 mmHg with a normal pericardium at the same quiet breath, a swing of 4 mmHg in pleural pressure that is an assumption of the model.</p>
-    <div class="pl-grid">
+    <div class="pl-grid pc-grid">
       <div class="pl-controls">
         <p class="k">Pericardium and myocardium</p>
         <div class="seg stack" id="pc-case" role="group" aria-label="Case"></div>
         <p class="k">Breath</p>
         <div class="seg stack" id="pc-breath" role="group" aria-label="Breath"></div>
       </div>
-      <div class="pl-plots">
+      <div class="pl-out pc-out">
+       <div class="pl-plots">
         <figure class="monitor fig"><svg id="pc-ppl"></svg><figcaption>Pleural pressure over 16 s, from the breath.</figcaption></figure>
         <figure class="monitor fig"><svg id="pc-art"></svg><figcaption>Arterial pressure, with the systolic peak of each beat as a dot.</figcaption></figure>
         <figure class="monitor fig"><svg id="pc-ra"></svg><figcaption>Right atrial pressure (green) and the pressure around the heart, pericardial plus pleural (gray).</figcaption></figure>
         <figure class="monitor fig"><svg id="pc-vol"></svg><figcaption>End-diastolic volume of each beat, left ventricle (green) and right ventricle (blue).</figcaption></figure>
+       </div>
+       <div class="tiles" id="pc-tiles" aria-live="polite"></div>
       </div>
     </div>
-    <div class="tiles" id="pc-tiles" aria-live="polite"></div>
     <table class="data" id="pc-table">
       <caption>The four circulations under the breath chosen above</caption>
       <thead></thead>

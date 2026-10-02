@@ -663,7 +663,40 @@ td.flagged { color: var(--flag); font-weight: 600; }
 .pl-controls select, .pl-controls input[type=range] { width: 100%; }
 .pl-plots { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 10px; }
 .pl-plots .fig { margin: 0; }
-.pl-figure svg { max-height: 300px; }
-@media (max-width: 760px) { .pl-grid { grid-template-columns: minmax(0, 1fr); } }
+.pl-figure svg { max-height: 330px; }
+/* The result of a lab stays on screen while the controls beside or beneath it scroll. */
+.pl-out { position: sticky; top: 0; z-index: 6; align-self: start; background: var(--surface); padding: 2px 0 4px; min-width: 0; }
+.pl-out .tiles { margin: 8px 0 0; }
+.pl-out .data { margin: 0; }
+.pl-out.pl-plots { padding: 2px 0 4px; }
+@media (max-width: 760px) {
+  .pl-grid { display: flex; flex-direction: column; gap: 8px; }
+  .pl-grid > * { min-width: 0; max-width: 100%; }
+  .pl-out .tiles { max-width: 100%; }
+  .pl-out { order: -1; position: sticky; top: 0; margin: 0 -14px; padding: 4px 14px 6px; box-shadow: 0 6px 14px rgba(0, 0, 0, 0.28); }
+  .pl-figure { padding: 4px; margin: 0; }
+  .pl-figure svg { max-height: 190px; }
+  .pl-out .tiles { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 5px; margin-top: 6px; }
+  .pl-out .tile { padding: 3px 6px 4px; border-left-width: 3px; }
+  .pl-out .tile-v { font-size: 1rem; }
+  .pl-out .tile-k { font-size: 0.68rem; line-height: 1.15; }
+  .pl-out .tile-k span { display: none; }
+  .pl-out.pl-plots { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
+  .pl-out .fig { padding: 3px 4px; }
+  .pl-out .fig figcaption { display: none; }
+  .pc-out .tiles { display: flex; overflow-x: auto; gap: 5px; scrollbar-width: thin; }
+  .pc-out .tile { flex: 0 0 auto; }
+  .pc-out .tile-v { font-size: 0.9rem; white-space: nowrap; }
+  .pc-out .tile-k { white-space: nowrap; }
+  .pc-out .pl-plots { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 5px; }
+  .pc-out .fig { padding: 2px 3px; }
+  .pc-out .fig figcaption { display: none; }
+  #peep .pl-out .data { font-size: 0.7rem; }
+  #peep .pl-out .data :is(th, td) { padding: 2px 4px; }
+  #peep .pl-out .data caption { display: none; }
+}
 #level .data, #peep .data, #dynamic .data, #cases .data { display: block; overflow-x: auto; max-width: 100%; }
 @media (max-width: 480px) { #level .data, #peep .data, #dynamic .data, #cases .data { font-size: 0.8rem; } #level .data :is(th, td), #peep .data :is(th, td), #dynamic .data :is(th, td), #cases .data :is(th, td) { padding: 4px 5px; } }
+
+@media (min-width: 761px) { .pc-grid .pl-controls { position: sticky; top: 8px; align-self: start; } }
+@media (max-width: 480px) { #cases .data td:first-child, #cases .data th:first-child { min-width: 150px; } }
