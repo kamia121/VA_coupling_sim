@@ -656,3 +656,14 @@ td.flagged { color: var(--flag); font-weight: 600; }
 .dia-bar .info { position: relative; margin: 0; }
 .dia-bar .info[open] .info-body { position: absolute; right: 0; top: calc(100% + 4px); z-index: 30; width: min(560px, calc(100vw - 32px)); box-shadow: 0 6px 20px rgba(0, 0, 0, 0.18); }
 @media (max-width: 640px) { .dia-bar .info > summary { font-size: 0; gap: 0; } .dia-bar .info > summary::before { font-size: 0.8rem; } .dia-bar .info > summary::after { display: none; } }
+
+/* ---------- Pressure lab ---------- */
+.pl-grid { display: grid; grid-template-columns: minmax(220px, 1fr) minmax(0, 2fr); gap: 16px; align-items: start; margin: 10px 0 12px; }
+.pl-controls .k { font-size: 0.82rem; color: var(--text-muted); margin: 8px 0 4px; display: block; }
+.pl-controls select, .pl-controls input[type=range] { width: 100%; }
+.pl-plots { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 10px; }
+.pl-plots .fig { margin: 0; }
+.pl-figure svg { max-height: 300px; }
+@media (max-width: 760px) { .pl-grid { grid-template-columns: minmax(0, 1fr); } }
+#level .data, #peep .data, #dynamic .data { display: block; overflow-x: auto; max-width: 100%; }
+@media (max-width: 480px) { #level .data, #peep .data, #dynamic .data { font-size: 0.8rem; } #level .data :is(th, td), #peep .data :is(th, td), #dynamic .data :is(th, td) { padding: 4px 5px; } }

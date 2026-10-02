@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script>try{var t=localStorage.getItem('vac-theme');if(t==='light'||t==='dark')document.documentElement.setAttribute('data-theme',t)}catch(e){}</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Code+Pro:wght@400;500&family=Source+Sans+3:ital,wght@0,400;0,600;1,400&family=Source+Serif+4:wght@600&display=swap">
+<link rel="stylesheet" href="css/tokens.css">
+<link rel="stylesheet" href="css/site.css">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='5' fill='%232F6E66'/%3E%3Cpath d='M8 24 V10 L24 8 V22 Z' fill='none' stroke='white' stroke-width='2.5' stroke-linejoin='round'/%3E%3C/svg%3E">
+<title>Pressure Lab</title>
+<meta name="description" content="Reference level, zero, positive end-expiratory pressure and the dynamic response of a fluid-filled catheter, and how each changes the pressure a monitor reports.">
+</head>
+<body>
+<main>
+<article class="prose">
+  <h1>Pressure lab</h1>
+  <p class="lede">A pressure transducer reports the pressure at its own height, relative to the atmosphere. The number on the monitor depends on the vertical distance between the vessel and the transducer, the zero, the pressure around the vessel, and the dynamic response of the catheter and tubing.</p>
+
+  <section class="panel" id="level">
+    <h2>Reference level and zero</h2>
+    <p>Blood and the saline in the tubing both have weight. A column of saline 10 cm tall exerts 7.4 mmHg and a column of blood of the same height exerts 7.8 mmHg, so a pressure measured in a vessel depends on the height at which it is measured. The transducer reports the pressure at its own height, which is the pressure in the vessel plus the weight of the saline column between the vessel and the transducer. A transducer below the vessel adds the column to the reading, and a transducer above the vessel subtracts it.</p>
+    <p>The reference level is a convention. Intravascular pressures are interpreted at the level of the heart, the phlebostatic axis, so a transducer leveled to it reports a pressure as it would be at the heart wherever the vessel lies. In 196 patients, two commonly used zero levels differed by a median of 8.0 mmHg, and the choice of level changed the proportion classified as having pulmonary hypertension from 59% to 80% <cite data-ref="kovacs2013erj"></cite>.</p>
+    <div class="pl-grid">
+      <div class="pl-controls">
+        <label for="pl-patient" class="k">Patient</label>
+        <select id="pl-patient"></select>
+        <p class="k">Posture</p>
+        <div class="seg stack" id="pl-posture" role="group" aria-label="Posture"></div>
+        <label for="pl-site" class="k">Vessel measured</label>
+        <select id="pl-site"></select>
+        <p class="k">Transducer</p>
+        <div class="seg stack" id="pl-mount" role="group" aria-label="Transducer mounting"></div>
+        <label for="pl-height" class="k">Transducer height above the heart: <b id="pl-height-v"></b></label>
+        <input type="range" id="pl-height" min="-40" max="40" step="1" value="0" aria-label="Transducer height above the heart in centimeters">
+        <label for="pl-zero" class="k">Zero offset: <b id="pl-zero-v"></b></label>
+        <input type="range" id="pl-zero" min="-10" max="10" step="1" value="0" aria-label="Zero offset in mmHg">
+      </div>
+      <div class="pl-figure monitor">
+        <svg id="pl-body" viewBox="0 0 440 280" role="img" aria-label="Body in the chosen posture with the heart level, the vessel measured and the transducer"></svg>
+      </div>
+    </div>
+    <div class="tiles" id="pl-tiles" aria-live="polite"></div>
+    <table class="data" id="pl-table">
+      <caption>Pressure in each vessel in this posture and the reading at this transducer height, mmHg</caption>
+      <thead><tr><th>Vessel</th><th class="num">Height above the heart, cm</th><th class="num">Pressure in the vessel</th><th class="num">Reading</th></tr></thead>
+      <tbody></tbody>
+    </table>
+    <p>Zeroing opens the transducer to the atmosphere and sets its reading there to zero. It removes the offset and the drift of the transducer, but it does not correct the height, which is a separate step. A mounting leveled with the patient supine no longer matches the heart once the head of the bed is raised, because the heart rises above the transducer and the reading rises by the weight of the saline column between them.</p>
+    <p>The pressure at the heart is not the pressure at the brain. With the patient upright, the arterial pressure at the circle of Willis is lower than at the heart by the weight of the blood column, 19 mmHg for a vertical distance of 25 cm. Below the heart, the venous column is supported by the venous valves, so the pressure in a foot vein and in the capillaries of the foot rises with the height of the column. Perry and colleagues measured a foot venous pressure of 17.1 mmHg and a capillary pressure of 23.4 mmHg in recumbent subjects, and 95.2 and 112.8 mmHg on standing <cite data-ref="perry1986"></cite>. Above the heart the veins collapse, and their pressure falls no lower than the atmosphere.</p>
+  </section>
+
+  <section class="panel" id="peep">
+    <h2>Pressure around the vessels</h2>
+    <p>Positive end-expiratory pressure (PEEP) raises the pressure in the pleural space, and with it the pressure outside the heart and the intrathoracic vessels. A pressure measured against the atmosphere rises by the pleural pressure, while the transmural pressure, the distending pressure of the chamber, does not. Only part of the airway pressure reaches the pleural space. In patients with acute respiratory failure it was 24% when the total compliance was below 30 mL/cmH₂O and 37% when it was above 45 mL/cmH₂O <cite data-ref="jardin1985"></cite>, and in swine it was 62% in normal lungs and 34% in injured lungs <cite data-ref="venus1988"></cite>. The extrathoracic veins stay at the atmosphere while the right atrium rises with the pleural pressure, so the gradient for venous return falls.</p>
+    <div class="pl-grid">
+      <div class="pl-controls">
+        <label for="pl-peep" class="k">PEEP: <b id="pl-peep-v"></b></label>
+        <input type="range" id="pl-peep" min="0" max="20" step="1" value="10" aria-label="PEEP in cmH2O">
+        <p class="k">Share of the airway pressure that reaches the pleural space</p>
+        <div class="seg stack" id="pl-frac" role="group" aria-label="Transmission"></div>
+      </div>
+      <table class="data" id="pl-peep-table">
+        <caption>Effect of PEEP on the patient chosen above</caption>
+        <thead><tr><th></th><th class="num">No PEEP</th><th class="num">With PEEP</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="panel" id="dynamic">
+    <h2>Catheter, tubing and transducer</h2>
+    <p>A fluid-filled catheter, its tubing and the transducer form a second-order system. Its natural frequency is the frequency at which it rings after a sudden change in pressure, and its damping coefficient describes how fast the ringing dies away. The arterial pressure wave contains harmonics of the heart rate, and a harmonic near the natural frequency is amplified, so the systolic pressure is reported above its true value while the mean pressure is unchanged. In an in vitro system, air bubbles lowered the natural frequency from 17.89 to 7.35 Hz and raised the damping coefficient from 0.234 to 0.356 <cite data-ref="promonet2000"></cite>. Measurement systems with the damping coefficients found in subjects, below 0.4, were capable of systolic resonance artifacts of 8 mmHg or more, and compensation filters with damping coefficients of 0.6 to 0.7 removed them <cite data-ref="hersh2014"></cite>.</p>
+    <div class="pl-grid">
+      <div class="pl-controls">
+        <p class="k">System</p>
+        <div class="seg stack" id="pl-sys" role="group" aria-label="Catheter system"></div>
+        <label for="pl-fn" class="k">Natural frequency: <b id="pl-fn-v"></b></label>
+        <input type="range" id="pl-fn" min="5" max="40" step="0.5" aria-label="Natural frequency in hertz">
+        <label for="pl-z" class="k">Damping coefficient: <b id="pl-z-v"></b></label>
+        <input type="range" id="pl-z" min="0.1" max="2" step="0.01" aria-label="Damping coefficient">
+        <label for="pl-hr" class="k">Heart rate: <b id="pl-hr-v"></b></label>
+        <input type="range" id="pl-hr" min="50" max="150" step="10" value="80" aria-label="Heart rate per minute">
+      </div>
+      <div class="pl-plots">
+        <figure class="monitor fig"><svg id="pl-wave"></svg><figcaption>Arterial pressure at the catheter tip (gray) and as reported (green) at the heart rate set.</figcaption></figure>
+        <figure class="monitor fig"><svg id="pl-flush"></svg><figcaption>Fast-flush test: the reported pressure after the flush stops, with the arterial pressure at the tip (dashed).</figcaption></figure>
+      </div>
+    </div>
+    <table class="data" id="pl-dyn-table">
+      <caption>Pressure at the tip and as reported, and what the fast-flush test measures</caption>
+      <thead><tr><th></th><th class="num">At the tip</th><th class="num">Reported</th><th class="num">Difference</th></tr></thead>
+      <tbody></tbody>
+    </table>
+    <p>The fast-flush test measures both properties. After a brief flush the pressure falls to the arterial pressure and rings down. The period between two consecutive peaks gives the damped frequency, and the ratio of their amplitudes gives the damping coefficient through the logarithmic decrement. An overdamped system does not ring. It follows a step in pressure as an exponential with a time constant that grows with damping, so a sudden change reaches the monitor late and the pulse is rounded.</p>
+  </section>
+
+  <div id="page-refs"></div>
+</article>
+</main>
+<script type="module">
+  import { initLayout } from './js/layout.js';
+  import { initPressure } from './js/pressuresim.js';
+  initLayout();
+  initPressure();
+</script>
+</body>
+</html>
