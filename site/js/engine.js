@@ -240,8 +240,9 @@ function pressures(s, e, ea, p, ctx) {
   let Vspt = 0;
   if (p.septum) { Vspt = solveSeptum(s[0], s[3], e, p, ctx.spt, lvEes, rvEes); ctx.spt = Vspt; }
   const Ppcd = p.pericardium ? pericardialP(s[0] + s[3] + s[6] + s[7] + p.pcdFluid, p) : 0;
-  // mean pleural pressure (opt-in) surrounds the heart and the pulmonary vessels but not the systemic ones
-  const ppl = p.ppl || 0, Pth = Ppcd + ppl;
+  // pleural pressure (opt-in) surrounds the heart and the pulmonary vessels but not the systemic ones: the
+  // mean offset p.ppl plus the breath ctx.pplT, which changes within the beat
+  const ppl = (p.ppl || 0) + (ctx.pplT || 0), Pth = Ppcd + ppl;
   const Plv = wallP(s[0] - Vspt, e, lvEes, p.lvV0, p.lvA, p.lvBeta) + Pth;
   const Prv = wallP(s[3] + Vspt, e, rvEes, p.rvV0, p.rvA, p.rvBeta) + Pth;
   const Psa = s[1] / p.cSys, Psv = s[2] / p.cSv;
@@ -287,7 +288,7 @@ function pressures(s, e, ea, p, ctx) {
   const Qra = (Psv - Pra) / p.rSvRa;                     // venae cavae → RA (can reverse during atrial systole)
   const rPv = p.rPvLa * (1 + (p.pvSleeve || 0) * ea);   // venoatrial junction, narrowed by atrial contraction
   const Qla = (Ppv - Pla) / rPv;                         // pulmonary veins → LA
-  return { Plv, Prv, Psa, Psv, Ppa, Ppv, Pra, Pla, Ppcd, Vspt, Qao, Qar, Qmv, Qmr, Qpv, Qtv, Qtr, Qsys, Qpul, Qra, Qla };
+  return { Plv, Prv, Psa, Psv, Ppa, Ppv, Pra, Pla, Ppcd, Ppl: ppl, Vspt, Qao, Qar, Qmv, Qmr, Qpv, Qtv, Qtr, Qsys, Qpul, Qra, Qla };
 }
 
 function deriv(s, e, ea, p, ctx, out) {
@@ -317,7 +318,7 @@ function initialState(p) {
 }
 
 const REC_KEYS = ['t', 'Vlv', 'Plv', 'Pao', 'Vrv', 'Prv', 'Ppa', 'Psv', 'Ppv', 'Pra', 'Pla', 'Vla', 'Vra',
-  'Qao', 'Qar', 'Qpv', 'Qmv', 'Qmr', 'Qtv', 'Qtr', 'aAct', 'eAct', 'Ppcd', 'Vspt', 'Qla'];
+  'Qao', 'Qar', 'Qpv', 'Qmv', 'Qmr', 'Qtv', 'Qtr', 'aAct', 'eAct', 'Ppcd', 'Vspt', 'Qla', 'Ppl'];
 
 // One beat. Always accumulates the per-beat quantities the slow controllers need;
 // records every sample when `record` is set.
@@ -335,10 +336,14 @@ function simulateBeat(s0, p, act, T, dt, record, ctx) {
   ctx.lvEesP = ctx.lvEes ?? p.lvEes; ctx.rvEesP = ctx.rvEes ?? p.rvEes;
   ctx.vL0 = s[0]; ctx.vR0 = s[3]; ctx.lvEes = p.lvEes; ctx.rvEes = p.rvEes;
   let prev = null;
+  // ctx.pplFn(t) is the pleural pressure from the breath at absolute time t (s); ctx.t0 is the time of this
+  // beat's QRS. It is set before every evaluation, so the breath varies within the beat as well as between beats.
+  const breath = (tt) => { if (ctx.pplFn) ctx.pplT = ctx.pplFn(ctx.t0 + tt); };
   for (let i = 0; i < n; i++) {
     const t = i * dt;
     const e0 = act.e(t), a0 = act.a(t);
     ctx.w = act.w(t);
+    breath(t);
     const q = pressures(s, e0, a0, p, ctx);
     const Pao = q.Psa + q.Qao * p.zcAo;
     acc.map += Pao;
@@ -356,16 +361,16 @@ function simulateBeat(s0, p, act, T, dt, record, ctx) {
       rec.Pra.push(q.Pra); rec.Pla.push(q.Pla); rec.Vra.push(s[6]); rec.Vla.push(s[7]);
       rec.Qao.push(q.Qao); rec.Qar.push(q.Qar); rec.Qpv.push(q.Qpv);
       rec.Qmv.push(q.Qmv); rec.Qmr.push(q.Qmr); rec.Qtv.push(q.Qtv); rec.Qtr.push(q.Qtr);
-      rec.aAct.push(a0); rec.eAct.push(e0); rec.Ppcd.push(q.Ppcd); rec.Vspt.push(q.Vspt); rec.Qla.push(q.Qla);
+      rec.aAct.push(a0); rec.eAct.push(e0); rec.Ppcd.push(q.Ppcd); rec.Vspt.push(q.Vspt); rec.Qla.push(q.Qla); rec.Ppl.push(q.Ppl);
     }
     const e2 = act.e(t + dt / 2), e3 = act.e(t + dt);
     const a2 = act.a(t + dt / 2), a3 = act.a(t + dt);
     const w2 = act.w(t + dt / 2), w3 = act.w(t + dt);
     deriv(s, e0, a0, p, ctx, k1);
-    ctx.w = w2;
+    ctx.w = w2; breath(t + dt / 2);
     deriv(add(s, k1, dt / 2), e2, a2, p, ctx, k2);
     deriv(add(s, k2, dt / 2), e2, a2, p, ctx, k3);
-    ctx.w = w3;
+    ctx.w = w3; breath(t + dt);
     deriv(add(s, k3, dt), e3, a3, p, ctx, k4);
     for (let j = 0; j < 8; j++) s[j] += (dt / 6) * (k1[j] + 2 * k2[j] + 2 * k3[j] + k4[j]);
   }
@@ -505,7 +510,10 @@ function dist(a, b) { return Math.max(...a.map((x, i) => Math.abs(x - b[i]))); }
 /**
  * Run the model to beat-to-beat steady state and return the last beat.
  * @param {object} params  parameter set (see NORMAL); missing keys fall back to NORMAL
- * @param {object} [opt]   { dt, maxBeats, tol, state, slow, holdSlow, prev, prevT }
+ * @param {object} [opt]   { dt, maxBeats, tol, state, slow, holdSlow, prev, prevT, pplFn, t0 }
+ *   pplFn(t): pleural pressure from the breath (mmHg) at absolute time t (s); t0: the time of this beat's QRS.
+ *   It acts on the recorded beat only, never during the run to steady state, so use it with a converged
+ *   state (maxBeats 0) and chain beats with t0 (see beats.js).
  */
 export function simulate(params, opt = {}) {
   const p = { ...NORMAL, ...params };
@@ -522,7 +530,7 @@ export function simulate(params, opt = {}) {
   // at the QRS and its Ees stay with that tail in the first beat; see pressures(). The length is the one
   // integrated (a whole number of steps), so the tail picks up exactly where that beat left it.
   const pv = opt.prev, prevT = opt.prevT ?? (pv ? pv.rec.t.length * pv.dt : undefined);
-  const ctx = { spt: p.sptV0, w: 0, vL0: pv?.state[0] ?? null, vR0: pv?.state[3] ?? null,
+  const ctx = { spt: p.sptV0, w: 0, pplFn: null, pplT: 0, t0: opt.t0 ?? 0, vL0: pv?.state[0] ?? null, vR0: pv?.state[3] ?? null,
     lvEes: pv?.eff.lvEes ?? null, rvEes: pv?.eff.rvEes ?? null };
   let beats = 0, converged = false, dtc = Math.max(dt, 0.001), retries = 0;
   if (!s.every(Number.isFinite)) s = initialState(q);
@@ -560,6 +568,7 @@ export function simulate(params, opt = {}) {
   act.a = makeAtrialActivation(T, q);
   const startState = s.slice();
   dt = Math.min(dt, dtc);
+  ctx.pplFn = opt.pplFn ?? null;
   const { s: endState, rec, acc } = simulateBeat(s, q, act, T, dt, true, ctx);
   const iEs = Math.round(act.tPeak / dt);
   const lv = ventricleMetrics(rec.Vlv, rec.Plv, rec.Pao, iEs, q.lvEes, q.lvV0, q.hr,
