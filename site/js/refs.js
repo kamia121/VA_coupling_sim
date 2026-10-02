@@ -1,5 +1,5 @@
 // Bibliography. Every entry was checked against its PubMed record (PMID, title, authors,
-// journal, year, pages, DOI) on 2026-09-22 (entries from guarracino2013 onward on 2026-09-23; rola2025 onward also on 2026-09-23; nagueh2016 onward on 2026-09-23). Page text cites entries by key.
+// journal, year, pages, DOI) on 2026-09-22 (entries from guarracino2013 onward on 2026-09-23; rola2025 onward also on 2026-09-23; nagueh2016 onward on 2026-09-23; hamzaoui2012 onward on 2026-10-02). Page text cites entries by key.
 export const REFS = [
  {
   "key": "suga1973",
@@ -1405,6 +1405,248 @@ export const REFS = [
   "pages": "686-90",
   "pmid": "3286121",
   "doi": "10.1097/00003246-198807000-00008"
+ },
+ {
+  "key": "hamzaoui2012",
+  "authors": "Hamzaoui O, Monnet X, Teboul JL",
+  "title": "Pulsus paradoxus",
+  "journal": "Eur Respir J",
+  "year": 2012,
+  "volume": "42",
+  "pages": "1696-705",
+  "pmid": "23222878",
+  "doi": "10.1183/09031936.00138912"
+ },
+ {
+  "key": "reddy1978",
+  "authors": "Reddy PS, Curtiss EI, O'Toole JD, et al.",
+  "title": "Cardiac tamponade: hemodynamic observations in man",
+  "journal": "Circulation",
+  "year": 1978,
+  "volume": "58",
+  "pages": "265-72",
+  "pmid": "668074",
+  "doi": "10.1161/01.cir.58.2.265"
+ },
+ {
+  "key": "reddy1990",
+  "authors": "Reddy PS, Curtiss EI, Uretsky BF",
+  "title": "Spectrum of hemodynamic changes in cardiac tamponade",
+  "journal": "Am J Cardiol",
+  "year": 1990,
+  "volume": "66",
+  "pages": "1487-91",
+  "pmid": "2251997",
+  "doi": "10.1016/0002-9149(90)90540-h"
+ },
+ {
+  "key": "boltwood1987",
+  "authors": "Boltwood CM",
+  "title": "Ventricular performance related to transmural filling pressure in clinical cardiac tamponade",
+  "journal": "Circulation",
+  "year": 1987,
+  "volume": "75",
+  "pages": "941-55",
+  "pmid": "3568311",
+  "doi": "10.1161/01.cir.75.5.941"
+ },
+ {
+  "key": "singh1986",
+  "authors": "Singh S, Wann LS, Klopfenstein HS, et al.",
+  "title": "Usefulness of right ventricular diastolic collapse in diagnosing cardiac tamponade and comparison to pulsus paradoxus",
+  "journal": "Am J Cardiol",
+  "year": 1986,
+  "volume": "57",
+  "pages": "652-6",
+  "pmid": "3953452",
+  "doi": "10.1016/0002-9149(86)90853-2"
+ },
+ {
+  "key": "russo1993",
+  "authors": "Russo AM, O'Connor WH, Waxman HL",
+  "title": "Atypical presentations and echocardiographic findings in patients with cardiac tamponade occurring early and late after cardiac surgery",
+  "journal": "Chest",
+  "year": 1993,
+  "volume": "104",
+  "pages": "71-8",
+  "pmid": "8325120",
+  "doi": "10.1378/chest.104.1.71"
+ },
+ {
+  "key": "chuttani1994",
+  "authors": "Chuttani K, Tischler MD, Pandian NG, et al.",
+  "title": "Diagnosis of cardiac tamponade after cardiac surgery: relative value of clinical, echocardiographic, and hemodynamic signs",
+  "journal": "Am Heart J",
+  "year": 1994,
+  "volume": "127",
+  "pages": "913-8",
+  "pmid": "8154431",
+  "doi": "10.1016/0002-8703(94)90561-4"
+ },
+ {
+  "key": "schwartz1993",
+  "authors": "Schwartz SL, Pandian NG, Cao QL, et al.",
+  "title": "Left ventricular diastolic collapse in regional left heart cardiac tamponade. An experimental echocardiographic and hemodynamic study",
+  "journal": "J Am Coll Cardiol",
+  "year": 1993,
+  "volume": "22",
+  "pages": "907-13",
+  "pmid": "8354831",
+  "doi": "10.1016/0735-1097(93)90210-r"
+ },
+ {
+  "key": "takata1997",
+  "authors": "Takata M, Harasawa Y, Beloucif S, et al.",
+  "title": "Coupled vs. uncoupled pericardial constraint: effects on cardiac chamber interactions",
+  "journal": "J Appl Physiol",
+  "year": 1997,
+  "volume": "83",
+  "pages": "1799-813",
+  "pmid": "9390949",
+  "doi": "10.1152/jappl.1997.83.6.1799"
+ },
+ {
+  "key": "ramachandran2009",
+  "authors": "Ramachandran D, Luo C, Ma TS, et al.",
+  "title": "Using a human cardiovascular-respiratory model to characterize cardiac tamponade and pulsus paradoxus",
+  "journal": "Theor Biol Med Model",
+  "year": 2009,
+  "volume": "6",
+  "pages": "15",
+  "pmid": "19656411",
+  "doi": "10.1186/1742-4682-6-15"
+ },
+ {
+  "key": "hatle1989",
+  "authors": "Hatle LK, Appleton CP, Popp RL",
+  "title": "Differentiation of constrictive pericarditis and restrictive cardiomyopathy by Doppler echocardiography",
+  "journal": "Circulation",
+  "year": 1989,
+  "volume": "79",
+  "pages": "357-70",
+  "pmid": "2914352",
+  "doi": "10.1161/01.cir.79.2.357"
+ },
+ {
+  "key": "vaitkus1991",
+  "authors": "Vaitkus PT, Kussmaul WG",
+  "title": "Constrictive pericarditis versus restrictive cardiomyopathy: a reappraisal and update of diagnostic criteria",
+  "journal": "Am Heart J",
+  "year": 1991,
+  "volume": "122",
+  "pages": "1431-41",
+  "pmid": "1951008",
+  "doi": "10.1016/0002-8703(91)90587-8"
+ },
+ {
+  "key": "talreja2008",
+  "authors": "Talreja DR, Nishimura RA, Oh JK, et al.",
+  "title": "Constrictive pericarditis in the modern era: novel criteria for diagnosis in the cardiac catheterization laboratory",
+  "journal": "J Am Coll Cardiol",
+  "year": 2008,
+  "volume": "51",
+  "pages": "315-9",
+  "pmid": "18206742",
+  "doi": "10.1016/j.jacc.2007.09.039"
+ },
+ {
+  "key": "jaber2009",
+  "authors": "Jaber WA, Sorajja P, Borlaug BA, et al.",
+  "title": "Differentiation of tricuspid regurgitation from constrictive pericarditis: novel criteria for diagnosis in the cardiac catheterisation laboratory",
+  "journal": "Heart",
+  "year": 2009,
+  "volume": "95",
+  "pages": "1449-54",
+  "pmid": "19451139",
+  "doi": "10.1136/hrt.2008.155523"
+ },
+ {
+  "key": "kothari1993",
+  "authors": "Kothari SS, Narula J, Tandon R, et al.",
+  "title": "Cardiac compression with mitral stenosis: a haemodynamic challenge",
+  "journal": "Int J Cardiol",
+  "year": 1993,
+  "volume": "39",
+  "pages": "216-8",
+  "pmid": "8335413",
+  "doi": "10.1016/0167-5273(93)90042-f"
+ },
+ {
+  "key": "jain2022",
+  "authors": "Jain CC, Miranda WR, El Sabbagh A, et al.",
+  "title": "A Simplified Method for the Diagnosis of Constrictive Pericarditis in the Cardiac Catheterization Laboratory",
+  "journal": "JAMA Cardiol",
+  "year": 2022,
+  "volume": "7",
+  "pages": "100-104",
+  "pmid": "34550314",
+  "doi": "10.1001/jamacardio.2021.3478"
+ },
+ {
+  "key": "mintz1981",
+  "authors": "Mintz GS, Kotler MN, Parry WR, et al.",
+  "title": "Real-time inferior vena caval ultrasonography: normal and abnormal findings and its use in assessing right-heart function",
+  "journal": "Circulation",
+  "year": 1981,
+  "volume": "64",
+  "pages": "1018-25",
+  "pmid": "7285290",
+  "doi": "10.1161/01.cir.64.5.1018"
+ },
+ {
+  "key": "nadir2014",
+  "authors": "Nadir AM, Beadle R, Lim HS",
+  "title": "Kussmaul physiology in patients with heart failure",
+  "journal": "Circ Heart Fail",
+  "year": 2014,
+  "volume": "7",
+  "pages": "440-7",
+  "pmid": "24619369",
+  "doi": "10.1161/CIRCHEARTFAILURE.113.000830"
+ },
+ {
+  "key": "jozwiak2024",
+  "authors": "Jozwiak M, Teboul JL",
+  "title": "Heart-Lungs interactions: the basics and clinical implications",
+  "journal": "Ann Intensive Care",
+  "year": 2024,
+  "volume": "14",
+  "pages": "122",
+  "pmid": "39133379",
+  "doi": "10.1186/s13613-024-01356-5"
+ },
+ {
+  "key": "arnal2017",
+  "authors": "Arnal JM, Garnero A, Saoli M, et al.",
+  "title": "Parameters for Simulation of Adult Subjects During Mechanical Ventilation",
+  "journal": "Respir Care",
+  "year": 2017,
+  "volume": "63",
+  "pages": "158-168",
+  "pmid": "29042486",
+  "doi": "10.4187/respcare.05775"
+ },
+ {
+  "key": "alrawas2013",
+  "authors": "Al-Rawas N, Banner MJ, Euliano NR, et al.",
+  "title": "Expiratory time constant for determinations of plateau pressure, respiratory system compliance, and total resistance",
+  "journal": "Crit Care",
+  "year": 2013,
+  "volume": "17",
+  "pages": "R23",
+  "pmid": "23384402",
+  "doi": "10.1186/cc12500"
+ },
+ {
+  "key": "georgopoulos1995",
+  "authors": "Georgopoulos D, Mitrouska I, Markopoulou K, et al.",
+  "title": "Effects of breathing patterns on mechanically ventilated patients with chronic obstructive pulmonary disease and dynamic hyperinflation",
+  "journal": "Intensive Care Med",
+  "year": 1995,
+  "volume": "21",
+  "pages": "880-6",
+  "pmid": "8636519",
+  "doi": "10.1007/BF01712328"
  }];
 
 export const REF_INDEX = Object.fromEntries(REFS.map((r) => [r.key, r]));

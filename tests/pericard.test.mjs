@@ -88,12 +88,49 @@ check('constriction: the venous pressure does not fall in inspiration (RAP chang
 // Jaber 2009 (PMID 19451139): in constrictive pericarditis the difference between the LV and RV diastolic pressures narrows in inspiration
 check('Jaber 2009 (PMID 19451139): in constriction the LV minus RV end-diastolic pressure difference narrows in inspiration', C.m.lvRvInsp < C.m.lvRvExp, `${f(C.m.lvRvExp)} → ${f(C.m.lvRvInsp)} mmHg`);
 
+// ---------- further endpoints from PubMed abstracts (see docs/pericard-evidence.md) ----------
+// Beat groups follow measure(): inspiratory beats start below half the lowest pleural pressure, expiratory beats within a tenth of it.
+const phase = (m) => { const lo = Math.min(...m.rows.map((x) => x.ppl)); return { I: m.rows.filter((x) => x.ppl < 0.5 * lo), E: m.rows.filter((x) => x.ppl > 0.1 * lo) }; };
+const avg = (rows, g) => mean(rows.map(g));
+const insp = (c) => avg(phase(c.m).I, (x) => x.SBP - x.DBP), sbpI = (c) => avg(phase(c.m).I, (x) => x.SBP), sbpE = (c) => avg(phase(c.m).E, (x) => x.SBP);
+
+// Reddy 1978 (PMID 668074): inspiratory systemic arterial pulse pressure 45 ± 29 mmHg in tamponade and 81 ± 23 mmHg after pericardiocentesis
+check('Reddy 1978: the inspiratory pulse pressure in tamponade is within 45 ± 2×29 mmHg', within(insp(T), ...sd2(45, 29)), `${f(insp(T))}`);
+check('Reddy 1978: the inspiratory pulse pressure after drainage is within 81 ± 2×23 mmHg', within(insp(drained), ...sd2(81, 23)), `${f(insp(drained))}`);
+check('Reddy 1978: drainage raises the inspiratory pulse pressure', insp(drained) > insp(T) + 10, `${f(insp(T))} → ${f(insp(drained))} mmHg`);
+// Reddy 1978: in all patients with tamponade the right ventricular end-diastolic pressure was elevated and equal to the pericardial pressure
+const rvMinusPeri = (c) => mean(c.run.beats.map(({ r }) => r.rec.Prv[0] - (r.rec.Ppcd[0] + r.rec.Ppl[0])));
+check('Reddy 1978: the RV end-diastolic pressure equals the pericardial pressure in tamponade (within 3 mmHg) and is elevated (above 10 mmHg)',
+  Math.abs(rvMinusPeri(T)) < 3 && T.m.rvedpExp > 10, `${f(rvMinusPeri(T))} mmHg, RVEDP ${f(T.m.rvedpExp)}`);
+check('Reddy 1978: equilibration is absent without tamponade (RV end-diastolic pressure at least 3 mmHg above the pericardial pressure after drainage)', rvMinusPeri(drained) > 3, `${f(rvMinusPeri(drained))} mmHg`);
+// Reddy 1990 (PMID 2251997): 48 patients with intrapericardial pressure equilibrated with right atrial and wedge pressures; change after pericardiocentesis
+check('Reddy 1990 (PMID 2251997): drainage lowers RAP by 9 ± 2×4 mmHg', within(T.h.RAP - drained.h.RAP, ...sd2(9, 4)), `${f(T.h.RAP - drained.h.RAP)}`);
+check('Reddy 1990: drainage lowers the wedge pressure by 8 ± 2×5 mmHg', within(T.m.wedgeExp - drained.m.wedgeExp, ...sd2(8, 5)), `${f(T.m.wedgeExp - drained.m.wedgeExp)}`);
+check('Reddy 1990: drainage lowers the intrapericardial pressure by 16 ± 2×7 mmHg', within(T.h.Ppcd - drained.h.Ppcd, ...sd2(16, 7)), `${f(T.h.Ppcd - drained.h.Ppcd)}`);
+check('Reddy 1990: drainage lowers the inspiratory fall in systolic pressure by 17 ± 2×11 mmHg', within(T.m.sbpFall - drained.m.sbpFall, ...sd2(17, 11)), `${f(T.m.sbpFall - drained.m.sbpFall)}`);
+check('Reddy 1990: drainage raises cardiac output by 2.8 ± 2×1.5 L/min', within(drained.h.CO - T.h.CO, ...sd2(2.8, 1.5)), `${f(drained.h.CO - T.h.CO, 2)}`);
+// Singh 1986 (PMID 3953452): tamponade was defined as equilibrated intrapericardial, right atrial and wedge pressures, all above 10 mmHg
+check('Singh 1986 (PMID 3953452): RAP and wedge pressure in tamponade exceed 10 mmHg', T.h.RAP > 10 && T.m.wedgeExp > 10, `${f(T.h.RAP)}, ${f(T.m.wedgeExp)}`);
+// Hamzaoui 2012 and Nadir 2014 (PMID 24619369): systolic pressure and right atrial pressure fall in quiet inspiration in normal individuals
+check('Hamzaoui 2012: systolic pressure is lower in inspiration than in expiration in the normal circulation', sbpI(N) < sbpE(N), `${f(sbpE(N))} → ${f(sbpI(N))} mmHg`);
+check('Nadir 2014 (PMID 24619369): RAP falls in inspiration in the normal circulation', N.m.rapInsp < N.m.rapExp, `${f(N.m.rapExp)} → ${f(N.m.rapInsp)} mmHg`);
+// Talreja 2008 (PMID 18206742): enhanced ventricular interaction is unique to constriction; the abstract gives no threshold, so only the order is tested
+check('Talreja 2008: the systolic area index is higher in constriction than in restriction', C.m.sai > Q.m.sai, `${f(C.m.sai, 2)} against ${f(Q.m.sai, 2)}`);
+// Jain 2022 (PMID 34550314): ejection time in expiration less inspiration (ms), mean ± SD, constriction and without constriction
+check('Jain 2022 (PMID 34550314): constriction, aortic ejection time change is within 19.0 ± 2×15.7 ms', within(C.m.dEtAo, ...sd2(19.0, 15.7)), `${f(C.m.dEtAo)}`);
+check('Jain 2022: constriction, pulmonary artery ejection time change is within −31.8 ± 2×28.6 ms', within(C.m.dEtPa, ...sd2(-31.8, 28.6)), `${f(C.m.dEtPa)}`);
+check('Jain 2022: constriction, aorta minus pulmonary artery difference is within 50.8 ± 2×22.5 ms', within(C.m.dEtAo - C.m.dEtPa, ...sd2(50.8, 22.5)), `${f(C.m.dEtAo - C.m.dEtPa)}`);
+check('Jain 2022: without constriction, aortic ejection time change is within 10.5 ± 2×9.1 ms', within(Q.m.dEtAo, ...sd2(10.5, 9.1)), `${f(Q.m.dEtAo)}`);
+check('Jain 2022: without constriction, aorta minus pulmonary artery difference is within 5.4 ± 2×15.2 ms', within(Q.m.dEtAo - Q.m.dEtPa, ...sd2(5.4, 15.2)), `${f(Q.m.dEtAo - Q.m.dEtPa)}`);
+check('Jain 2022: in constriction, the pulmonary artery ejection time is shorter in expiration than in inspiration', C.m.dEtPa < 0, `${f(C.m.dEtPa)} ms`);
+
 // Findings the model does not reproduce. They are printed, not counted: a published finding that the model misses is a limit of the model.
 const gap = (name, detail) => console.log(`GAP   ${name}  ${detail}`);
 {
   const jain = (m) => m.dEtAo - m.dEtPa;
-  gap('Jain 2022 (PMID 34550314): ejection time, expiration less inspiration, aorta minus pulmonary artery, constriction 50.8 ± 22.5 ms', `model ${f(jain(C.m))} ms (aorta ${f(C.m.dEtAo)}, pulmonary artery ${f(C.m.dEtPa)}; published pulmonary artery −31.8 ± 28.6)`);
-  gap('Jain 2022: the same difference without constriction (restriction or severe tricuspid regurgitation), 5.4 ± 15.2 ms', `model restriction ${f(jain(Q.m))} ms`);
+  gap('Jain 2022 (PMID 34550314): pulmonary artery ejection time change without constriction (restrictive cardiomyopathy or severe tricuspid regurgitation), 5.1 ± 9.5 ms', `model restriction ${f(Q.m.dEtPa)} ms (outside 5.1 ± 2×9.5)`);
+  gap('Jain 2022: the aorta minus pulmonary artery difference separates constriction (50.8 ± 22.5 ms) from no constriction (5.4 ± 15.2 ms)', `model constriction ${f(jain(C.m))} ms, restriction ${f(jain(Q.m))} ms (order reversed; each value lies within 2 SD of its own group)`);
+  gap('Singh 1986 (PMID 3953452): intrapericardial pressure above 10 mmHg in tamponade (part of the study definition, with right atrial and wedge pressures)', `model mean pericardial pressure in expiration ${f(avg(phase(T.m).E, (x) => x.Ppcd + x.ppl))} mmHg`);
   gap('Nadir 2014 (PMID 24619369): Kussmaul physiology, an inspiratory rise in right atrial pressure, in 43% of patients with heart failure', `model constriction ${f(C.m.rapExp)} → ${f(C.m.rapInsp)} mmHg (no rise)`);
   gap('Talreja 2008 (PMID 18206742): systolic area index above the value for normal, constriction', `model ${f(C.m.sai, 2)} (the abstract gives no threshold)`);
   gap('Kothari 1993 (PMID 8335413): wedge and LV end-diastolic pressure fall apart in inspiration, constriction', `model wedge minus LVEDP ${f(C.m.gradExp)} → ${f(C.m.gradInsp)} mmHg`);
