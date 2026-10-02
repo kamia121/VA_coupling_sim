@@ -12,6 +12,7 @@ const PAGES = [
   ['scenarios.html', 'Scenarios'],
   ['echo.html', 'Echo lab'],
   ['pac.html', 'PA catheter'],
+  ['pressure.html', 'Pressure lab'],
   ['references.html', 'References'],
 ];
 

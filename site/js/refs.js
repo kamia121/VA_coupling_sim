@@ -1350,6 +1350,61 @@ export const REFS = [
   "pmid": "13663218",
   "doi": "10.1161/01.res.7.4.649"
  }
-];
+,
+ {
+  "key": "promonet2000",
+  "authors": "Promonet C, Anglade D, Menaouar A, Bayat S, Durand M, Eberhard A, Grimbert FA",
+  "title": "Time-dependent pressure distortion in a catheter-transducer system: correction by fast flush",
+  "journal": "Anesthesiology",
+  "year": 2000,
+  "volume": "92",
+  "pages": "208-18",
+  "pmid": "10638918",
+  "doi": "10.1097/00000542-200001000-00033"
+ },
+ {
+  "key": "hersh2014",
+  "authors": "Hersh LT, Friedman B, Luczyk W, Sesing J",
+  "title": "Evaluation of filtering methods for acquiring radial intra-artery blood pressure waveforms",
+  "journal": "J Clin Monit Comput",
+  "year": 2014,
+  "volume": "29",
+  "pages": "659-69",
+  "pmid": "25516162",
+  "doi": "10.1007/s10877-014-9649-4"
+ },
+ {
+  "key": "perry1986",
+  "authors": "Perry MA, Colebatch JG, Glover WE, Roddie IC",
+  "title": "Measurement of capillary pressure in humans using a venous occlusion method",
+  "journal": "J Appl Physiol",
+  "year": 1986,
+  "volume": "60",
+  "pages": "2114-7",
+  "pmid": "3722075",
+  "doi": "10.1152/jappl.1986.60.6.2114"
+ },
+ {
+  "key": "jardin1985",
+  "authors": "Jardin F, Genevray B, Brun-Ney D, Bourdarias JP",
+  "title": "Influence of lung and chest wall compliances on transmission of airway pressure to the pleural space in critically ill patients",
+  "journal": "Chest",
+  "year": 1985,
+  "volume": "88",
+  "pages": "653-8",
+  "pmid": "3902386",
+  "doi": "10.1378/chest.88.5.653"
+ },
+ {
+  "key": "venus1988",
+  "authors": "Venus B, Cohen LE, Smith RA",
+  "title": "Hemodynamics and intrathoracic pressure transmission during controlled mechanical ventilation and positive end-expiratory pressure in normal and low compliant lungs",
+  "journal": "Crit Care Med",
+  "year": 1988,
+  "volume": "16",
+  "pages": "686-90",
+  "pmid": "3286121",
+  "doi": "10.1097/00003246-198807000-00008"
+ }];
 
 export const REF_INDEX = Object.fromEntries(REFS.map((r) => [r.key, r]));
