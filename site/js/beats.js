@@ -22,16 +22,17 @@ export function pleural(t, pat) {
 }
 
 // Run beats for `seconds` after `warm` seconds that are discarded, with the breath `pat` (a BREATHS entry).
-// opt.rr: optional RR multipliers cycled beat by beat (irregular rhythm). Returns the converged beat without
+// A pattern is a BREATHS entry, or an object { fn, palvFn } whose fn(t) gives the pleural pressure (mmHg) at time t and palvFn(t)
+// the alveolar pressure, as from respmech.js. opt.rr: optional RR multipliers cycled beat by beat (irregular rhythm). Returns the converged beat without
 // a breath (`base`) and the recorded beats, each with its start time t0, its length T and its result r.
 export function runBeats(params, pat, { seconds = 16, warm = 8, rr = null, dt } = {}) {
   const base = simulate(params, dt ? { dt } : {});
-  const fn = (t) => pleural(t, pat);
+  const fn = pat && pat.fn ? pat.fn : (t) => pleural(t, pat);   // a pattern is a BREATHS entry or { fn(t) → mmHg }
   const beats = [];
   let s = base.state, prev = base, t = 0, k = 0;
   while (t < warm + seconds) {
     const f = rr ? rr[k % rr.length] : 1;
-    const r = simulate({ ...params, hr: base.params.hr / f }, { state: s, slow: base.slow, holdSlow: true, maxBeats: 0, prev, t0: t, pplFn: fn, ...(dt ? { dt } : {}) });
+    const r = simulate({ ...params, hr: base.params.hr / f }, { state: s, slow: base.slow, holdSlow: true, maxBeats: 0, prev, t0: t, pplFn: fn, palvFn: pat && pat.palvFn ? pat.palvFn : null, ...(dt ? { dt } : {}) });
     const T = r.rec.t.length * r.dt;
     if (t >= warm) beats.push({ t0: t - warm, T, r });
     s = r.endState; prev = r; t += T; k++;
@@ -45,7 +46,7 @@ export function beatTable({ beats, pat }) {
   return beats.map(({ t0, T, r }) => {
     const rec = r.rec, ppl = mean(rec.Ppl);
     return {
-      t0, T, ppl, insp: pat ? ((t0 % pat.period) / pat.period < pat.insp) : false,
+      t0, T, ppl, insp: pat && pat.period ? ((t0 % pat.period) / pat.period < pat.insp) : false,
       SBP: Math.max(...rec.Pao), DBP: Math.min(...rec.Pao), MAP: mean(rec.Pao),
       SV: r.lv.SV, RVSV: r.rv.SV, RAP: mean(rec.Pra), LAP: mean(rec.Pla), Ppv: mean(rec.Ppv),
       LVEDP: rec.Plv[0], RVEDP: rec.Prv[0], Ppcd: mean(rec.Ppcd),

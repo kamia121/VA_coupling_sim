@@ -39,6 +39,8 @@ export function measure(run) {
   // wedge pressure is taken as the mean pulmonary venous pressure, which the catheter transmits through the
   // capillary bed; the pericardial pressure is the pressure around the chambers, including the pleural share
   const wedge = (x) => x.Ppv, peri = (x) => x.Ppcd + x.ppl;
+  // ejection time (ms) of each ventricle, from the opening to the closing of its outflow valve
+  const et = (ix, side) => mean(ix.map((i) => { const r = run.beats[i].r, e = cardiacPhases(r)[side].events; return (e.outClose - e.outOpen) * r.dt * 1000; }));
   const sai = (ix) => mean(ix.map((i) => systolicArea(run.beats[i].r, 'rv'))) / mean(ix.map((i) => systolicArea(run.beats[i].r, 'lv')));
   return {
     rows, nInsp: I.length, nExp: E.length,
@@ -60,6 +62,10 @@ export function measure(run) {
     rvEdvExp: m(E, (x, r) => r.rv.EDV), rvEdvInsp: m(I, (x, r) => r.rv.EDV),
     lvSvExp: m(E, (x, r) => r.lv.SV), lvSvInsp: m(I, (x, r) => r.lv.SV),
     rvSvExp: m(E, (x, r) => r.rv.SV), rvSvInsp: m(I, (x, r) => r.rv.SV),
+    // ejection times: expiration less inspiration (Jain 2022); positive for the left ventricle when it ejects for less time in inspiration
+    dEtAo: et(E, 'lv') - et(I, 'lv'), dEtPa: et(E, 'rv') - et(I, 'rv'),
+    // difference between the LV and RV end-diastolic pressures (Jaber 2009)
+    lvRvExp: m(E, (x) => x.LVEDP - x.RVEDP), lvRvInsp: m(I, (x) => x.LVEDP - x.RVEDP),
     co: run.base.hemo.CO, sv: mean(rows.map((x) => x.SV)),
   };
 }
