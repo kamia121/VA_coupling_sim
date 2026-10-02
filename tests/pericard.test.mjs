@@ -85,5 +85,19 @@ check('normal: the LV filling changes less than in constriction', Math.abs(pct(N
 check('restriction: the LV end-diastolic pressure exceeds the RV end-diastolic pressure by more than 5 mmHg (not equalized)', Q.m.lvedpExp - Q.m.rvedpExp > 5, `${f(Q.m.lvedpExp)}, ${f(Q.m.rvedpExp)}`);
 check('constriction: the venous pressure does not fall in inspiration (RAP change under 1 mmHg)', Math.abs(C.m.rapInsp - C.m.rapExp) < 1, `${f(C.m.rapExp)} → ${f(C.m.rapInsp)}`);
 
+// Jaber 2009 (PMID 19451139): in constrictive pericarditis the difference between the LV and RV diastolic pressures narrows in inspiration
+check('Jaber 2009 (PMID 19451139): in constriction the LV minus RV end-diastolic pressure difference narrows in inspiration', C.m.lvRvInsp < C.m.lvRvExp, `${f(C.m.lvRvExp)} → ${f(C.m.lvRvInsp)} mmHg`);
+
+// Findings the model does not reproduce. They are printed, not counted: a published finding that the model misses is a limit of the model.
+const gap = (name, detail) => console.log(`GAP   ${name}  ${detail}`);
+{
+  const jain = (m) => m.dEtAo - m.dEtPa;
+  gap('Jain 2022 (PMID 34550314): ejection time, expiration less inspiration, aorta minus pulmonary artery, constriction 50.8 ± 22.5 ms', `model ${f(jain(C.m))} ms (aorta ${f(C.m.dEtAo)}, pulmonary artery ${f(C.m.dEtPa)}; published pulmonary artery −31.8 ± 28.6)`);
+  gap('Jain 2022: the same difference without constriction (restriction or severe tricuspid regurgitation), 5.4 ± 15.2 ms', `model restriction ${f(jain(Q.m))} ms`);
+  gap('Nadir 2014 (PMID 24619369): Kussmaul physiology, an inspiratory rise in right atrial pressure, in 43% of patients with heart failure', `model constriction ${f(C.m.rapExp)} → ${f(C.m.rapInsp)} mmHg (no rise)`);
+  gap('Talreja 2008 (PMID 18206742): systolic area index above the value for normal, constriction', `model ${f(C.m.sai, 2)} (the abstract gives no threshold)`);
+  gap('Kothari 1993 (PMID 8335413): wedge and LV end-diastolic pressure fall apart in inspiration, constriction', `model wedge minus LVEDP ${f(C.m.gradExp)} → ${f(C.m.gradInsp)} mmHg`);
+}
+
 console.log(failed ? `\n${failed} test(s) failed` : '\nall pericardial checks passed');
 process.exit(failed ? 1 : 0);
