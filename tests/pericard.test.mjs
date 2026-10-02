@@ -136,5 +136,19 @@ const gap = (name, detail) => console.log(`GAP   ${name}  ${detail}`);
   gap('Kothari 1993 (PMID 8335413): wedge and LV end-diastolic pressure fall apart in inspiration, constriction', `model wedge minus LVEDP ${f(C.m.gradExp)} → ${f(C.m.gradInsp)} mmHg`);
 }
 
+// ---------- numbers quoted in pericard.html ----------
+{
+  const q = (x, d = 1) => x.toFixed(d), jainC = C.m.dEtAo - C.m.dEtPa, jainQ = Q.m.dEtAo - Q.m.dEtPa;
+  check('page: effusion gives RAP 10.7 mmHg and CO 3.13 L/min, both within 2 SD of Reddy 1978', q(T.h.RAP) === '10.7' && q(T.h.CO, 2) === '3.13' && within(T.h.RAP, ...sd2(16, 4)) && within(T.h.CO, ...sd2(3.87, 1.77)));
+  check('page: the inspiratory fall in systolic pressure is 15.8 mmHg with the effusion and 5.7 mmHg with a normal pericardium', q(T.m.sbpFall) === '15.8' && q(N.m.sbpFall) === '5.7', `${q(T.m.sbpFall)}, ${q(N.m.sbpFall)}`);
+  check('page: constriction lowers the LV end-diastolic volume by 4.2% and raises the RV by 10.6% in inspiration', q(pct(C.m.lvEdvExp, C.m.lvEdvInsp)) === '-4.2' && q(pct(C.m.rvEdvExp, C.m.rvEdvInsp)) === '10.6', `${q(pct(C.m.lvEdvExp, C.m.lvEdvInsp))}, ${q(pct(C.m.rvEdvExp, C.m.rvEdvInsp))}`);
+  check('page: the LV minus RV end-diastolic pressure narrows from 2.3 to 0.9 mmHg in constriction', q(C.m.lvRvExp) === '2.3' && q(C.m.lvRvInsp) === '0.9', `${q(C.m.lvRvExp)} → ${q(C.m.lvRvInsp)}`);
+  check('page: the ejection time difference is 13.3 ms in constriction (inside 2 SD of 50.8 ± 22.5) and 21.1 ms in restriction', q(jainC) === '13.3' && q(jainQ) === '21.1' && within(jainC, ...sd2(50.8, 22.5)), `${q(jainC)}, ${q(jainQ)}`);
+  check('page: restriction has a pericardial pressure within 1 mmHg of zero, an LV minus RV end-diastolic pressure of 20.6 mmHg, LV filling changing by under 1% and a systolic fall of 1.6 mmHg',
+    Math.abs(Q.h.Ppcd) < 1 && q(Q.m.lvRvExp) === '20.6' && Math.abs(pct(Q.m.lvEdvExp, Q.m.lvEdvInsp)) < 1 && q(Q.m.sbpFall) === '1.6', `${q(Q.h.Ppcd)}, ${q(Q.m.lvRvExp)}, ${q(pct(Q.m.lvEdvExp, Q.m.lvEdvInsp))}, ${q(Q.m.sbpFall)}`);
+  check('page: constriction RAP falls from 13.3 to 12.9 mmHg and the wedge and LV end-diastolic pressures both fall by about 2 mmHg', q(C.m.rapExp) === '13.3' && q(C.m.rapInsp) === '12.9' && within(C.m.wedgeExp - C.m.wedgeInsp, 1.5, 2.5) && within(C.m.lvedpExp - C.m.lvedpInsp, 1.5, 2.5), `${q(C.m.wedgeExp - C.m.wedgeInsp)}, ${q(C.m.lvedpExp - C.m.lvedpInsp)}`);
+  check('page: the systolic area index is 0.99 in constriction and 0.93 in restriction', q(C.m.sai, 2) === '0.99' && q(Q.m.sai, 2) === '0.93', `${q(C.m.sai, 2)}, ${q(Q.m.sai, 2)}`);
+}
+
 console.log(failed ? `\n${failed} test(s) failed` : '\nall pericardial checks passed');
 process.exit(failed ? 1 : 0);

@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script>try{var t=localStorage.getItem('vac-theme');if(t==='light'||t==='dark')document.documentElement.setAttribute('data-theme',t)}catch(e){}</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Code+Pro:wght@400;500&family=Source+Sans+3:ital,wght@0,400;0,600;1,400&family=Source+Serif+4:wght@600&display=swap">
+<link rel="stylesheet" href="css/tokens.css">
+<link rel="stylesheet" href="css/site.css">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='5' fill='%232F6E66'/%3E%3Cpath d='M8 24 V10 L24 8 V22 Z' fill='none' stroke='white' stroke-width='2.5' stroke-linejoin='round'/%3E%3C/svg%3E">
+<title>Pericardial Lab</title>
+<meta name="description" content="Cardiac tamponade, constrictive pericarditis and restrictive cardiomyopathy on the same circulation, under a spontaneous or positive-pressure breath.">
+</head>
+<body>
+<main>
+<article class="prose">
+  <h1>Pericardial lab</h1>
+  <p class="lede">Cardiac tamponade, constrictive pericarditis and restrictive cardiomyopathy each raise the filling pressures of both ventricles and lower stroke volume. They differ in the origin of the pressure, in how the right and left ventricles share a fixed space, and in how every pressure follows the breath.</p>
+
+  <section class="panel" id="cases">
+    <h2>Four circulations under a breath</h2>
+    <p>In tamponade the fluid raises the pressure in the pericardial sac, and that pressure adds to the pressure inside every chamber. In patients with a pericardial effusion the mean right atrial pressure was 16 ± 4 mmHg before drainage and 7 ± 5 mmHg after it, and the cardiac output rose from 3.87 ± 1.77 to 7 ± 2.2 L/min <cite data-ref="reddy1978"></cite>. The wedge pressure minus the pericardial pressure, the transmural filling pressure of the left atrium, was 4 ± 2 mmHg in expiration and 0.2 ± 1.3 mmHg in inspiration <cite data-ref="boltwood1987"></cite>. An effusion of 230 mL in the model gives a mean right atrial pressure of 10.7 mmHg and a cardiac output of 3.13 L/min, both within 2 SD of the published values.</p>
+    <p>The heart lies in a sac of fixed size, so a rise in right ventricular filling in inspiration is paid for by the left ventricle. The inspiratory fall in systolic arterial pressure exceeds 10 mmHg in tamponade, the criterion for pulsus paradoxus <cite data-ref="hamzaoui2012"></cite>. The model gives 15.8 mmHg with the effusion and 5.7 mmHg with a normal pericardium at the same quiet breath, a swing of 4 mmHg in pleural pressure that is an assumption of the model.</p>
+    <div class="pl-grid">
+      <div class="pl-controls">
+        <p class="k">Pericardium and myocardium</p>
+        <div class="seg stack" id="pc-case" role="group" aria-label="Case"></div>
+        <p class="k">Breath</p>
+        <div class="seg stack" id="pc-breath" role="group" aria-label="Breath"></div>
+      </div>
+      <div class="pl-plots">
+        <figure class="monitor fig"><svg id="pc-ppl"></svg><figcaption>Pleural pressure over 16 s, from the breath.</figcaption></figure>
+        <figure class="monitor fig"><svg id="pc-art"></svg><figcaption>Arterial pressure, with the systolic peak of each beat as a dot.</figcaption></figure>
+        <figure class="monitor fig"><svg id="pc-ra"></svg><figcaption>Right atrial pressure (green) and the pressure around the heart, pericardial plus pleural (gray).</figcaption></figure>
+        <figure class="monitor fig"><svg id="pc-vol"></svg><figcaption>End-diastolic volume of each beat, left ventricle (green) and right ventricle (blue).</figcaption></figure>
+      </div>
+    </div>
+    <div class="tiles" id="pc-tiles" aria-live="polite"></div>
+    <table class="data" id="pc-table">
+      <caption>The four circulations under the breath chosen above</caption>
+      <thead></thead>
+      <tbody></tbody>
+    </table>
+    <p>Constriction replaces the compliant sac with a stiff shell. The shell fixes the total volume of the heart, so the diastolic pressures of the four chambers rise together toward one level, and one ventricle fills only as far as the other yields. In inspiration the left ventricular end-diastolic volume falls by 4.2% and the right rises by 10.6% in the model, and the difference between the left and right ventricular end-diastolic pressures narrows from 2.3 to 0.9 mmHg, the direction found in constrictive pericarditis <cite data-ref="jaber2009"></cite>. The ejection time of each ventricle follows its filling. The difference between the change in aortic and in pulmonary artery ejection time from expiration to inspiration was 50.8 ± 22.5 ms in constriction and 5.4 ± 15.2 ms in restrictive cardiomyopathy or severe tricuspid regurgitation <cite data-ref="jain2022"></cite>. The model gives 13.3 ms in constriction, inside 2 SD of the published value, and 21.1 ms in restriction, so it does not separate the two groups on this measure.</p>
+    <p>Restriction stiffens the myocardium and leaves the pericardium alone. The pericardial pressure stays near zero, the left ventricular end-diastolic pressure exceeds the right by 20.6 mmHg in expiration, and the left ventricular filling changes by less than 1% with the breath. The inspiratory fall in systolic pressure is 1.6 mmHg, so restriction shows neither pulsus paradoxus nor reciprocal ventricular filling.</p>
+    <p>Three findings of constriction are not reproduced. An inspiratory rise in right atrial pressure, Kussmaul physiology, occurred in 39 of 90 patients with advanced heart failure <cite data-ref="nadir2014"></cite>; the model gives a fall from 13.3 to 12.9 mmHg. A dissociation of the wedge pressure and the left ventricular end-diastolic pressure in inspiration was reported in two patients <cite data-ref="kothari1993"></cite>; both fall by about 2 mmHg in the model. The systolic area index of the two ventricles had a sensitivity of 97% for constriction in the original study <cite data-ref="talreja2008"></cite>, and the model orders it correctly, 0.99 in constriction against 0.93 in restriction, without a difference of that size.</p>
+  </section>
+
+  <div id="page-refs"></div>
+</article>
+</main>
+<script type="module">
+  import { initLayout } from './js/layout.js';
+  import { initPericard } from './js/pericardsim.js';
+  initLayout();
+  initPericard();
+</script>
+</body>
+</html>
