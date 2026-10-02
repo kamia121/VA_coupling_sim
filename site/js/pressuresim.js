@@ -1,7 +1,8 @@
 // Pressure lab: reference level and zero, PEEP, and the dynamic response of a fluid-filled catheter.
 import { simulate } from './engine.js';
 import { PRESETS, presetById } from './presets.js';
-import { drawPlot, svgEl } from './plot.js';
+import { drawPlot } from './plot.js';
+import { drawPatient } from './patientfig.js';
 import {
   MMHG_CM, POSTURES, SITES, siteHeight, transducerHeight, arterialAt, venousAt, capillaryP, reading,
   pleuralFromPeep, secondOrder, flushTest, respond, beatStats,
@@ -55,29 +56,7 @@ export function initPressure() {
   $('#pl-zero').oninput = (e) => { S.zero = +e.target.value; level(); };
   const syncMount = () => $('#pl-mount').querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.id === S.mount)));
 
-  function body(post, hSite, hTrans, siteLabel) {
-    const svg = $('#pl-body'); svg.innerHTML = '';
-    const ang = (post.angle * Math.PI) / 180;
-    const ox = 170, oy = 148, sc = 1.5;                 // hip joint, pixels per cm
-    const P = (cm, a) => [ox + cm * Math.cos(a) * sc, oy - cm * Math.sin(a) * sc];
-    const legAng = post.standing ? -Math.PI / 2 : 0;
-    const torsoEnd = P(65 + 20, ang), heart = P(40, ang);
-    const foot = post.standing ? [ox, oy + 78 * sc] : [ox - 78 * sc, oy];
-    svgEl('line', { x1: foot[0], y1: foot[1], x2: ox, y2: oy, stroke: 'var(--mon-axis)', 'stroke-width': 10, 'stroke-linecap': 'round' }, svg);
-    svgEl('line', { x1: ox, y1: oy, x2: torsoEnd[0], y2: torsoEnd[1], stroke: 'var(--mon-axis)', 'stroke-width': 22, 'stroke-linecap': 'round' }, svg);
-    const hy = heart[1];
-    svgEl('line', { x1: 20, x2: 420, y1: hy, y2: hy, stroke: 'var(--mcw-green)', 'stroke-dasharray': '5 4' }, svg);
-    svgEl('text', { x: 420, y: hy - 5, fill: 'var(--mon-axis)', 'font-size': 11, 'text-anchor': 'end' }, svg).textContent = 'Level of the heart';
-    svgEl('circle', { cx: heart[0], cy: hy, r: 7, fill: 'var(--flag)' }, svg);
-    const vy = hy - hSite * sc, ty = hy - hTrans * sc;
-    const vx = 300, tx = 370;
-    svgEl('circle', { cx: vx, cy: vy, r: 6, fill: 'none', stroke: 'var(--text)', 'stroke-width': 2 }, svg);
-    svgEl('text', { x: vx - 10, y: vy - 10, fill: 'var(--text)', 'font-size': 11, 'text-anchor': 'end' }, svg).textContent = siteLabel;
-    svgEl('rect', { x: tx - 7, y: ty - 7, width: 14, height: 14, fill: 'var(--mcw-green)' }, svg);
-    svgEl('text', { x: tx + 12, y: ty + 4, fill: 'var(--text)', 'font-size': 11 }, svg).textContent = 'Transducer';
-    svgEl('line', { x1: vx + 6, y1: vy, x2: tx - 7, y2: ty, stroke: 'var(--text-muted)', 'stroke-dasharray': '2 3' }, svg);
-    void legAng;
-  }
+  const body = (post, hSite, hTrans, siteLabel) => drawPatient($('#pl-body'), { post, siteId: S.site, hSite, hTrans, label: siteLabel });
 
   function level() {
     const post = POSTURES.find((p) => p.id === S.posture), heart = heartOf(S.patient);
