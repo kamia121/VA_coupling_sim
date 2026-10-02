@@ -665,5 +665,5 @@ td.flagged { color: var(--flag); font-weight: 600; }
 .pl-plots .fig { margin: 0; }
 .pl-figure svg { max-height: 300px; }
 @media (max-width: 760px) { .pl-grid { grid-template-columns: minmax(0, 1fr); } }
-#level .data, #peep .data, #dynamic .data { display: block; overflow-x: auto; max-width: 100%; }
-@media (max-width: 480px) { #level .data, #peep .data, #dynamic .data { font-size: 0.8rem; } #level .data :is(th, td), #peep .data :is(th, td), #dynamic .data :is(th, td) { padding: 4px 5px; } }
+#level .data, #peep .data, #dynamic .data, #cases .data { display: block; overflow-x: auto; max-width: 100%; }
+@media (max-width: 480px) { #level .data, #peep .data, #dynamic .data, #cases .data { font-size: 0.8rem; } #level .data :is(th, td), #peep .data :is(th, td), #dynamic .data :is(th, td), #cases .data :is(th, td) { padding: 4px 5px; } }
