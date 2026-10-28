@@ -13,7 +13,7 @@ export const PRESETS = [
   {
     id: 'hfpef', side: 'lv', label: 'Hypertensive heart / HFpEF',
     params: { lvEes: 4.5, lvBeta: 0.042, lvA: 0.3, svr: 1.49, cSys: 0.7, zcAo: 0.06, vStressed: 941, tau: 0.056, lvMass: 1.5, mapSet: 137.7 },
-    text: 'Concentric remodeling raises Ees and Ea together, so the ratio remains in the normal range; Kawaguchi reported an Ees of 4.7 mmHg/mL in HFpEF, compared with 2.1 to 3.3 mmHg/mL in controls. Relaxation is slow, with a fitted τ of 60 ms against 37 ms in the normal heart, and the EDPVR is steep. A 150-mL fluid bolus raises LAP by 2.5 mmHg here and by 1.9 mmHg in the normal heart, and removing the same volume lowers it by 2.5 mmHg.',
+    text: 'Concentric remodeling raises Ees and Ea together, so the ratio remains in the normal range; Kawaguchi reported an Ees of 4.7 mmHg/mL in HFpEF, compared with 2.1 to 3.3 mmHg/mL in controls. Relaxation is slow, with a fitted τ of 60 ms against 37 ms in the normal heart, and the EDPVR is steep. A 150-mL modeled stressed-volume step raises LAP by 2.5 mmHg here and by 1.9 mmHg in the normal heart, and removing the same volume lowers it by 2.5 mmHg.',
     refs: ['kawaguchi2003', 'borlaug2008'],
     detail: {
       mech: 'Concentric remodeling stiffens the ventricle in both systole and diastole. Ees and Ea increase in parallel, so Ea/Ees and EF remain normal <cite data-ref="kawaguchi2003"></cite>. Relaxation is prolonged, with a τ of 59 ± 14 ms in HFpEF against 35 ± 10 ms in controls <cite data-ref="zile2004"></cite>, and the EDPVR is steep, so a given filling volume requires a higher diastolic pressure and the ventricle depends more on atrial contraction to complete filling. In the model, loss of atrial contraction reduces stroke volume by 15% in this scenario and by 10% in the normal heart; setting the atrial contraction slider to zero in the simulator reproduces this loss. The baroreflex set point is moved to the prevailing pressure, a simplification of the partial resetting seen in chronic hypertension <cite data-ref="lohmeier2015"></cite>.',
@@ -30,7 +30,7 @@ export const PRESETS = [
     detail: {
       mech: 'Slow relaxation and a steep EDPVR, not a raised afterload, are what raise the filling pressure here. τ is 61 ms, against 37 ms in the normal heart, in line with the 59 ± 14 ms measured in HFpEF <cite data-ref="zile2004"></cite>, and the end-diastolic point sits high on a steep EDPVR at a smaller EDV (118 mL, against 138 mL). Ees is mildly raised at 3.0 mmHg/mL, and SVR, arterial compliance and the baroreflex set point are close to normal, so MAP is 94 mmHg. The model does not represent why the myocardium stiffens (age, obesity, diabetes, or fibrosis); it only sets the relaxation time constant and the EDPVR.',
       see: 'Blood pressure and EF are normal, so the diagnosis rests on evidence of raised filling pressure, such as a PAWP above 15 mmHg at rest, as the HFA-PEFF algorithm uses <cite data-ref="pieske2019"></cite>. Here mean LAP is 16.5 mmHg and mPAP is 23 mmHg, a post-capillary pattern.',
-      manage: 'A 150-mL fluid bolus raises LAP by 2.4 mmHg here and by 1.9 mmHg in the normal heart. Loss of atrial contraction lowers stroke volume by 15%, against 10% in the normal heart. The arterial vasodilator lowers MAP and raises stroke volume, but does not lower LAP, because the problem lies in the ventricle and not in its afterload.',
+      manage: 'A 150-mL modeled stressed-volume step raises LAP by 2.4 mmHg here and by 1.9 mmHg in the normal heart. Loss of atrial contraction lowers stroke volume by 15%, against 10% in the normal heart. The arterial vasodilator lowers MAP and raises stroke volume, but does not lower LAP, because the problem lies in the ventricle and not in its afterload.',
       note: 'Compare this scenario with the hypertensive one: the loops and filling pressures are similar, whereas the arterial load differs. A normal blood pressure does not exclude HFpEF, and a normal Ea/Ees does not exclude diastolic disease.',
     },
   },
@@ -42,7 +42,7 @@ export const PRESETS = [
     detail: {
       mech: 'A reduced Ees and a rightward-shifted ESPVR (V₀ of 40 mL in this scenario) leave a large end-systolic volume, and neurohormonal activation increases Ea. Ea/Ees is therefore well above the normal range, EF is low, and SW/PVA is reduced <cite data-ref="burkhoff1986"></cite>. Because the ESPVR is flat, a small change in Ea moves the end-systolic point a long way along the volume axis, which the afterload handle on the dashed line of the simulator shows directly. The failing myocardium also loses the positive force–frequency relation <cite data-ref="hasenfuss1994"></cite>, so Ees does not rise with heart rate in this scenario.',
       see: 'EF is low on echo. The estimate (1 − EF)/EF equals ESV/SV, whereas the true ratio is (ESV − V₀)/SV, so with a V₀ of 40 mL the estimate overstates the degree of uncoupling (see table). Right heart catheterization shows a low cardiac output and an increased PAWP.',
-      manage: 'In acute heart failure, vasodilators reduce Ea and inotropes increase Ees <cite data-ref="guarracino2013"></cite>. Vasodilation increased stroke volume and cardiac output more in HFrEF than in HFpEF <cite data-ref="schwartzenberg2012"></cite>. In the simulator, the inotrope raises cardiac output from 4.4 to 5.6 L/min and lowers Ea/Ees from 2.75 to 1.83, whereas removing 150 mL of volume lowers LAP from 13.4 to 10.8 mmHg at the cost of 5% of stroke volume.',
+      manage: 'In acute heart failure, vasodilators reduce Ea and inotropes increase Ees <cite data-ref="guarracino2013"></cite>. Vasodilation increased stroke volume and cardiac output more in HFrEF than in HFpEF <cite data-ref="schwartzenberg2012"></cite>. In the simulator, the inotrope raises cardiac output from 4.4 to 5.6 L/min and lowers Ea/Ees from 2.75 to 1.83, whereas removing 150 mL of modeled stressed volume lowers LAP from 13.4 to 10.8 mmHg at the cost of 5% of stroke volume.',
       note: 'Therapy guided by coupling has not been tested in outcome trials <cite data-ref="guarracino2013"></cite>.',
     },
   },
@@ -102,7 +102,7 @@ export const PRESETS = [
     detail: {
       mech: 'The RV has adapted heterometrically and dilates because its Ees no longer matches its Ea <cite data-ref="vonk2013,naeije2014"></cite>. Ees/Ea is below 0.805 <cite data-ref="tello2019hf"></cite>, and SV/ESV is below 0.515 <cite data-ref="vanderpool2015"></cite>. Dilation sustains stroke volume only at the cost of a high end-diastolic volume and RAP, and further filling moves the RV up an increasingly steep EDPVR. The raised RV diastolic pressure shifts the septum 15 mL toward the LV, which raises LV diastolic pressure at any given LV volume, and because the ventricles operate in series, the low RV output also underfills the LV.',
       see: 'Echo shows a dilated RV, a flattened septum, a low TAPSE, and a TAPSE/PASP well below 0.31 <cite data-ref="tello2019img"></cite>. Right heart catheterization shows a RAP above 10 mmHg and a low cardiac output.',
-      manage: 'In acute RV failure, identification and treatment of the underlying cause is the primary strategy, together with judicious fluid management, inotropes and vasopressors, assist devices, and RV-protective ventilation <cite data-ref="harjola2016"></cite>. A rising CVP with a falling MAP calls for inotropic or vasoactive support, careful volume management, and inhaled pulmonary vasodilators <cite data-ref="lloyddonald2025"></cite>, although these interventions have not been well studied <cite data-ref="konstam2018"></cite>. In the simulator, a 150-mL fluid bolus raises RAP from 11.9 to 14.3 mmHg with almost no change in cardiac output. The inotrope raises cardiac output from 4.2 to 5.3 L/min and mPAP from 52 to 64 mmHg, and the pulmonary vasodilator raises cardiac output to 4.6 L/min while lowering mPAP and RAP. The arterial vasodilator lowers aortic pressure, and with it RV coronary perfusion, and the RV becomes ischemic; cardiac output falls to 2.5 L/min.',
+      manage: 'In acute RV failure, identification and treatment of the underlying cause is the primary strategy, together with judicious fluid management, inotropes and vasopressors, assist devices, and RV-protective ventilation <cite data-ref="harjola2016"></cite>. A rising CVP with a falling MAP calls for inotropic or vasoactive support, careful volume management, and inhaled pulmonary vasodilators <cite data-ref="lloyddonald2025"></cite>, although these interventions have not been well studied <cite data-ref="konstam2018"></cite>. In the simulator, a 150-mL modeled stressed-volume step raises RAP from 11.9 to 14.3 mmHg with almost no change in cardiac output. The inotrope raises cardiac output from 4.2 to 5.3 L/min and mPAP from 52 to 64 mmHg, and the pulmonary vasodilator raises cardiac output to 4.6 L/min while lowering mPAP and RAP. The arterial vasodilator lowers aortic pressure, and with it RV coronary perfusion, and the RV becomes ischemic; cardiac output falls to 2.5 L/min.',
       note: 'The model has no pulmonary vasoreactivity and no neurohormonal remodeling; RV ischemia is represented only as a supply–demand balance.',
     },
   },
@@ -126,7 +126,7 @@ export const PRESETS = [
     detail: {
       mech: 'The stiff HFpEF left ventricle raises LA pressure, which increases PA pressure passively. The additional PVR imposes a pre-capillary load on an RV of normal contractility, and RV Ees/Ea falls to 0.69, compared with 2.0 in the normal heart.',
       see: 'A PAWP above 15 mmHg with a PVR above 2 WU defines combined post- and pre-capillary PH <cite data-ref="humbert2022"></cite>. PAWP is measured at end-expiration, and in sinus rhythm the end-diastolic value is the mean of the a wave. Large v waves strongly suggest left heart disease <cite data-ref="vachiery2019"></cite>. These measurements can be practiced on the PA catheter page with this patient selected.',
-      manage: 'Management is directed at the underlying left heart disease. The 6th World Symposium maintained a strong recommendation against the use of PAH therapies in group 2 PH <cite data-ref="vachiery2019"></cite>.',
+      manage: 'Management focuses on the underlying left heart disease. PAH drugs are not established treatment for group 2 PH. For HFpEF with combined post- and pre-capillary PH specifically, the 2022 ESC/ERS guideline makes no general recommendation for or against PDE5 inhibitors; it recommends against them in HFpEF with isolated post-capillary PH <cite data-ref="humbert2022"></cite>.',
       note: '',
     },
   },
@@ -187,7 +187,7 @@ export const PRESETS = [
     detail: {
       mech: 'The RV ejects into two outlets, and the low-pressure RA takes a large share of each stroke. The RA pressure rises during systole, which merges the c and v waves into a single systolic wave. The regurgitant volume returns to the RV in diastole, so RV end-diastolic volume grows, the septum shifts toward the LV, and RV Ees/Ea, calculated from total stroke volume, overstates forward RV performance.',
       see: 'An EROA of 0.4 cm² or more and a regurgitant volume of 45 mL or more grade TR as severe <cite data-ref="zoghbi2017"></cite>. With torrential TR, the RA–RV pressure gradient falls and the Doppler estimate 4v² + RAP underestimates PASP.',
-      manage: 'In the simulator, removing 150 mL of volume lowers RAP from 11.9 to 10.0 mmHg with a small fall in cardiac output, from 5.1 to 5.0 L/min.',
+      manage: 'In the simulator, removing 150 mL of modeled stressed volume lowers RAP from 11.9 to 10.0 mmHg with a small fall in cardiac output, from 5.1 to 5.0 L/min.',
       note: 'The model has no annular dilation or leaflet tethering, so the orifice does not change with RV size.',
     },
   },
@@ -211,7 +211,7 @@ export const PRESETS = [
     detail: {
       mech: 'The pericardium encloses all four chambers, and its pressure–volume relation is flat until its reserve volume is used and then rises steeply. Fluid occupies that reserve, so the pressure outside the heart rises and adds to the pressure inside every chamber. Filling requires a venous pressure above the pericardial pressure, and the chambers fill only to the volume at which their pressures equal it, which equalizes the diastolic pressures <cite data-ref="spodick2003"></cite>.',
       see: 'Echo shows the effusion, small ventricles, and diastolic collapse of the right-sided chambers. Right heart catheterization shows equalization of RAP, RV diastolic pressure, and PAWP <cite data-ref="spodick2003"></cite>. Pulsus paradoxus depends on breathing, which the model does not include.',
-      manage: 'Drainage removes the constraint. In the simulator, the pericardial fluid slider shows the steep part of the relation: 100 mL raises pericardial pressure to 3 mmHg with a cardiac output of 4.9 L/min, and 230 mL raises it to 9 mmHg with a cardiac output of 3.1 L/min. A 150-mL fluid bolus raises RAP to 13 mmHg and cardiac output by only 3%.',
+      manage: 'Drainage removes the constraint. In the simulator, the pericardial fluid slider shows the steep part of the relation: 100 mL raises pericardial pressure to 3 mmHg with a cardiac output of 4.9 L/min, and 230 mL raises it to 9 mmHg with a cardiac output of 3.1 L/min. A 150-mL modeled stressed-volume step raises RAP to 13 mmHg and cardiac output by only 3%.',
       note: 'The model has no breathing, so it cannot show the respiratory variation of ventricular filling that underlies pulsus paradoxus.',
     },
   },
@@ -230,7 +230,7 @@ export const INTERVENTIONS = [
 export function presetById(id) { return PRESETS.find((p) => p.id === id); }
 
 // Treatment sliders on the simulator. A dose of 1 is exactly the matching intervention above, so every
-// number the scenario texts quote for "the inotrope" or "a 150-mL fluid bolus" is one standard dose.
+// number the scenario texts quote for "the inotrope" or "a 150-mL modeled stressed-volume step" is one standard dose.
 // The drug effects saturate: E(d) = 2d/(1 + d) is 1 at one dose, 1.5 at the largest dose on the slider
 // and never more than 2, so no dose drives a parameter out of the range the model can solve.
 // Stressed volume after fluid stays between VOL_MIN and VOL_MAX mL.

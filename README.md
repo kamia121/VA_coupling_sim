@@ -1,6 +1,6 @@
 # Ventricular–Arterial Coupling: Simulator and Tutorial
 
-This is a teaching website for left ventricular–arterial (LV–Ea) and right ventricular–pulmonary arterial (RV–PA) coupling. It is written for medical students, residents, and fellows and attendings in pulmonary and critical care medicine. Each simulated pressure–volume loop is drawn over the normal ventricle so the reader can see what changed. The site also covers how echocardiography and the pulmonary artery catheter estimate coupling at the bedside.
+This is a teaching website for left ventricular–arterial (LV–Ea) and right ventricular–pulmonary arterial (RV–PA) coupling. It is written for clinicians learning the topic from first principles, with optional detail for readers who already use pressure–volume analysis. Each simulated pressure–volume loop is drawn over the normal ventricle so the reader can see what changed. The site also covers how echocardiography and the pulmonary artery catheter estimate coupling at the bedside.
 
 The site is static HTML and JavaScript, so there is no server to maintain. It works on any device with a browser and is deployed with GitHub Pages.
 
@@ -9,7 +9,8 @@ The site is static HTML and JavaScript, so there is no server to maintain. It wo
 | Page | Content |
 |---|---|
 | `index.html` | Overview and a suggested learning path |
-| `learn.html` | Concepts: the PV loop, Ees, Ea, Ea/Ees, stroke work and efficiency, RV vs LV, and how the model works |
+| `learn.html` | First-principles explanation of the PV loop, Ees, Ea, their ratio, RV physiology, and model assumptions |
+| `guide.html` | Guided predictions and simulator exercises, followed by bedside questions about pressure, flow, congestion, and perfusion |
 | `advanced.html` | Advanced: pericardium, septal interdependence, c wave and base descent, relaxation τ, force–frequency, baroreflex, coronary perfusion, and valve lesions, each drawn on and off; seven advanced scenarios |
 | `interfaces.html` | Shock as four interfaces (LV–arterial, arteriole–capillary, capillary–venular, RV–PA; Rola et al. 2025): critical closing pressure and tissue perfusion pressure, capillary refill, PCO₂ gap and the DO₂–VO₂ relation, Pmsf and venous return (Guyton figure from the model), congestion, and bedside calculators |
 | `simulator.html` | LV, RV and side-by-side LV + RV simulator: valve-event marks (MVC/AVO/AVC/MVO, TVC/PVO/PVC/TVO) on loops and pressure strips, isovolumic phases slowed ×5, LA pressure strip (v wave, y descent), drag handles on the loop (Ees, afterload, preload), treatment sliders (fluid or volume removal, norepinephrine, arterial vasodilator, inotrope, pulmonary vasodilator; one standard dose each is the change the scenario texts describe, and the effect saturates), animated transitions, beat cursor with valve/phase strip, step-by-step "why did it move?" replay, normal-reference overlay, in-range-disease overlay, snapshot comparison, shareable URLs |
@@ -102,7 +103,8 @@ The generator writes `site/js/diastdata.js` (read by the page) and `R/diastolic_
 ## Verifying the numbers
 
 ```sh
-node tests/engine.test.mjs          # calibration, conservation, ESPVR recovery, mechanisms, scenario and quoted-number checks
+node tests/engine.test.mjs          # calibration, conservation, ESPVR recovery, mechanisms and scenarios
+node tests/quoted_numbers.test.mjs # compare published model examples with current output
 node tests/shock.test.mjs           # drug directions and kinetics, Fick identities, venous return, LVOT obstruction, course of each shock case
 node tests/diastolic.test.mjs       # echo pattern of each grade, reversibility, tolerance directions, quoted numbers, cohort data current
 node tests/vp.test.mjs              # Vp surrogate directions against published findings, e′ scaled from τ and EF with its manual override, the color M-mode measurement, and every number quoted on icu.html
@@ -110,7 +112,9 @@ node tests/vp.test.mjs              # Vp surrogate directions against published 
 
 ## Evidence
 
-Every reference was checked against its PubMed record: PMID, title, authors, journal, year, pages and DOI. Every number quoted from a source was checked against its abstract or PMC full text. A few statements could only be checked against the bibliographic record, because the source has no open abstract or text. These are the ESC/ERS 2022 hemodynamic definitions and TAPSE/sPAP risk thresholds, the ASE recommendations, the ASE/EACVI 2016 diastolic cutoffs, the four-grade scheme with a fixed restrictive grade IV (Nishimura 1997, whose abstract does not list the grades), Guyton and Lindsey 1959 (no abstract; cited only for the dependence of the edema threshold on plasma protein, which its title states) and the ESC 2019 PE guideline. They are flagged on `references.html`.
+The [bibliography](site/references.html) links each cited study or guideline to PubMed and its DOI. The model examples have separate automated checks; a passing model test does not validate a clinical claim. Read cohort thresholds in the population where they were derived, and distinguish physiological experiments, observational associations, and treatment guidelines. The 2022 ESC/ERS pulmonary hypertension guideline and the 2026 Surviving Sepsis Campaign guideline are available in full and were used for the clinical wording in this edition.
+
+References added outside the guided-practice revision were checked against its PubMed record: PMID, title, authors, journal, year, pages and DOI. Every number quoted from a source was checked against its abstract or PMC full text. A few statements could only be checked against the bibliographic record, because the source has no open abstract or text. These are the ESC/ERS 2022 hemodynamic definitions and TAPSE/sPAP risk thresholds, the ASE recommendations, the ASE/EACVI 2016 diastolic cutoffs, the four-grade scheme with a fixed restrictive grade IV (Nishimura 1997, whose abstract does not list the grades), Guyton and Lindsey 1959 (no abstract; cited only for the dependence of the edema threshold on plasma protein, which its title states) and the ESC 2019 PE guideline. They are flagged on `references.html`.
 
 ## Running locally
 
