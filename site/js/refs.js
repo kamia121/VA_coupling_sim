@@ -1,5 +1,5 @@
 // Bibliography. Every entry was checked against its PubMed record (PMID, title, authors,
-// journal, year, pages, DOI) on 2026-09-22 (entries from guarracino2013 onward on 2026-09-23; rola2025 onward also on 2026-09-23; nagueh2016 onward on 2026-09-23; hamzaoui2012 onward on 2026-10-02). Page text cites entries by key.
+// journal, year, pages, DOI) on 2026-09-22 (entries from guarracino2013 onward on 2026-09-23; rola2025 onward also on 2026-09-23; nagueh2016 onward on 2026-09-23; hamzaoui2012 onward on 2026-10-02; garcia1997 onward on 2026-09-24). Page text cites entries by key.
 export const REFS = [
  {
   "key": "suga1973",
@@ -1647,6 +1647,203 @@ export const REFS = [
   "pages": "880-6",
   "pmid": "8636519",
   "doi": "10.1007/BF01712328"
+ },
+ {
+  "key": "garcia1997",
+  "authors": "Garcia MJ, Ares MA, Asher C, et al.",
+  "title": "An index of early left ventricular filling that combined with pulsed Doppler peak E velocity may estimate capillary wedge pressure",
+  "journal": "J Am Coll Cardiol",
+  "year": 1997,
+  "volume": "29",
+  "pages": "448-54",
+  "pmid": "9015003",
+  "doi": "10.1016/s0735-1097(96)00496-2"
+ },
+ {
+  "key": "garcia2000",
+  "authors": "Garcia MJ, Smedira NG, Greenberg NL, et al.",
+  "title": "Color M-mode Doppler flow propagation velocity is a preload insensitive index of left ventricular relaxation: animal and human validation",
+  "journal": "J Am Coll Cardiol",
+  "year": 2000,
+  "volume": "35",
+  "pages": "201-8",
+  "pmid": "10636281",
+  "doi": "10.1016/s0735-1097(99)00503-3"
+ },
+ {
+  "key": "takatsuji1996",
+  "authors": "Takatsuji H, Mikami T, Urasawa K, et al.",
+  "title": "A new approach for evaluation of left ventricular diastolic function: spatial and temporal analysis of left ventricular filling flow propagation by color M-mode Doppler echocardiography",
+  "journal": "J Am Coll Cardiol",
+  "year": 1996,
+  "volume": "27",
+  "pages": "365-71",
+  "pmid": "8557907",
+  "doi": "10.1016/0735-1097(96)81240-x"
+ },
+ {
+  "key": "ohte2001",
+  "authors": "Ohte N, Narita H, Akita S, et al.",
+  "title": "Striking effect of left ventricular systolic performance on propagation velocity of left ventricular early diastolic filling flow",
+  "journal": "J Am Soc Echocardiogr",
+  "year": 2001,
+  "volume": "14",
+  "pages": "1070-4",
+  "pmid": "11696830",
+  "doi": "10.1067/mje.2001.114136"
+ },
+ {
+  "key": "vierendeels2002",
+  "authors": "Vierendeels JA, Dick E, Verdonck PR",
+  "title": "Hydrodynamics of color M-mode Doppler flow wave propagation velocity V(p): a computer study",
+  "journal": "J Am Soc Echocardiogr",
+  "year": 2002,
+  "volume": "15",
+  "pages": "219-24",
+  "pmid": "11875384",
+  "doi": "10.1067/mje.2002.115456"
+ },
+ {
+  "key": "kidawa2005",
+  "authors": "Kidawa M, Coignard L, Drobinski G, et al.",
+  "title": "Comparative value of tissue Doppler imaging and m-mode color Doppler mitral flow propagation velocity for the evaluation of left ventricular filling pressure",
+  "journal": "Chest",
+  "year": 2005,
+  "volume": "128",
+  "pages": "2544-50",
+  "pmid": "16236921",
+  "doi": "10.1378/chest.128.4.2544"
+ },
+ {
+  "key": "pieri2004",
+  "authors": "Pieri B, Roux E, Gélisse R, et al.",
+  "title": "[Novel Doppler indexes of estimation of pulmonary capillary pressure: influence of age, feasibility in the acute setting and reproducibility]",
+  "journal": "Ann Cardiol Angeiol (Paris)",
+  "year": 2004,
+  "volume": "53",
+  "pages": "314-9",
+  "pmid": "15603173",
+  "doi": "10.1016/j.ancard.2004.09.008"
+ },
+ {
+  "key": "sessoms2002",
+  "authors": "Sessoms MW, Lisauskas J, Kovács SJ",
+  "title": "The left ventricular color M-mode Doppler flow propagation velocity V(p): in vivo comparison of alternative methods including physiologic implications",
+  "journal": "J Am Soc Echocardiogr",
+  "year": 2002,
+  "volume": "15",
+  "pages": "339-48",
+  "pmid": "11944012",
+  "doi": "10.1067/mje.2002.117899"
+ },
+ {
+  "key": "alegret2002",
+  "authors": "Alegret JM, Borrás X, Carreras F, et al.",
+  "title": "Restrictive left ventricular filling and preserved ventricular function: a limitation in the noninvasive estimation of pulmonary wedge pressure by Doppler echocardiography",
+  "journal": "J Am Soc Echocardiogr",
+  "year": 2002,
+  "volume": "15",
+  "pages": "334-8",
+  "pmid": "11944011",
+  "doi": "10.1067/mje.2002.118527"
+ },
+ {
+  "key": "gorgulu2004",
+  "authors": "Görgülü S, Eren M, Uzunlar B, et al.",
+  "title": "Assessing the effect of low dose dobutamine on various diastolic function indexes",
+  "journal": "Anadolu Kardiyol Derg",
+  "year": 2004,
+  "volume": "4",
+  "pages": "227-30",
+  "pmid": "15355825"
+ },
+ {
+  "key": "lin2005",
+  "authors": "Lin SK, Hsiao SH, Lee TY, et al.",
+  "title": "Color M-mode flow propagation velocity: is it really preload independent?",
+  "journal": "Echocardiography",
+  "year": 2005,
+  "volume": "22",
+  "pages": "636-41",
+  "pmid": "16174116",
+  "doi": "10.1111/j.1540-8175.2005.40078.x"
+ },
+ {
+  "key": "vignon2007",
+  "authors": "Vignon P, Allot V, Lesage J, et al.",
+  "title": "Diagnosis of left ventricular diastolic dysfunction in the setting of acute changes in loading conditions",
+  "journal": "Crit Care",
+  "year": 2007,
+  "volume": "11",
+  "pages": "R43",
+  "pmid": "17428322",
+  "doi": "10.1186/cc5736"
+ },
+ {
+  "key": "bhella2011",
+  "authors": "Bhella PS, Pacini EL, Prasad A, et al.",
+  "title": "Echocardiographic indices do not reliably track changes in left-sided filling pressure in healthy subjects or patients with heart failure with preserved ejection fraction",
+  "journal": "Circ Cardiovasc Imaging",
+  "year": 2011,
+  "volume": "4",
+  "pages": "482-9",
+  "pmid": "21788358",
+  "doi": "10.1161/CIRCIMAGING.110.960575"
+ },
+ {
+  "key": "bouhemad2003",
+  "authors": "Bouhemad B, Nicolas-Robin A, Benois A, et al.",
+  "title": "Echocardiographic Doppler assessment of pulmonary capillary wedge pressure in surgical patients with postoperative circulatory shock and acute lung injury",
+  "journal": "Anesthesiology",
+  "year": 2003,
+  "volume": "98",
+  "pages": "1091-100",
+  "pmid": "12717130",
+  "doi": "10.1097/00000542-200305000-00011"
+ },
+ {
+  "key": "dsouza2005",
+  "authors": "D'Souza KA, Mooney DJ, Russell AE, et al.",
+  "title": "Abnormal septal motion affects early diastolic velocities at the septal and lateral mitral annulus, and impacts on estimation of the pulmonary capillary wedge pressure",
+  "journal": "J Am Soc Echocardiogr",
+  "year": 2005,
+  "volume": "18",
+  "pages": "445-53",
+  "pmid": "15891754",
+  "doi": "10.1016/j.echo.2005.01.005"
+ },
+ {
+  "key": "vignon2008",
+  "authors": "Vignon P, AitHssain A, François B, et al.",
+  "title": "Echocardiographic assessment of pulmonary artery occlusion pressure in ventilated patients: a transoesophageal study",
+  "journal": "Crit Care",
+  "year": 2008,
+  "volume": "12",
+  "pages": "R18",
+  "pmid": "18284668",
+  "doi": "10.1186/cc6792"
+ },
+ {
+  "key": "papanikolaou2011",
+  "authors": "Papanikolaou J, Makris D, Saranteas T, et al.",
+  "title": "New insights into weaning from mechanical ventilation: left ventricular diastolic dysfunction is a key player",
+  "journal": "Intensive Care Med",
+  "year": 2011,
+  "volume": "37",
+  "pages": "1976-85",
+  "pmid": "21976188",
+  "doi": "10.1007/s00134-011-2368-0"
+ },
+ {
+  "key": "licker2010",
+  "authors": "Licker M, Cikirikcioglu M, Inan C, et al.",
+  "title": "Preoperative diastolic function predicts the onset of left ventricular dysfunction following aortic valve replacement in high-risk patients with aortic stenosis",
+  "journal": "Crit Care",
+  "year": 2010,
+  "volume": "14",
+  "pages": "R101",
+  "pmid": "20525242",
+  "doi": "10.1186/cc9040"
  }];
 
 export const REF_INDEX = Object.fromEntries(REFS.map((r) => [r.key, r]));

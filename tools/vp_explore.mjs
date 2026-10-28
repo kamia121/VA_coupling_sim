@@ -112,8 +112,8 @@ function jet(r, lead, vcShare = 0.5) {
 // ---------- C. surrogate ----------
 // Vp = (τN/τ)·(c0 + c1·max(0, EF − 30%)): relaxation scales the whole velocity, and restoring forces,
 // represented by the ejection fraction, add to it in the ventricle that empties well (Ohte 2001).
-// c0 is set so that the dilated HFrEF ventricle has the Vp of reduced-EF patients (about 37 cm/s,
-// Garcia 2000) and c1 so that the normal ventricle has about 70 cm/s (controls 74 cm/s in Takatsuji 1996).
+// c0 is set so that the dilated HFrEF ventricle has about 38 cm/s (34 ± 14 cm/s with EF < 60% and E/A < 1,
+// Takatsuji 1996) and c1 so that the normal ventricle has about 70 cm/s (controls 74 cm/s in Takatsuji 1996).
 export const SURR = { c0: 45, c1: 0.93, efBreak: 30 };
 export function vpSurrogate(tauMs, ef) {
   return (TAU_N / tauMs) * (SURR.c0 + SURR.c1 * Math.max(0, ef * 100 - SURR.efBreak));

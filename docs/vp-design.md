@@ -1,6 +1,6 @@
 # Flow propagation velocity (Vp) in the Diastolic lab: design proposal
 
-Status: proposal. Nothing on the site changes yet. Every model number below is printed by `node tools/vp_explore.mjs` (about 2 s). Every number quoted from a study was checked against its PubMed abstract. References are at the end.
+Status: the EF form is implemented on its own page, `site/icu.html`, with `site/js/vpcore.js` and `tests/vp.test.mjs`; the decisions are recorded at the end. Every model number below is printed by `node tools/vp_explore.mjs` (about 2 s). Every number quoted from a study was checked against its PubMed abstract. References are at the end.
 
 ## Recommendation
 
@@ -21,7 +21,7 @@ The clinical data reflect both determinants:
 - **Relaxation.** Vp correlated with τ (r = 0.78 in dogs, 0.86 in patients; Garcia 2000). It was about 34 and 30 cm/s in patients with an EF below 60%, against 74 cm/s in controls (Takatsuji 1996).
 - **Systolic performance.** Among 150 patients, LV end-systolic volume index (ESVI) explained 46% of the variance of Vp, τ 3% and PCWP 2% (Ohte 2001). Vp fell steeply with ESVI up to 41 mL/m² and less steeply above that value.
 - **Preload.** It depends on EF.
-  - In reduced-EF ventricles, Vp changed little. During IVC occlusion or partial bypass, E fell from 69 to 53 cm/s while Vp went from 37 to 34 cm/s, which was not significant (Garcia 2000).
+  - In dogs and in 14 patients with heart disease, Vp changed little. During IVC occlusion or partial bypass, E fell from 69 to 53 cm/s in the patients while Vp went from 37 to 34 cm/s, which was not significant (Garcia 2000). The abstract does not give their EF.
   - With an EF above 50%, hemodialysis lowered Vp (Lin 2005). In hemodialysis patients overall, ultrafiltration lowered Vp from 45 to 41 cm/s (Vignon 2007).
 - **Inotropic stimulation.** Low-dose dobutamine raised Vp from 45 to 59 cm/s. E, E/A and E/Em did not change, and DT and IVRT shortened (Görgülü 2004).
 
@@ -70,10 +70,10 @@ In this model, flow reaches the apex as a pressure wave. Its speed is √(V·(dP
 
 Blood enters at the mitral tips with the engine's inflow velocity. Faster blood that overtakes slower blood merges with it, which is the inviscid form of vortex-ring formation. A free front of this kind advances at about half the jet velocity. Vp therefore scaled with E:
 
-- E/Vp ranged from 1.30 to 1.85 across the cases and did not rise with mean LA pressure (1.55 in the normal ventricle, 1.49 in grade IV).
-- In HFrEF, Vp rose from 42 to 59 cm/s between 1 L removed and 1 L added, as E rose from 55 to 83 cm/s. This is the load dependence that Garcia 2000 did not find in reduced-EF ventricles.
+- E/Vp ranged from 1.30 to 1.70 across the cases and did not rise with mean LA pressure (1.53 in the normal ventricle, 1.48 in grade IV).
+- In HFrEF, Vp rose from 42 to 59 cm/s between 1 L removed and 1 L added, as E rose from 55 to 83 cm/s. This is the load dependence that Garcia 2000 did not find in its dogs and patients.
 
-Adding an intraventricular pressure gradient taken from the engine's LV pressure changed Vp by 3.6 cm/s at most.
+Adding an intraventricular pressure gradient taken from the engine's LV pressure changed Vp by 3.7 cm/s at most.
 
 This front reproduces only the diseased pattern. In dogs before ischemia, mitral-to-apical flow propagation "far exceeded the velocity of the individual blood cells". During ischemia it approximated the blood velocity, which the authors described as a shift from column motion to convection (Steine 1999).
 
@@ -93,7 +93,7 @@ The first factor makes Vp fall in proportion to the fitted τ, as the Vp–τ co
 
 The constants are set by two anchors:
 
-- c0 gives the dilated HFrEF preset (EF 22%, τ 43 ms) a Vp of 38 cm/s, in the range of reduced-EF patients (37 ± 12 cm/s, Garcia 2000).
+- c0 gives the dilated HFrEF preset (EF 22%, τ 43 ms) a Vp of 38 cm/s, in the range of patients with an EF below 60% and an E/A below 1 (34 ± 14 cm/s, Takatsuji 1996).
 - c1 gives the normal ventricle 69 cm/s, near the control values of 74 ± 17 cm/s (Takatsuji 1996) and 84 ± 11 cm/s (Brun 1992).
 
 The formula encodes three things: the dependence on τ, the dependence on EF, and Vp's independence of preload at a fixed τ and EF. Everything else about E/Vp is computed: E, mean LA pressure, and the τ and EF that the engine produces under each intervention.
@@ -102,14 +102,14 @@ The formula encodes three things: the dependence on τ, the dependence on EF, an
 
 | Case | τ, ms | ESVI, mL/m² | EF, % | Mean LAP, mmHg | E, cm/s | A: axial | B: free jet | B: jet with gradient | C: surrogate |
 |---|---|---|---|---|---|---|---|---|---|
-| Normal | 36 | 31 | 57 | 7.1 | 90 | 56 | 58 | 61 | 69 |
-| Grade I | 68 | 28 | 57 | 8.2 | 72 | 63 | 45 | 48 | 37 |
-| Grade II | 73 | 27 | 56 | 16.3 | 82 | 107 | 51 | 55 | 34 |
-| Grade III | 76 | 22 | 55 | 21.2 | 77 | 149 | 51 | 54 | 32 |
-| Grade IV | 80 | 20 | 53 | 29.5 | 80 | 234 | 53 | 57 | 30 |
-| Normal, −1 L | 36 | 24 | 55 | 2.9 | 59 | 31 | 42 | 44 | 68 |
-| Normal, +1 L | 38 | 33 | 57 | 12.5 | 108 | 72 | 68 | 71 | 67 |
-| Normal, inotrope | 36 | 25 | 64 | 7.1 | 95 | 50 | 60 | 63 | 77 |
+| Normal | 37 | 31 | 57 | 6.9 | 88 | 54 | 57 | 60 | 69 |
+| Grade I | 68 | 29 | 57 | 7.8 | 69 | 63 | 44 | 47 | 37 |
+| Grade II | 73 | 28 | 56 | 15.3 | 80 | 98 | 50 | 54 | 34 |
+| Grade III | 75 | 22 | 55 | 20.8 | 75 | 144 | 49 | 53 | 32 |
+| Grade IV | 79 | 19 | 53 | 30.0 | 77 | 234 | 52 | 55 | 30 |
+| Normal, −1 L | 36 | 24 | 54 | 3.0 | 60 | 32 | 43 | 45 | 68 |
+| Normal, +1 L | 38 | 34 | 58 | 12.1 | 106 | 73 | 67 | 70 | 67 |
+| Normal, inotrope | 36 | 25 | 64 | 6.9 | 94 | 50 | 59 | 63 | 77 |
 | HFrEF | 43 | 97 | 22 | 14.2 | 74 | 257 | 54 | 54 | 38 |
 | HFrEF, −1 L | 40 | 86 | 20 | 7.4 | 55 | 134 | 42 | 43 | 40 |
 | HFrEF, +1 L | 46 | 100 | 23 | 21.2 | 83 | 266 | 59 | 60 | 35 |
@@ -118,7 +118,7 @@ The formula encodes three things: the dependence on τ, the dependence on EF, an
 | Septic CM, +1 L | 41 | 49 | 42 | 13.9 | 100 | 115 | 65 | 68 | 49 |
 | Septic CM, inotrope | 37 | 35 | 50 | 6.9 | 85 | 57 | 56 | 59 | 62 |
 | Vasoplegia | 36 | 15 | 74 | 4.4 | 80 | 35 | 50 | 54 | 86 |
-| Vasoplegia, τ 60 ms | 61 | 14 | 73 | 5.4 | 76 | −1 | 41 | 44 | 50 |
+| Vasoplegia, τ 60 ms | 61 | 14 | 73 | 5.4 | 70 | -1 | 41 | 44 | 50 |
 
 Volume changes are intravascular, 40% of which becomes stressed volume, as elsewhere in the lab. "Inotrope" is the simulator's standard dose: Ees × 1.35, heart rate +10/min, SVR × 0.9.
 
@@ -126,14 +126,14 @@ Volume changes are intravascular, 40% of which becomes stressed volume, as elsew
 
 | Case | Mean LAP, mmHg | Vp, cm/s | E/Vp | PCWP from E/Vp (Garcia 1997), mmHg | E/e′ | PCWP from E/e′ (Nagueh 1997), mmHg |
 |---|---|---|---|---|---|---|
-| Normal | 7.1 | 69 | 1.29 | 11.4 | 7.6 | 11.3 |
-| Grade I | 8.2 | 37 | 1.94 | 14.8 | 11.3 | 15.9 |
-| Grade II | 16.3 | 34 | 2.41 | 17.3 | 14.0 | 19.2 |
-| Grade III | 21.2 | 32 | 2.39 | 17.2 | 13.6 | 18.7 |
-| Grade IV | 29.5 | 30 | 2.64 | 18.5 | 14.7 | 20.1 |
-| Normal, −1 L | 2.9 | 68 | 0.86 | 9.1 | 4.9 | 8.0 |
-| Normal, +1 L | 12.5 | 67 | 1.61 | 13.1 | 9.5 | 13.7 |
-| Normal, inotrope | 7.1 | 77 | 1.25 | 11.2 | 8.0 | 11.8 |
+| Normal | 6.9 | 69 | 1.26 | 11.2 | 7.4 | 11.1 |
+| Grade I | 7.8 | 37 | 1.86 | 14.4 | 10.9 | 15.4 |
+| Grade II | 15.3 | 34 | 2.35 | 17.0 | 13.6 | 18.8 |
+| Grade III | 20.8 | 32 | 2.30 | 16.7 | 13.0 | 18.0 |
+| Grade IV | 30.0 | 30 | 2.54 | 18.0 | 14.0 | 19.3 |
+| Normal, −1 L | 3.0 | 68 | 0.89 | 9.3 | 5.0 | 8.1 |
+| Normal, +1 L | 12.1 | 67 | 1.57 | 12.9 | 9.3 | 13.4 |
+| Normal, inotrope | 6.9 | 77 | 1.23 | 11.1 | 7.9 | 11.7 |
 | HFrEF | 14.2 | 38 | 1.94 | 14.8 | 7.3 | 10.9 |
 | HFrEF, −1 L | 7.4 | 40 | 1.36 | 11.8 | 5.1 | 8.2 |
 | HFrEF, +1 L | 21.2 | 35 | 2.37 | 17.1 | 8.9 | 12.9 |
@@ -142,21 +142,21 @@ Volume changes are intravascular, 40% of which becomes stressed volume, as elsew
 | Septic CM, +1 L | 13.9 | 49 | 2.04 | 15.4 | 9.5 | 13.7 |
 | Septic CM, inotrope | 6.9 | 62 | 1.38 | 11.9 | 7.3 | 11.0 |
 | Vasoplegia | 4.4 | 86 | 0.92 | 9.5 | 6.6 | 10.1 |
-| Vasoplegia, τ 60 ms | 5.4 | 50 | 1.51 | 12.5 | 10.7 | 15.2 |
+| Vasoplegia, τ 60 ms | 5.4 | 50 | 1.39 | 11.9 | 9.8 | 14.1 |
 
 ### What the surrogate does well
 
 - **Volume changes in the dilated ventricle.** In HFrEF, Vp stays between 35 and 40 cm/s while E follows volume, so E/Vp rises from 1.36 to 2.37 as mean LA pressure rises from 7 to 21 mmHg. The same holds in septic cardiomyopathy with EF 41%: a liter raises E/Vp from 1.48 to 2.04 and mean LA pressure from 7 to 14 mmHg.
 - **The hyperdynamic pitfall.** A hyperdynamic ventricle with slow relaxation (vasoplegia with τ set to 60 ms) keeps a Vp of 50 cm/s. Lateral e′ in the same patient is 7.1 cm/s. In the model, e′ therefore shows the slow relaxation and Vp does not.
 - **The inotrope pitfall.** The inotrope raises Vp in septic cardiomyopathy from 52 to 62 cm/s with mean LA pressure unchanged.
-- **Underestimation at high pressures.** In grades III and IV, the Garcia regression gives 17 to 19 mmHg against a mean LA pressure of 21 to 30 mmHg. The lab already describes this failure for E/e′.
+- **Underestimation at high pressures.** In grades III and IV, the Garcia regression gives 17 to 18 mmHg against a mean LA pressure of 21 to 30 mmHg. The lab already describes this failure for E/e′.
 
 ### Four weaknesses
 
 - **Preload independence is overstated with a preserved EF.** Vp does not change when 1 L is removed from the normal ventricle (69 against 68 cm/s). Patients with an EF above 50% show a fall (Lin 2005; Vignon 2007). The lab already states the same limitation for e′ (Opdahl 2009).
 - **The E/e′ comparison in HFrEF is distorted.** Lateral e′ is scaled from τ alone, and the HFrEF preset has a τ of only 43 ms, so its e′ is 10 cm/s, too high for a dilated ventricle with an EF of 22%. E/e′ therefore underestimates mean LA pressure in HFrEF (12.9 against 21.2 mmHg with a liter added), while E/Vp comes closer. A reader would conclude that E/Vp outperforms E/e′ in reduced EF for a reason that exists only in the model. Either e′ needs a dependence on systolic function (patients with low EF have low e′) or the HFrEF preset needs a longer τ, before the two indices are compared on the page.
 - **The inotrope has no effect on relaxation.** The simulator's inotrope raises Ees but leaves τ unchanged. In HFrEF it raises E from 74 to 90 cm/s while mean LA pressure falls slightly, so E/Vp rises from 1.94 to 2.21 in the wrong direction. Dobutamine shortened DT and IVRT in patients (Görgülü 2004), and in the Shock lab only milrinone shortens τ. A lusitropic effect for the inotrope would correct this, but it changes the numbers quoted on other pages.
-- **One of Ohte's findings is not reproduced.** Ohte's end-systolic volume index form of the restoring-force term (Table 3 in the script output) reproduces Alegret's high Vp in the restrictive ventricle with preserved EF (44 cm/s in grades III and IV). In the engine, however, removing a liter from the normal ventricle lowers ESV, and with this form Vp would rise from 69 to 88 cm/s, which is opposite to the patient data. The EF form avoids that artifact, and I recommend it for that reason. The cost is that the model will not reproduce Alegret's finding.
+- **One of Ohte's findings is not reproduced.** Ohte's end-systolic volume index form of the restoring-force term (Table 3 in the script output) reproduces Alegret's high Vp in the restrictive ventricle with preserved EF (45 cm/s in grades III and IV). In the engine, however, removing a liter from the normal ventricle lowers ESV, and with this form Vp would rise from 69 to 88 cm/s, which is opposite to the patient data. The EF form avoids that artifact, and I recommend it for that reason. The cost is that the model will not reproduce Alegret's finding.
 
 ## Display and measurement
 
@@ -185,18 +185,18 @@ The consequences panel already covers congestion, low output and hypotension, so
 ## Tests to add with the model
 
 - Vp falls as τ lengthens at a fixed EF, and rises with EF at a fixed τ.
-- In the reduced-EF presets, Vp stays within 10% of its baseline value with 1 L removed or added, while E changes by more than 20% (Garcia 2000).
+- In the reduced-EF presets, Vp stays within 10% of its baseline value with 1 L removed or added, and with 1 L removed E falls by more than 20% (the preload reduction of Garcia 2000).
 - Within the HFrEF and septic cardiomyopathy volume sweeps, E/Vp rises with every rise in mean LA pressure.
 - The inotrope raises Vp in every preset.
 - Every Vp, E/Vp and derived number quoted in the page text is recomputed, as for the existing lab.
 
-## Decisions for you
+## Decisions
 
-1. The EF form of the restoring-force term, or the ESVI form. Both are described above.
-2. Whether the inotrope should shorten τ, knowing that this moves numbers quoted on the simulator and scenario pages.
-3. Whether to give e′ a dependence on systolic function, or lengthen τ in the HFrEF preset, so that E/e′ and E/Vp can be compared honestly.
-4. Where the section goes: in `diastolic.html` after the clinical thresholds, or on its own page that the diastolic simulator also serves.
-5. Whether the guideline statements on Vp are worth a library request for the full texts, since none could be verified.
+1. Restoring-force term: the EF form (decided).
+2. Inotrope: τ is not shortened, so the numbers quoted on the simulator and scenario pages stay unchanged (decided). The ICU page states that the lusitropic effect of dobutamine is absent and that, as a result, E/Vp rises in the dilated ventricle while LA pressure falls.
+3. e′ in a ventricle with a reduced EF: open. Until it is decided, the ICU page does not compare E/e′ with E/Vp when EF is below 50%. It withholds the E/e′ estimate there and states why.
+4. Placement: a page of its own, `icu.html` (decided).
+5. Whether the guideline statements on Vp are worth a library request for the full texts, since none could be verified: open. The ICU page cites none of them.
 
 ## References
 
