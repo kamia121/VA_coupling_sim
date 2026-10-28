@@ -1,8 +1,9 @@
-// ICU diastology lab: the Vp surrogate against the directions of published findings, the color M-mode
-// measurement, every number quoted on icu.html, and the citation keys of that page.
+// ICU diastology lab: the Vp surrogate against the directions of published findings, lateral e′ scaled from τ and
+// EF with its manual override, the color M-mode measurement, every number quoted on icu.html, and the citation
+// keys of that page.
 // Run with: node tests/vp.test.mjs
 import { readFileSync } from 'node:fs';
-import { VP, vpFrom, garcia, nagueh, PATIENTS, VOLS, icuState, mmodeField, measuredVp, MM, EF_EEP_INVALID } from '../site/js/vpcore.js';
+import { VP, vpFrom, garcia, nagueh, PATIENTS, VOLS, icuState, bedState, withEp, patientById, EP, epFactor, mmodeField, measuredVp, MM } from '../site/js/vpcore.js';
 import { CUT } from '../site/js/diastcore.js';
 import { REF_INDEX } from '../site/js/refs.js';
 
@@ -22,7 +23,9 @@ const r0 = (x) => Math.round(x);
 check('Vp falls as τ lengthens at a fixed EF (Garcia 2000: Vp against τ, r = 0.78 and 0.86)', vpFrom(40, 0.55) > vpFrom(60, 0.55) && vpFrom(60, 0.55) > vpFrom(80, 0.55));
 check('Vp rises with EF at a fixed τ above an EF of 30% and is flat below it (Ohte 2001)',
   vpFrom(40, 0.6) > vpFrom(40, 0.45) && vpFrom(40, 0.45) > vpFrom(40, 0.31) && vpFrom(40, 0.2) === vpFrom(40, 0.3));
-check('the constants quoted on icu.html', VP.tauN === 36 && VP.c0 === 45 && VP.c1 === 0.93 && VP.efBreak === 30 && EF_EEP_INVALID === 0.5);
+check('the constants quoted on icu.html', VP.tauN === 36 && VP.c0 === 45 && VP.c1 === 0.93 && VP.efBreak === 30 && EP.efBreak === 50 && EP.perPoint === 0.01);
+check('the e′ factor is 1 at an EF of 50% or more and falls by 1% for each point below it',
+  epFactor(0.5) === 1 && epFactor(0.7) === 1 && Math.abs(epFactor(0.4) - 0.9) < 1e-12 && Math.abs(epFactor(0.2) - 0.7) < 1e-12);
 check('Garcia 1997 and Nagueh 1997 regressions', Math.abs(garcia(1) - 9.87) < 1e-9 && Math.abs(nagueh(10) - 14.3) < 1e-9);
 
 // ---------- each patient ----------
@@ -46,9 +49,50 @@ check('the inotrope raises Vp in every patient (Görgülü 2004)', PATIENTS.ever
 check('the inotrope leaves the τ parameter unchanged', PATIENTS.every((p) => S[p.id].ino.sol.q.tau === base(p.id).sol.q.tau || (S[p.id].ino.sol.q.tau === undefined && base(p.id).sol.q.tau === undefined)));
 check('hyperdynamic ventricle with slow relaxation: Vp at least 45 cm/s while lateral e′ is below the ASE/EACVI cutoff',
   base('vasoTau').Vp >= 45 && base('vasoTau').ep < CUT.ep, `${base('vasoTau').Vp.toFixed(0)}, ${base('vasoTau').ep.toFixed(1)}`);
-check('E/e′ is withheld as a comparator in the reduced-EF ventricles only',
-  base('hfref').eepInvalid && base('septicCM').eepInvalid && !base('normal').eepInvalid && !base('vasoTau').eepInvalid && !base('g3').eepInvalid);
 check('AF is solved for every patient', PATIENTS.every((p) => Number.isFinite(S[p.id].af.Vp) && Number.isFinite(S[p.id].af.EVp)));
+
+// ---------- lateral e′ ----------
+const states = (id) => [...VOLS.map((v) => S[id].vol[v]), S[id].ino, S[id].af];
+check('with an EF of 50% or more, e′ is the Diastolic lab\'s e′ scaled from τ alone',
+  PATIENTS.every((p) => states(p.id).every((s) => s.EF < 0.5 || s.ep === s.epTau)));
+check('with an EF below 50%, e′ is the τ-scaled e′ reduced by the EF factor',
+  PATIENTS.every((p) => states(p.id).every((s) => s.EF >= 0.5 || (s.ep < s.epTau && Math.abs(s.ep - s.epTau * epFactor(s.EF)) < 1e-12))));
+check('dilated ventricle: e′ within one SD of 6.2 ± 1.9 cm/s (patients hospitalized with an EF of 24.7%, Olson 2008)',
+  Math.abs(base('hfref').ep - 6.2) <= 1.9, base('hfref').ep.toFixed(2));
+for (const p of PATIENTS) {
+  const seq = VOLS.map((v) => S[p.id].vol[v]);
+  check(`${p.id}: E/e′ rises with every rise in mean LA pressure across the volume steps`,
+    seq.every((s, i) => i === 0 || (s.LAP > seq[i - 1].LAP && s.Eep > seq[i - 1].Eep)), seq.map((s) => `${s.LAP.toFixed(1)}:${s.Eep.toFixed(1)}`).join(' '));
+}
+// a manual e′ holds through every change of patient, volume, inotrope and rhythm, and changes nothing else
+{
+  const keep = ['LAP', 'E', 'EF', 'Vp', 'EVp', 'pcwpVp', 'epAuto'];
+  let ok = true;
+  for (const p of PATIENTS) for (const s of states(p.id)) {
+    const m = withEp(s, 4.5);
+    ok &&= m.ep === 4.5 && m.epManual && Math.abs(m.Eep - s.E / 4.5) < 1e-12 && Math.abs(m.pcwpEep - nagueh(s.E / 4.5)) < 1e-12 && keep.every((k) => m[k] === s[k]);
+    ok &&= !s.epManual && withEp(s, null).ep === s.epAuto;
+  }
+  // the same through icuState's own option
+  const direct = icuState('hfref', { vol: 500, ino: true, ep: 4.5 }), auto = icuState('hfref', { vol: 500, ino: true });
+  check('a manual e′ holds in every patient and state and leaves LA pressure, E, EF, Vp and E/Vp unchanged',
+    ok && direct.ep === 4.5 && direct.epManual && direct.LAP === auto.LAP && direct.Vp === auto.Vp);
+}
+// combined systolic and diastolic failure: the dilated ventricle with slower relaxation and a stiffer chamber
+{
+  const params = { ...patientById('hfref').params, tau: 0.05, lvBeta: 0.03 };
+  const c0 = bedState(params), c1 = bedState(params, { vol: 1000 }), h = base('hfref');
+  check('combined failure: e′ falls below that of the dilated ventricle, through both τ and EF, and stays within one SD of Olson 2008',
+    c0.ep < h.ep && c0.epTau < h.epTau && c0.ep < c0.epTau && c0.ep >= 6.2 - 1.9, `${c0.ep.toFixed(2)} (τ alone ${c0.epTau.toFixed(2)}) against ${h.ep.toFixed(2)}`);
+  check('combined failure: mean LA pressure, E/e′ and E/Vp are all higher than in the dilated ventricle',
+    c0.LAP > h.LAP && c0.Eep > h.Eep && c0.EVp > h.EVp, `LAP ${c0.LAP.toFixed(1)}, E/e′ ${c0.Eep.toFixed(1)}, E/Vp ${c0.EVp.toFixed(2)}`);
+  const within = (s) => Math.abs(s.pcwpEep - s.LAP) <= 2 * 3.8 && Math.abs(s.pcwpVp - s.LAP) <= 2 * 3.8;
+  check('combined failure: both estimates rise with a liter of fluid and stay within twice the 3.8 mmHg SD of the Doppler–catheter difference (Nagueh 1997)',
+    c1.pcwpEep > c0.pcwpEep && c1.pcwpVp > c0.pcwpVp && within(c0) && within(c1),
+    `LAP ${c0.LAP.toFixed(1)}→${c1.LAP.toFixed(1)}, from E/e′ ${c0.pcwpEep.toFixed(1)}→${c1.pcwpEep.toFixed(1)}, from E/Vp ${c0.pcwpVp.toFixed(1)}→${c1.pcwpVp.toFixed(1)}`);
+  const m = withEp(c0, 3);
+  check('combined failure: a manual e′ holds and leaves the hemodynamics unchanged', m.ep === 3 && m.LAP === c0.LAP && m.Vp === c0.Vp);
+}
 
 // ---------- color M-mode ----------
 for (const p of PATIENTS) {
@@ -71,6 +115,11 @@ for (const p of PATIENTS) {
   q('dilated ventricle E/Vp with 1 L added', h[1000].EVp, 2.37, 0.005);
   q('dilated ventricle LAP with 1 L removed', h[-1000].LAP, 7, 0.5);
   q('dilated ventricle LAP with 1 L added', h[1000].LAP, 21, 0.5);
+  q('dilated ventricle lateral e′ as found', h[0].ep, 7.3, 0.05);
+  q('dilated ventricle estimate from E/e′ with 1 L removed', h[-1000].pcwpEep, 11, 0.5);
+  q('dilated ventricle estimate from E/e′ with 1 L added', h[1000].pcwpEep, 17, 0.5);
+  q('dilated ventricle estimate from E/Vp with 1 L removed', h[-1000].pcwpVp, 12, 0.5);
+  q('dilated ventricle estimate from E/Vp with 1 L added', h[1000].pcwpVp, 17, 0.5);
   q('septic cardiomyopathy EF, %', base('septicCM').EF * 100, 41, 0.5);
   q('septic cardiomyopathy LAP as found', c[0].LAP, 7, 0.5);
   q('septic cardiomyopathy LAP with 1 L', c[1000].LAP, 14, 0.5);

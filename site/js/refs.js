@@ -1,5 +1,5 @@
 // Bibliography. Every entry was checked against its PubMed record (PMID, title, authors,
-// journal, year, pages, DOI) on 2026-09-22 (entries from guarracino2013 onward on 2026-09-23; rola2025 onward also on 2026-09-23; nagueh2016 onward on 2026-09-23; hamzaoui2012 onward on 2026-10-02; garcia1997 onward on 2026-09-24). Page text cites entries by key.
+// journal, year, pages, DOI) on 2026-09-22 (entries from guarracino2013 onward on 2026-09-23; rola2025 onward also on 2026-09-23; nagueh2016 onward on 2026-09-23; hamzaoui2012 onward on 2026-10-02; garcia1997 onward on 2026-09-24; alam2000 onward on 2026-10-28). Page text cites entries by key.
 export const REFS = [
  {
   "key": "suga1973",
@@ -1844,6 +1844,50 @@ export const REFS = [
   "pages": "R101",
   "pmid": "20525242",
   "doi": "10.1186/cc9040"
+ },
+ {
+  "key": "alam2000",
+  "authors": "Alam M, Wardell J, Andersson E, et al.",
+  "title": "Effects of first myocardial infarction on left ventricular systolic and diastolic function with the use of mitral annular velocity determined by pulsed wave Doppler tissue imaging",
+  "journal": "J Am Soc Echocardiogr",
+  "year": 2000,
+  "volume": "13",
+  "pages": "343-52",
+  "pmid": "10804431",
+  "doi": "10.1016/s0894-7317(00)70003-4"
+ },
+ {
+  "key": "olson2008",
+  "authors": "Olson JM, Samad BA, Alam M",
+  "title": "Prognostic value of pulse-wave tissue Doppler parameters in patients with systolic heart failure",
+  "journal": "Am J Cardiol",
+  "year": 2008,
+  "volume": "102",
+  "pages": "722-5",
+  "pmid": "18773996",
+  "doi": "10.1016/j.amjcard.2008.04.054"
+ },
+ {
+  "key": "mullens2009",
+  "authors": "Mullens W, Borowski AG, Curtin RJ, et al.",
+  "title": "Tissue Doppler imaging in the estimation of intracardiac filling pressure in decompensated patients with advanced systolic heart failure",
+  "journal": "Circulation",
+  "year": 2009,
+  "volume": "119",
+  "pages": "62-70",
+  "pmid": "19075104",
+  "doi": "10.1161/CIRCULATIONAHA.108.779223"
+ },
+ {
+  "key": "hasegawa2003",
+  "authors": "Hasegawa H, Little WC, Ohno M, et al.",
+  "title": "Diastolic mitral annular velocity during the development of heart failure",
+  "journal": "J Am Coll Cardiol",
+  "year": 2003,
+  "volume": "41",
+  "pages": "1590-7",
+  "pmid": "12742302",
+  "doi": "10.1016/s0735-1097(03)00260-2"
  }];
 
 export const REF_INDEX = Object.fromEntries(REFS.map((r) => [r.key, r]));

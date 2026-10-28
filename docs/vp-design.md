@@ -122,27 +122,27 @@ The formula encodes three things: the dependence on τ, the dependence on EF, an
 
 Volume changes are intravascular, 40% of which becomes stressed volume, as elsewhere in the lab. "Inotrope" is the simulator's standard dose: Ees × 1.35, heart rate +10/min, SVR × 0.9.
 
-**Table 2.** Surrogate C: E/Vp, E/e′ and mean LA pressure.
+**Table 2.** Surrogate C: E/Vp, E/e′ and mean LA pressure. The first E/e′ uses the Diastolic lab's e′, scaled from τ alone. The second uses the ICU page's e′, which is also reduced by 1% for each percentage point of EF below 50% (Decision 3).
 
-| Case | Mean LAP, mmHg | Vp, cm/s | E/Vp | PCWP from E/Vp (Garcia 1997), mmHg | E/e′ | PCWP from E/e′ (Nagueh 1997), mmHg |
-|---|---|---|---|---|---|---|
-| Normal | 6.9 | 69 | 1.26 | 11.2 | 7.4 | 11.1 |
-| Grade I | 7.8 | 37 | 1.86 | 14.4 | 10.9 | 15.4 |
-| Grade II | 15.3 | 34 | 2.35 | 17.0 | 13.6 | 18.8 |
-| Grade III | 20.8 | 32 | 2.30 | 16.7 | 13.0 | 18.0 |
-| Grade IV | 30.0 | 30 | 2.54 | 18.0 | 14.0 | 19.3 |
-| Normal, −1 L | 3.0 | 68 | 0.89 | 9.3 | 5.0 | 8.1 |
-| Normal, +1 L | 12.1 | 67 | 1.57 | 12.9 | 9.3 | 13.4 |
-| Normal, inotrope | 6.9 | 77 | 1.23 | 11.1 | 7.9 | 11.7 |
-| HFrEF | 14.2 | 38 | 1.94 | 14.8 | 7.3 | 10.9 |
-| HFrEF, −1 L | 7.4 | 40 | 1.36 | 11.8 | 5.1 | 8.2 |
-| HFrEF, +1 L | 21.2 | 35 | 2.37 | 17.1 | 8.9 | 12.9 |
-| HFrEF, inotrope | 13.5 | 41 | 2.21 | 16.3 | 8.3 | 12.2 |
-| Septic cardiomyopathy | 7.3 | 52 | 1.48 | 12.4 | 6.9 | 10.4 |
-| Septic CM, +1 L | 13.9 | 49 | 2.04 | 15.4 | 9.5 | 13.7 |
-| Septic CM, inotrope | 6.9 | 62 | 1.38 | 11.9 | 7.3 | 11.0 |
-| Vasoplegia | 4.4 | 86 | 0.92 | 9.5 | 6.6 | 10.1 |
-| Vasoplegia, τ 60 ms | 5.4 | 50 | 1.39 | 11.9 | 9.8 | 14.1 |
+| Case | Mean LAP, mmHg | Vp, cm/s | E/Vp | PCWP from E/Vp (Garcia 1997), mmHg | E/e′, τ alone | PCWP from it (Nagueh 1997), mmHg | E/e′, τ and EF | PCWP from it, mmHg |
+|---|---|---|---|---|---|---|---|---|
+| Normal | 6.9 | 69 | 1.26 | 11.2 | 7.4 | 11.1 | 7.4 | 11.1 |
+| Grade I | 7.8 | 37 | 1.86 | 14.4 | 10.9 | 15.4 | 10.9 | 15.4 |
+| Grade II | 15.3 | 34 | 2.35 | 17.0 | 13.6 | 18.8 | 13.6 | 18.8 |
+| Grade III | 20.8 | 32 | 2.30 | 16.7 | 13.0 | 18.0 | 13.0 | 18.0 |
+| Grade IV | 30.0 | 30 | 2.54 | 18.0 | 14.0 | 19.3 | 14.0 | 19.3 |
+| Normal, −1 L | 3.0 | 68 | 0.89 | 9.3 | 5.0 | 8.1 | 5.0 | 8.1 |
+| Normal, +1 L | 12.1 | 67 | 1.57 | 12.9 | 9.3 | 13.4 | 9.3 | 13.4 |
+| Normal, inotrope | 6.9 | 77 | 1.23 | 11.1 | 7.9 | 11.7 | 7.9 | 11.7 |
+| HFrEF | 14.2 | 38 | 1.94 | 14.8 | 7.3 | 10.9 | 10.1 | 14.4 |
+| HFrEF, −1 L | 7.4 | 40 | 1.36 | 11.8 | 5.1 | 8.2 | 7.3 | 10.9 |
+| HFrEF, +1 L | 21.2 | 35 | 2.37 | 17.1 | 8.9 | 12.9 | 12.2 | 17.0 |
+| HFrEF, inotrope | 13.5 | 41 | 2.21 | 16.3 | 8.3 | 12.2 | 10.7 | 15.2 |
+| Septic cardiomyopathy | 7.3 | 52 | 1.48 | 12.4 | 6.9 | 10.4 | 7.5 | 11.2 |
+| Septic CM, +1 L | 13.9 | 49 | 2.04 | 15.4 | 9.5 | 13.7 | 10.4 | 14.7 |
+| Septic CM, inotrope | 6.9 | 62 | 1.38 | 11.9 | 7.3 | 11.0 | 7.3 | 11.0 |
+| Vasoplegia | 4.4 | 86 | 0.92 | 9.5 | 6.6 | 10.1 | 6.6 | 10.1 |
+| Vasoplegia, τ 60 ms | 5.4 | 50 | 1.39 | 11.9 | 9.8 | 14.1 | 9.8 | 14.1 |
 
 ### What the surrogate does well
 
@@ -154,7 +154,7 @@ Volume changes are intravascular, 40% of which becomes stressed volume, as elsew
 ### Four weaknesses
 
 - **Preload independence is overstated with a preserved EF.** Vp does not change when 1 L is removed from the normal ventricle (69 against 68 cm/s). Patients with an EF above 50% show a fall (Lin 2005; Vignon 2007). The lab already states the same limitation for e′ (Opdahl 2009).
-- **The E/e′ comparison in HFrEF is distorted.** Lateral e′ is scaled from τ alone, and the HFrEF preset has a τ of only 43 ms, so its e′ is 10 cm/s, too high for a dilated ventricle with an EF of 22%. E/e′ therefore underestimates mean LA pressure in HFrEF (12.9 against 21.2 mmHg with a liter added), while E/Vp comes closer. A reader would conclude that E/Vp outperforms E/e′ in reduced EF for a reason that exists only in the model. Either e′ needs a dependence on systolic function (patients with low EF have low e′) or the HFrEF preset needs a longer τ, before the two indices are compared on the page.
+- **The E/e′ comparison in HFrEF was distorted (corrected on the ICU page).** Lateral e′ scaled from τ alone gives the HFrEF preset, with a fitted τ of only 43 ms, an e′ of 10 cm/s, too high for a dilated ventricle with an EF of 22%. With that e′, E/e′ underestimates mean LA pressure in HFrEF (12.9 against 21.2 mmHg with a liter added), while E/Vp comes closer, and a reader would conclude that E/Vp outperforms E/e′ in reduced EF for a reason that exists only in the model. The ICU page now reduces e′ below an EF of 50% (Decision 3). The HFrEF E/e′ estimate is then 17.0 mmHg with a liter added, and the two indices give nearly the same estimates across the volume steps (Table 2). The HFrEF preset keeps a normal relaxation parameter, so the EF term carries the whole fall in e′, and a longer τ added to a low EF lowers e′ through both terms.
 - **The inotrope has no effect on relaxation.** The simulator's inotrope raises Ees but leaves τ unchanged. In HFrEF it raises E from 74 to 90 cm/s while mean LA pressure falls slightly, so E/Vp rises from 1.94 to 2.21 in the wrong direction. Dobutamine shortened DT and IVRT in patients (Görgülü 2004), and in the Shock lab only milrinone shortens τ. A lusitropic effect for the inotrope would correct this, but it changes the numbers quoted on other pages.
 - **One of Ohte's findings is not reproduced.** Ohte's end-systolic volume index form of the restoring-force term (Table 3 in the script output) reproduces Alegret's high Vp in the restrictive ventricle with preserved EF (45 cm/s in grades III and IV). In the engine, however, removing a liter from the normal ventricle lowers ESV, and with this form Vp would rise from 69 to 88 cm/s, which is opposite to the patient data. The EF form avoids that artifact, and I recommend it for that reason. The cost is that the model will not reproduce Alegret's finding.
 
@@ -173,7 +173,7 @@ The reader measures the slope by dragging a line, as in the question mode of the
 The section would use presets that already exist, with the lab's mitral orifice switched on. The cases, and the result the reader would see in each:
 
 - **Septic cardiomyopathy, fluid challenge.** E/Vp rises with mean LA pressure while Vp stays near 50 cm/s. This is the setting in which E/Vp behaves as intended.
-- **HFrEF across the volume sweep.** The same behavior over a wider range of LA pressure. It needs the e′ correction above before E/e′ is shown beside it.
+- **HFrEF across the volume sweep.** The same behavior over a wider range of LA pressure, with E/e′ beside it computed from an e′ reduced for the low EF.
 - **Hyperdynamic vasoplegia with impaired relaxation.** Vp is in the normal range and e′ is reduced.
 - **Inotrope in septic cardiomyopathy.** Vp rises with no change in LA pressure.
 - **Grades III and IV.** E/Vp and E/e′ both underestimate mean LA pressure.
@@ -194,7 +194,7 @@ The consequences panel already covers congestion, low output and hypotension, so
 
 1. Restoring-force term: the EF form (decided).
 2. Inotrope: τ is not shortened, so the numbers quoted on the simulator and scenario pages stay unchanged (decided). The ICU page states that the lusitropic effect of dobutamine is absent and that, as a result, E/Vp rises in the dilated ventricle while LA pressure falls.
-3. e′ in a ventricle with a reduced EF: open. Until it is decided, the ICU page does not compare E/e′ with E/Vp when EF is below 50%. It withholds the E/e′ estimate there and states why.
+3. e′ in a ventricle with a reduced EF (decided). On the ICU page, e′ scaled from τ is reduced by 1% for each percentage point of EF below 50%, representing the loss of restoring forces (Opdahl 2009) and of long-axis function (e′ against EF, r = 0.66, Alam 2000). The slope gives the HFrEF preset an e′ of 7.3 cm/s at an EF of 22%, within one SD of the 6.2 ± 1.9 cm/s averaged over four annular sites in patients hospitalized with an EF of 24.7 ± 7.2% (Olson 2008). In patients part of that fall comes from slow relaxation (e′ against τ during pacing-induced failure in dogs, R² = 0.85, Hasegawa 2003); the preset's relaxation parameter is normal, so a longer τ combined with a low EF lowers e′ through both terms. A manual e′ replaces the reading for combined systolic and diastolic disease. It holds across patients, volume steps, the inotrope and the rhythm, and it does not change LA pressure, E or Vp. E/e′ is now compared with E/Vp at every EF, and the page cites Mullens 2009, in which E/e′ did not correlate with PCWP in 106 patients with advanced decompensated heart failure and an EF of 30% or less. At an EF of 50% or more, e′ is unchanged, so every number quoted for the preserved-EF patients stays the same. The Diastolic lab still scales e′ from τ alone.
 4. Placement: a page of its own, `icu.html` (decided).
 5. Whether the guideline statements on Vp are worth a library request for the full texts, since none could be verified: open. The ICU page cites none of them.
 
@@ -202,6 +202,7 @@ The consequences panel already covers congestion, low output and hypotension, so
 
 Each PMID was checked on PubMed.
 
+- Alam M, et al. Effects of first myocardial infarction on left ventricular systolic and diastolic function with the use of mitral annular velocity determined by pulsed wave Doppler tissue imaging. J Am Soc Echocardiogr 2000;13:343–52. PMID 10804431. doi:10.1016/s0894-7317(00)70003-4
 - Alegret JM, et al. Restrictive left ventricular filling and preserved ventricular function: a limitation in the noninvasive estimation of pulmonary wedge pressure by Doppler echocardiography. J Am Soc Echocardiogr 2002;15:334–8. PMID 11944011. doi:10.1067/mje.2002.118527
 - Bhella PS, et al. Echocardiographic indices do not reliably track changes in left-sided filling pressure in healthy subjects or patients with heart failure with preserved ejection fraction. Circ Cardiovasc Imaging 2011;4:482–9. PMID 21788358. doi:10.1161/CIRCIMAGING.110.960575
 - Bouhemad B, et al. Echocardiographic Doppler assessment of pulmonary capillary wedge pressure in surgical patients with postoperative circulatory shock and acute lung injury. Anesthesiology 2003;98:1091–100. PMID 12717130. doi:10.1097/00000542-200305000-00011
@@ -210,11 +211,15 @@ Each PMID was checked on PubMed.
 - Garcia MJ, et al. An index of early left ventricular filling that combined with pulsed Doppler peak E velocity may estimate capillary wedge pressure. J Am Coll Cardiol 1997;29:448–54. PMID 9015003. doi:10.1016/s0735-1097(96)00496-2
 - Garcia MJ, et al. Color M-mode Doppler flow propagation velocity is a preload insensitive index of left ventricular relaxation: animal and human validation. J Am Coll Cardiol 2000;35:201–8. PMID 10636281. doi:10.1016/s0735-1097(99)00503-3
 - Görgülü S, et al. Assessing the effect of low dose dobutamine on various diastolic function indexes. Anadolu Kardiyol Derg 2004;4:227–30. PMID 15355825
+- Hasegawa H, et al. Diastolic mitral annular velocity during the development of heart failure. J Am Coll Cardiol 2003;41:1590–7. PMID 12742302. doi:10.1016/s0735-1097(03)00260-2
 - Kidawa M, et al. Comparative value of tissue Doppler imaging and m-mode color Doppler mitral flow propagation velocity for the evaluation of left ventricular filling pressure. Chest 2005;128:2544–50. PMID 16236921. doi:10.1378/chest.128.4.2544
 - Licker M, et al. Preoperative diastolic function predicts the onset of left ventricular dysfunction following aortic valve replacement in high-risk patients with aortic stenosis. Crit Care 2010;14:R101. PMID 20525242. doi:10.1186/cc9040
 - Lin SK, et al. Color M-mode flow propagation velocity: is it really preload independent? Echocardiography 2005;22:636–41. PMID 16174116. doi:10.1111/j.1540-8175.2005.40078.x
+- Mullens W, et al. Tissue Doppler imaging in the estimation of intracardiac filling pressure in decompensated patients with advanced systolic heart failure. Circulation 2009;119:62–70. PMID 19075104. doi:10.1161/CIRCULATIONAHA.108.779223
 - Nagueh SF, Kopelen HA, Quiñones MA. Assessment of left ventricular filling pressures by Doppler in the presence of atrial fibrillation. Circulation 1996;94:2138–45. PMID 8901664. doi:10.1161/01.cir.94.9.2138
 - Ohte N, et al. Striking effect of left ventricular systolic performance on propagation velocity of left ventricular early diastolic filling flow. J Am Soc Echocardiogr 2001;14:1070–4. PMID 11696830. doi:10.1067/mje.2001.114136
+- Olson JM, Samad BA, Alam M. Prognostic value of pulse-wave tissue Doppler parameters in patients with systolic heart failure. Am J Cardiol 2008;102:722–5. PMID 18773996. doi:10.1016/j.amjcard.2008.04.054
+- Opdahl A, et al. Determinants of left ventricular early-diastolic lengthening velocity: independent contributions from left ventricular relaxation, restoring forces, and lengthening load. Circulation 2009;119:2578–86. PMID 19414640. doi:10.1161/CIRCULATIONAHA.108.791681
 - Papanikolaou J, et al. New insights into weaning from mechanical ventilation: left ventricular diastolic dysfunction is a key player. Intensive Care Med 2011;37:1976–85. PMID 21976188. doi:10.1007/s00134-011-2368-0
 - Pieri B, et al. [Novel Doppler indexes of estimation of pulmonary capillary pressure: influence of age, feasibility in the acute setting and reproducibility]. Ann Cardiol Angeiol 2004;53:314–9. PMID 15603173. doi:10.1016/j.ancard.2004.09.008
 - Sessoms MW, Lisauskas J, Kovács SJ. The left ventricular color M-mode Doppler flow propagation velocity V(p): in vivo comparison of alternative methods including physiologic implications. J Am Soc Echocardiogr 2002;15:339–48. PMID 11944012. doi:10.1067/mje.2002.117899

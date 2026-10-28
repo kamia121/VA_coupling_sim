@@ -25,12 +25,22 @@ export const garcia = (EVp) => 5.27 * EVp + 4.6;
 export const nagueh = (Eep) => 1.24 * Eep + 1.9;
 // Vignon 2008, ventilated patients: E/Vp ≤ 1.7 predicted PAOP ≤ 18 mmHg (sensitivity 80%, specificity 100%)
 export const EVP_LOW = 1.7;
-// Below this ejection fraction the model's e′, scaled from τ alone, is not a valid comparator for E/Vp: it does
-// not fall with the systolic dysfunction of a dilated ventricle, so the model's E/e′ understates LA pressure there.
-export const EF_EEP_INVALID = 0.5;
+
+// Lateral e′. The Diastolic lab scales e′ from the fitted τ alone (12 cm/s at the normal τ of 36 ms, Nagueh 1997).
+// Here e′ also falls with systolic function: below an EF of 50% it is reduced by 1% for each percentage point of EF,
+// representing the loss of restoring forces (an independent determinant of e′ in dogs, Opdahl 2009) and of
+// long-axis function (e′ against EF after a first infarction: r = 0.66, Alam 2000). The HFrEF preset has a normal
+// relaxation parameter (fitted τ 43 ms), so the slope is set for that preset: e′ 7.3 cm/s at an EF of 22%, against
+// 6.2 ± 1.9 cm/s (mean of four annular sites) in patients hospitalized with an EF of 24.7 ± 7.2% (Olson 2008).
+// In patients part of that fall comes from slow relaxation (pacing-induced failure in dogs: e′ against τ,
+// R² = 0.85, Hasegawa 2003), so where a low EF and a long τ are combined the two reductions multiply. At an EF of
+// 50% or more e′ is the Diastolic lab's. A manual e′ replaces the reading and E/e′ and leaves the hemodynamics,
+// E and Vp unchanged.
+export const EP = { efBreak: 50, perPoint: 0.01 };
+export const epFactor = (ef) => 1 - EP.perPoint * Math.max(0, EP.efBreak - ef * 100);
 
 // Patients. Each runs on the Diastolic lab's solver (mitral orifice on, baroreflex set point at the patient's
-// own open-loop MAP), so E, lateral e′ and the volume steps are those of that lab.
+// own open-loop MAP), so E, the τ-scaled e′ and the volume steps are those of that lab.
 const lab = (id, extra = {}) => ({ ...presetById(id).params, mvArea: MV_AREA, ...extra });
 export const PATIENTS = [
   { id: 'normal', label: 'Normal ventricle', params: GRADES[0].params },
@@ -51,21 +61,32 @@ function withInotrope(p) {
 }
 
 /**
- * One bedside state. opts: { vol (mL, intravascular), ino (boolean), af (boolean, AF at 110/min) }.
+ * One bedside state. opts: { vol (mL, intravascular), ino (boolean), af (boolean, AF at 110/min),
+ *   ep (manual lateral e′, cm/s; omitted for e′ scaled from τ and EF) }.
  * Returns the Diastolic lab readout plus Vp and both filling-pressure estimates.
  */
 export function icuState(id, opts = {}) {
-  const pt = patientById(id);
-  const base = opts.ino ? withInotrope(pt.params) : pt.params;
+  return bedState(patientById(id).params, opts);
+}
+// The same for any parameter set (a patient of this page or another combination of disease)
+export function bedState(params, opts = {}) {
+  const base = opts.ino ? withInotrope(params) : params;
   const cond = { ...(opts.vol ? { vol: opts.vol } : {}), ...(opts.af ? { rhythm: 'af', afRate: 110 } : {}) };
   const sol = solveCond(base, cond);
   const o = readout(sol), e = o.echo;
   const Vp = vpFrom(e.tauMs, o.EF);
   const EVp = e.E / Vp;
-  return {
-    sol, o, e, Vp, EVp, LAP: o.LAP, EF: o.EF, E: e.E, ep: e.ep, Eep: e.Eep,
-    pcwpVp: garcia(EVp), pcwpEep: nagueh(e.Eep), eepInvalid: o.EF < EF_EEP_INVALID,
+  const s = {
+    sol, o, e, Vp, EVp, LAP: o.LAP, EF: o.EF, E: e.E, pcwpVp: garcia(EVp),
+    epTau: e.ep, epAuto: e.ep * epFactor(o.EF),
   };
+  return withEp(s, opts.ep);
+}
+
+// e′, E/e′ and the E/e′ estimate of a solved state, from a manual e′ (cm/s) or, when ep is not a number, from τ and EF
+export function withEp(s, ep) {
+  const manual = Number.isFinite(ep), v = manual ? ep : s.epAuto;
+  return { ...s, ep: v, epManual: manual, Eep: s.E / v, pcwpEep: nagueh(s.E / v) };
 }
 
 // ---------- color M-mode ----------

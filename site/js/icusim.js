@@ -1,7 +1,9 @@
 // ICU diastology lab: patient and intervention controls, Doppler tiles, color M-mode with a Nyquist control and
 // a slope measured by dragging, estimated against model LA pressure, and the volume steps of each patient.
+// Lateral e′ is scaled from τ and EF unless a manual value is set; a manual value holds across patients,
+// volume steps, the inotrope and the rhythm, and only the e′ reading and E/e′ follow it.
 import { drawPlot, svgPoint, svgEl, swatch } from './plot.js';
-import { PATIENTS, VOLS, icuState, mmodeField, contour, fitSlope, MM, EF_EEP_INVALID } from './vpcore.js';
+import { PATIENTS, VOLS, icuState, withEp, mmodeField, contour, fitSlope, MM } from './vpcore.js';
 
 const $ = (s) => document.querySelector(s);
 const f = (x, d = 0) => (Number.isFinite(x) ? x.toFixed(d) : '–');
@@ -17,12 +19,13 @@ function seg(host, items, current, onPick) {
 }
 
 export function initIcu() {
-  const S = { pt: 'septicCM', vol: 0, ino: false, af: false, annulus: true, nyqShare: MM.nyqShare, show: true };
+  // ep: manual lateral e′ in cm/s, or null for e′ scaled from τ and EF
+  const S = { pt: 'septicCM', vol: 0, ino: false, af: false, annulus: true, ep: null, nyqShare: MM.nyqShare, show: true };
   const cache = new Map();
   const state = (vol) => {
     const k = `${S.pt}|${vol}|${S.ino}|${S.af}`;
     if (!cache.has(k)) cache.set(k, icuState(S.pt, { vol, ino: S.ino, af: S.af }));
-    return cache.get(k);
+    return withEp(cache.get(k), S.ep);
   };
 
   $('#icu-patient').innerHTML = PATIENTS.map((p) => `<option value="${p.id}"${p.id === S.pt ? ' selected' : ''}>${p.label}</option>`).join('');
@@ -30,11 +33,26 @@ export function initIcu() {
   seg($('#icu-vol'), VOLS.map((v) => [v, v === 0 ? 'None' : `${v > 0 ? '+' : '−'}${Math.abs(v) / 1000} L`]), S.vol, (v) => { S.vol = +v; render(); });
   seg($('#icu-ino'), [['0', 'Off'], ['1', 'On']], '0', (v) => { S.ino = v === '1'; render(); });
   seg($('#icu-rhythm'), [['sinus', 'Sinus'], ['af', 'AF at 110/min']], 'sinus', (v) => { S.af = v === 'af'; render(); });
-  seg($('#icu-annulus'), [['1', 'Recordable'], ['0', 'Not recordable']], '1', (v) => { S.annulus = v === '1'; render(); });
+  seg($('#icu-annulus'), [['1', 'Recordable'], ['0', 'Not recordable']], '1', (v) => { S.annulus = v === '1'; epControls(); render(); });
+  const epIn = $('#icu-ep'), epMin = +epIn.min, epMax = +epIn.max;
+  seg($('#icu-ep-mode'), [['auto', 'Scaled from τ and EF'], ['manual', 'Manual']], 'auto', (v) => {
+    // a manual value starts from the e′ on display
+    S.ep = v === 'manual' ? Math.min(epMax, Math.max(epMin, Math.round((cur ? cur.epAuto : 8) * 10) / 10)) : null;
+    if (S.ep !== null) epIn.value = S.ep;
+    epControls(); readouts();
+  });
+  epIn.oninput = () => { S.ep = +epIn.value; epControls(); readouts(); };
+  function epControls() {
+    $('#icu-ep-wrap').hidden = !S.annulus;
+    $('#icu-ep-manual').hidden = S.ep === null;
+    if (S.ep !== null) $('#icu-ep-v').textContent = `${S.ep.toFixed(1)} cm/s`;
+  }
   $('#mm-nyq').oninput = (e) => { S.nyqShare = +e.target.value / 100; drawMmode(); };
   $('#mm-show').onchange = (e) => { S.show = e.target.checked; drawMmode(); };
 
   let cur = null, field = null, drag = null;
+  // e′ changes the readouts only, so the solved state and the M-mode are kept
+  function readouts() { if (!cur) return; cur = state(S.vol); tiles(); sweep(); }
 
   function render() {
     $('#icu-status').textContent = 'Solving…';
@@ -49,7 +67,7 @@ export function initIcu() {
   }
 
   function tiles() {
-    const s = cur, eepOk = S.annulus && !s.eepInvalid;
+    const s = cur;
     const t = (k, v, sub, off = false) => `<div class="tile${off ? ' off' : ''}"><div class="tile-v">${v}</div><div class="tile-k">${k} <span>${sub}</span></div></div>`;
     $('#icu-tiles').innerHTML = [
       t('Mean LA pressure', `${f(s.LAP, 1)} mmHg`, 'model value'),
@@ -58,7 +76,7 @@ export function initIcu() {
       t('Vp', `${f(s.Vp)} cm/s`, 'scaled from τ and EF'),
       t('E/Vp', f(s.EVp, 2), `LA pressure estimate ${f(s.pcwpVp, 1)} mmHg`),
       S.annulus
-        ? t('Lateral E/e′', f(s.Eep, 1), s.eepInvalid ? `not a valid comparator at EF below ${EF_EEP_INVALID * 100}%` : `e′ ${f(s.ep, 1)} cm/s; estimate ${f(s.pcwpEep, 1)} mmHg`, !eepOk)
+        ? t('Lateral E/e′', f(s.Eep, 1), `e′ ${f(s.ep, 1)} cm/s, ${s.epManual ? 'manual' : 'scaled from τ and EF'}; estimate ${f(s.pcwpEep, 1)} mmHg`)
         : t('Lateral E/e′', 'not recordable', 'annular velocities unavailable', true),
     ].join('');
   }
@@ -129,12 +147,12 @@ export function initIcu() {
   // ---------- volume steps ----------
   function sweep() {
     const rows = VOLS.map((v) => ({ v, s: state(v) }));
-    const eepShown = S.annulus && !rows[0].s.eepInvalid;
+    const eepShown = S.annulus;
     $('#icu-sweep tbody').innerHTML = rows.map(({ v, s }) => `<tr${v === S.vol ? ' class="cur-row"' : ''}><td>${v === 0 ? 'As found' : `${v > 0 ? '+' : '−'}${Math.abs(v) / 1000} L`}</td>` +
       `<td class="num">${f(s.LAP, 1)}</td><td class="num">${f(s.E)}</td><td class="num">${f(s.Vp)}</td><td class="num">${f(s.EVp, 2)}</td><td class="num">${f(s.pcwpVp, 1)}</td>` +
       `<td class="num">${S.annulus ? f(s.Eep, 1) : '–'}</td><td class="num">${eepShown ? f(s.pcwpEep, 1) : '–'}</td></tr>`).join('');
     $('#icu-sweep-note').textContent = !S.annulus ? 'Annular velocities are not recordable, so E/e′ is not reported.'
-      : rows[0].s.eepInvalid ? `EF is below ${EF_EEP_INVALID * 100}%. Lateral e′ in the model depends on τ alone and does not fall with systolic dysfunction, so its E/e′ understates LA pressure here and no estimate is given from it.` : '';
+      : S.ep !== null ? `Lateral e′ is held at the manual value of ${S.ep.toFixed(1)} cm/s at every volume step.` : '';
     // estimate against model LA pressure
     const lo = 0, hi = Math.max(30, Math.ceil(Math.max(...rows.map((r) => Math.max(r.s.LAP, r.s.pcwpVp, r.s.pcwpEep))) / 5) * 5);
     const series = [
@@ -155,5 +173,6 @@ export function initIcu() {
     $('#icu-est-legend').innerHTML = `<span>${swatch(C_VP)} From E/Vp (Garcia 1997)</span>` + (eepShown ? ` <span>${swatch(C_EEP, '6 3')} From lateral E/e′ (Nagueh 1997)</span>` : '') + ` <span>${swatch('var(--mon-axis)', '4 4', 1.2)} Identity</span>`;
   }
 
+  epControls();
   render();
 }

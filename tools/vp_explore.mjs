@@ -13,6 +13,7 @@
 //   C. a surrogate scaled from the fitted τ and the ejection fraction, as the lab already scales e′ from τ.
 import { GRADES, solveCond, readout, BSA, MV_AREA } from '../site/js/diastcore.js';
 import { presetById, INTERVENTIONS } from '../site/js/presets.js';
+import { epFactor } from '../site/js/vpcore.js';
 
 const MMHG = 1333.22, RHO = 1.06;   // dyn/cm² per mmHg; blood density, g/cm³
 const TAU_N = 36;                   // ms, fitted τ of the normal ventricle
@@ -137,7 +138,7 @@ const rows = CASES.map(([name, p, cond]) => {
   const sol = solveCond(p, cond), o = readout(sol), e = o.echo, r = sol.r;
   const vpC = vpSurrogate(e.tauMs, o.EF), vpD = vpSurrogateESVI(e.tauMs, r.lv.ESV / BSA);
   const jFree = jet(r, 0), jLead = jet(r, 0.02);
-  return { name, tau: e.tauMs, esvi: r.lv.ESV / BSA, ef: o.EF * 100, lap: o.LAP, E: e.E, ep: e.ep, Eep: e.Eep,
+  return { name, tau: e.tauMs, esvi: r.lv.ESV / BSA, ef: o.EF * 100, lap: o.LAP, E: e.E, ep: e.ep, Eep: e.Eep, EepIcu: e.E / (e.ep * epFactor(o.EF)),
     vpA: axial(r), vpB0: jFree.vp, vpB: jLead.vp, vpC, vpD };
 });
 
@@ -153,11 +154,12 @@ console.log(`Free jet E/Vp: normal ${ratio('vpB0')[0].toFixed(2)}, grade IV ${ra
 console.log(`Largest effect of the gradient on the jet front: ${Math.max(...rows.map((x) => Math.abs(x.vpB - x.vpB0))).toFixed(1)} cm/s`);
 
 console.log('\nTable 2. Surrogate C: E/Vp against E/e′ and mean LA pressure\n');
-console.log('| Case | Mean LAP, mmHg | Vp, cm/s | E/Vp | PCWP from E/Vp (Garcia 1997), mmHg | E/e′ | PCWP from E/e′ (Nagueh 1997), mmHg |');
-console.log('|---|---|---|---|---|---|---|');
+// E/e′ with the Diastolic lab's e′ (scaled from τ alone) and with the ICU page's (also reduced below an EF of 50%)
+console.log('| Case | Mean LAP, mmHg | Vp, cm/s | E/Vp | PCWP from E/Vp (Garcia 1997), mmHg | E/e′, τ alone | PCWP from it (Nagueh 1997), mmHg | E/e′, τ and EF | PCWP from it, mmHg |');
+console.log('|---|---|---|---|---|---|---|---|---|');
 for (const x of rows) {
   const r = x.E / x.vpC;
-  console.log(`| ${x.name} | ${f(x.lap, 1)} | ${f(x.vpC)} | ${f(r, 2)} | ${f(5.27 * r + 4.6, 1)} | ${f(x.Eep, 1)} | ${f(1.24 * x.Eep + 1.9, 1)} |`);
+  console.log(`| ${x.name} | ${f(x.lap, 1)} | ${f(x.vpC)} | ${f(r, 2)} | ${f(5.27 * r + 4.6, 1)} | ${f(x.Eep, 1)} | ${f(1.24 * x.Eep + 1.9, 1)} | ${f(x.EepIcu, 1)} | ${f(1.24 * x.EepIcu + 1.9, 1)} |`);
 }
 
 console.log('\nTable 3. The ESVI form of the restoring-force term, where it differs\n');
