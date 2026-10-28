@@ -9,9 +9,13 @@ const PAGES = [
   ['interfaces.html', 'Interfaces'],
   ['simulator.html', 'Simulator'],
   ['shock.html', 'Shock lab'],
+  ['diastolic.html', 'Diastolic lab'],
+  ['icu.html', 'ICU diastology'],
   ['scenarios.html', 'Scenarios'],
   ['echo.html', 'Echo lab'],
   ['pac.html', 'PA catheter'],
+  ['pressure.html', 'Pressure lab'],
+  ['pericard.html', 'Pericardial lab'],
   ['references.html', 'References'],
 ];
 
@@ -38,12 +42,13 @@ export function refText(r) {
 
 function header() {
   const here = location.pathname.split('/').pop() || 'index.html';
+  const cur = here === 'diastolic-sim.html' ? 'diastolic.html' : here;   // the simulator belongs to the Diastolic lab entry
   const h = document.createElement('header');
   h.className = 'site-header';
   h.innerHTML = `<div class="inner">
     <a class="brand" href="index.html">Ventricular–Arterial Coupling<small>Simulation and tutorial · LV and RV</small></a>
     <nav class="nav" aria-label="Main">${PAGES.map(([href, label]) =>
-      `<a href="${href}"${href === here ? ' aria-current="page"' : ''}>${label}</a>`).join('')}</nav>
+      `<a href="${href}"${href === cur ? ' aria-current="page"' : ''}>${label}</a>`).join('')}</nav>
     <button class="theme-btn" type="button" aria-label="Toggle light or dark theme"></button>
   </div>`;
   document.body.prepend(h);

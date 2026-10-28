@@ -3,6 +3,7 @@
 import { simulate } from './engine.js';
 import { presetById } from './presets.js';
 import { addExport, header, even } from './export.js';
+import { ecgWave } from './ecgwave.js';
 
 const LVOT_D = 2.2;                        // true LVOT diameter in this lab, cm
 const NORM = simulate({});               // normal reference for the worked examples
@@ -47,7 +48,7 @@ function ecg(g, x0, w, y, n) {
   g.strokeStyle = '#7CE38B'; g.lineWidth = 1.3; g.beginPath();
   for (let i = 0; i <= w; i++) {
     const ph = ((i / w) * 2) % 1;                    // two beats; QRS at activation onset
-    const d = ph < 0.03 ? Math.sin(ph / 0.03 * Math.PI) * 14 * (ph < 0.015 ? 1 : -0.4) : ph > 0.3 && ph < 0.45 ? Math.sin((ph - 0.3) / 0.15 * Math.PI) * 4 : 0;
+    const d = ecgWave(ph * 0.86, 0.86) * 1.08;
     i ? g.lineTo(x0 + i, y - d) : g.moveTo(x0 + i, y - d);
   }
   g.stroke();

@@ -48,9 +48,10 @@ export const NORMAL = Object.freeze({
   rMv: 0.004,         // mitral inflow resistance
   // Atria: time-varying elastance, P = [Emin + a(t)·(Emax − Emin)]·(V − V0)
   laEmax: 1.4, laEmin: 0.2, laV0: 10,
-  raEmax: 1.0, raEmin: 0.14, raV0: 10,
+  raEmax: 0.5, raEmin: 0.14, raV0: 10,
   pr: 0.16,           // P-wave onset to QRS (start of ventricular activation), s
-  aDur: 0.14,         // duration of atrial contraction, s
+  aDelay: 0.05,       // P-wave onset to the start of atrial contraction (tissue Doppler: ~37 ms RA, ~56 ms LA), s
+  aDur: 0.17,         // duration of atrial contraction, s
   aKick: 1,           // atrial contraction strength: 1 sinus, 0 none (atrial fibrillation)
   aShift: 0,          // s added to atrial timing; > PR puts atrial systole inside ventricular systole (AV dissociation)
   // Blood volume
@@ -60,13 +61,15 @@ export const NORMAL = Object.freeze({
   pericardium: 1, septum: 1, baseDescent: 1, relax: 1, ffr: 1, baro: 1, coronary: 1,
 
   // Pericardium: P = P0·(exp(λ·(Vheart + fluid − V0)) − 1), added to all four chambers
-  pcdP0: 0.5, pcdLambda: 0.03, pcdV0: 285, pcdFluid: 0,
+  pcdP0: 0.5, pcdLambda: 0.03, pcdV0: 285, pcdFluid: 0, pcdPmax: 50,
   // Septum (Smith et al. 2004): time-varying elastance between the ventricles
   sptEes: 48, sptVd: -2, sptA: 1.11, sptBeta: 0.435, sptBetaL: 0.2, sptV0: -3.5,
   // AV-plane descent and leaflet bulging, as changes in effective atrial volume
   baseAlpha: 0.4,     // mL of atrial capacity gained per mL of ventricular emptying (scaled by activation)
-  cBulge: 4,          // mL of leaflet displacement into the atrium while the valve is closed
-  cP: 4,              // mmHg gradient that half-saturates the bulge
+  baseExp: 0.4,       // activation is raised to this power, so the AV plane returns more slowly than the ventricle relaxes
+  cBulge: 6,          // mL of leaflet displacement into the atrium while the valve is closed
+  cP: 1,              // mmHg gradient that half-saturates the bulge
+  cFade: 30,          // mL ejected over which the bulge gives way to the AV-plane descent
   // Relaxation: monoexponential fall of activation after end-systole
   tau: 0.035,         // s
   // Force–frequency: Ees × (1 + kFFR·(HR − 70)/70), bounded to 0.7–1.4
@@ -75,12 +78,28 @@ export const NORMAL = Object.freeze({
   mapSet: 96.1,         // mmHg, the calibrated normal MAP
   baroSlope: 14,      // mmHg; smaller is steeper
   gHR: 0.35, gSVR: 0.2, gEes: 0.15, gVol: 200,
+  hrMax: 160,         // the reflex does not drive the rate above this (or above the intrinsic rate, if higher), /min
   // Coronary supply and demand
   cfr: 5,             // coronary flow reserve (maximal / resting flow)
   lvMass: 1, rvMass: 1,   // muscle mass relative to normal (hypertrophy)
   corL0: 48.15, corR0: 86.55, pvaL0: 10963, pvaR0: 1572,   // perfusion and PVA of the normal heart
   // Valve lesions: stenotic orifice area (cm², 0 = normal) and regurgitant orifice (EROA, cm²)
   avArea: 0, mrEroa: 0, trEroa: 0, arEroa: 0,
+  // Effective mitral inflow orifice (cm²) for the Bernoulli term in diastole; 0 = resistance only
+  mvArea: 0,
+  // LA contraction limits (0 = off, the linear time-varying elastance above). laPiso: length–tension
+  // plateau, the developed (isovolumic) pressure toward which atrial contraction saturates as the atrium
+  // is stretched, mmHg. laKej: force–velocity limit, an internal resistance laKej × developed pressure
+  // (s/mL) in series with the mitral orifice while the atrium empties (the ejection effect, Shroff 1983),
+  // so that emptying flow is bounded by 1/laKej mL/s.
+  laPiso: 0, laKej: 0,
+  // pvSleeve: the venoatrial junction resistance rises by this factor times atrial activation, so less
+  // of the atrial stroke is ejected back into the pulmonary veins (0 = off).
+  pvSleeve: 0,
+  // Mean pleural pressure relative to quiet spontaneous breathing, mmHg (0 = off). It adds to the pressure
+  // around the heart and the pulmonary vessels, so a positive value (positive-pressure ventilation) impedes
+  // venous return and a negative value (labored inspiration) raises LV transmural afterload.
+  ppl: 0,
   // Dynamic LVOT obstruction: the outflow orifice narrows as the LV empties below lvoto mL
   // during contraction (0 = off). Area runs from lvotAmax to lvotAmin (cm²) over a width lvotW mL.
   lvoto: 0, lvotW: 5, lvotAmax: 3.5, lvotAmin: 0.2,
@@ -101,8 +120,10 @@ function seriesArea(a, b) {
 // Double-Hill activation (Stergiopulos et al. 1996), with the time to peak
 // elastance scaled to the cardiac period: Tmax = 0.2 + 0.15·T. With `relax` on, the falling
 // limb is replaced by a monoexponential decay with time constant τ, smoothed at the peak,
-// and the tail that has not decayed by the next beat carries into it.
-function makeActivation(T, p) {
+// and the tail that has not decayed by the next beat carries into it. Tprev is the length of the beat
+// before (it differs from T only in an irregular rhythm), which sets how far that tail has decayed.
+// w(t) is the share of e(t) that is still the previous beat's tail (1 at the QRS, 0 from the peak on).
+function makeActivation(T, p, Tprev = T) {
   const tmax = 0.2 + 0.15 * T;
   const tau1 = 0.67 * tmax, tau2 = 1.13 * tmax, m1 = 1.32, m2 = 27.4;
   const raw = (t) => {
@@ -114,32 +135,53 @@ function makeActivation(T, p) {
     const v = raw(t);
     if (v > peak) { peak = v; tPeak = t; }
   }
-  if (!p.relax) return { e: (t) => raw(t) / peak, tPeak };
+  if (!p.relax) return { e: (t) => raw(t) / peak, w: () => 0, tPeak };
   const d = 0.25 * p.tau;
   const decay = (x) => Math.exp(-(Math.sqrt(x * x + d * d) - d) / p.tau);
+  const tPeakPrev = Tprev === T ? tPeak : makeActivation(Tprev, { ...p, relax: 0 }).tPeak;
   const e = (t) => {
-    const carry = decay(t + T - tPeak);            // previous beat's tail
+    const carry = decay(t + Tprev - tPeakPrev);    // previous beat's tail
     if (t < tPeak) { const r = raw(t) / peak; return r + (1 - r) * carry; }
     return decay(t - tPeak);
   };
-  return { e, tPeak };
+  const w = (t) => {
+    if (t >= tPeak) return 0;
+    const r = raw(t) / peak, c = (1 - r) * decay(t + Tprev - tPeakPrev);
+    return c > 0 ? c / (r + c) : 0;
+  };
+  return { e, w, tPeak };
 }
 
-// Atrial activation: a raised-cosine pulse of duration aDur that starts at the P wave,
+// Atrial activation: a raised-cosine pulse of duration aDur that starts aDelay after the P wave,
 // PR seconds before the QRS (t = 0), shifted by aShift; periodic in T.
 function makeAtrialActivation(T, p) {
-  const onset = (((-p.pr + p.aShift) % T) + T) % T;
+  const onset = (((-p.pr + p.aDelay + p.aShift) % T) + T) % T;
   return (t) => {
     const u = ((((t - onset) % T) + T) % T) / p.aDur;
     return u < 1 ? p.aKick * 0.5 * (1 - Math.cos(2 * Math.PI * u)) : 0;
   };
 }
 
+// Pericardial pressure for a total enclosed volume (four chambers + fluid). Above pcdPmax the exponential
+// continues as a straight line with the same slope: no pericardium holds more, and the exponential
+// alone makes the equations too stiff to integrate when a large heart meets a large effusion.
+function pericardialP(vol, p) {
+  const x = p.pcdLambda * (vol - p.pcdV0), xm = Math.log(1 + p.pcdPmax / p.pcdP0);
+  return x <= xm ? p.pcdP0 * (Math.exp(x) - 1) : p.pcdPmax + (p.pcdPmax + p.pcdP0) * (x - xm);
+}
+
+// A fully activated wall is never more compliant than a relaxed one: the end-systolic pressure is at least
+// the passive pressure at the same volume (a smooth maximum, rounded over SMAX mmHg). Otherwise a low Ees on
+// a stiff or overfilled chamber puts the ESPVR below the EDPVR, and contraction would lower the pressure.
+// At working volumes the passive pressure is far below the ESPVR and this changes nothing measurable.
+const SMAX = 0.5;
 function wallP(V, e, Ees, V0, A, beta) {
-  return e * Ees * (V - V0) + (1 - e) * A * (Math.exp(beta * (V - V0)) - 1);
+  const act = Ees * (V - V0), pas = A * (Math.exp(beta * (V - V0)) - 1), d = act - pas;
+  return e * (act + pas + Math.sqrt(d * d + SMAX * SMAX)) / 2 + (1 - e) * pas;
 }
 function wallDP(V, e, Ees, V0, A, beta) {
-  return e * Ees + (1 - e) * A * beta * Math.exp(beta * (V - V0));
+  const ex = Math.exp(beta * (V - V0)), d = Ees * (V - V0) - A * (ex - 1), dPas = A * beta * ex;
+  return e * (Ees + dPas + d * (Ees - dPas) / Math.sqrt(d * d + SMAX * SMAX)) / 2 + (1 - e) * dPas;
 }
 
 // Flow through a valve: resistance R in series with a Bernoulli orifice of area A (cm²).
@@ -169,15 +211,15 @@ function septDP(x, e, p) {
 }
 
 // Septal volume that balances the septal pressure against the transseptal gradient.
-function solveSeptum(Vlv, Vrv, e, p, x0) {
+function solveSeptum(Vlv, Vrv, e, p, x0, lvEes = p.lvEes, rvEes = p.rvEes) {
   let x = x0;
   for (let i = 0; i < 30; i++) {
     const f = septP(x, e, p)
-      - wallP(Vlv - x, e, p.lvEes, p.lvV0, p.lvA, p.lvBeta)
-      + wallP(Vrv + x, e, p.rvEes, p.rvV0, p.rvA, p.rvBeta);
+      - wallP(Vlv - x, e, lvEes, p.lvV0, p.lvA, p.lvBeta)
+      + wallP(Vrv + x, e, rvEes, p.rvV0, p.rvA, p.rvBeta);
     const df = septDP(x, e, p)
-      + wallDP(Vlv - x, e, p.lvEes, p.lvV0, p.lvA, p.lvBeta)
-      + wallDP(Vrv + x, e, p.rvEes, p.rvV0, p.rvA, p.rvBeta);
+      + wallDP(Vlv - x, e, lvEes, p.lvV0, p.lvA, p.lvBeta)
+      + wallDP(Vrv + x, e, rvEes, p.rvV0, p.rvA, p.rvBeta);
     let dx = f / df;
     if (dx > 20) dx = 20; else if (dx < -20) dx = -20;
     x -= dx;
@@ -188,42 +230,69 @@ function solveSeptum(Vlv, Vrv, e, p, x0) {
 
 // state = [Vlv, Vsa, Vsv, Vrv, Vpa, Vpv, Vra, Vla]; arterial and venous compartments hold
 // stressed volume; ventricles and atria hold total volume (their V0 is unstressed).
-// `ctx.spt` carries the last septal volume as the Newton starting point.
+// `ctx.spt` carries the last septal volume as the Newton starting point. `ctx.w` is the share of e
+// that is still the previous beat's relaxation tail; that share keeps the previous beat's Ees
+// (ctx.lvEesP, which differs when the force-frequency relation sees a new RR) and its AV-plane
+// reference, so nothing steps at the QRS of an irregular rhythm.
 function pressures(s, e, ea, p, ctx) {
+  const w = ctx.w;
+  const lvEes = p.lvEes + w * (ctx.lvEesP - p.lvEes), rvEes = p.rvEes + w * (ctx.rvEesP - p.rvEes);
   let Vspt = 0;
-  if (p.septum) { Vspt = solveSeptum(s[0], s[3], e, p, ctx.spt); ctx.spt = Vspt; }
-  const Ppcd = p.pericardium
-    ? p.pcdP0 * (Math.exp(p.pcdLambda * (s[0] + s[3] + s[6] + s[7] + p.pcdFluid - p.pcdV0)) - 1) : 0;
-  const Plv = wallP(s[0] - Vspt, e, p.lvEes, p.lvV0, p.lvA, p.lvBeta) + Ppcd;
-  const Prv = wallP(s[3] + Vspt, e, p.rvEes, p.rvV0, p.rvA, p.rvBeta) + Ppcd;
+  if (p.septum) { Vspt = solveSeptum(s[0], s[3], e, p, ctx.spt, lvEes, rvEes); ctx.spt = Vspt; }
+  const Ppcd = p.pericardium ? pericardialP(s[0] + s[3] + s[6] + s[7] + p.pcdFluid, p) : 0;
+  // pleural pressure (opt-in) surrounds the heart and the pulmonary vessels but not the systemic ones: the
+  // mean offset p.ppl plus the breath ctx.pplT, which changes within the beat
+  const ppl = (p.ppl || 0) + (ctx.pplT || 0), Pth = Ppcd + ppl;
+  const Plv = wallP(s[0] - Vspt, e, lvEes, p.lvV0, p.lvA, p.lvBeta) + Pth;
+  const Prv = wallP(s[3] + Vspt, e, rvEes, p.rvV0, p.rvA, p.rvBeta) + Pth;
   const Psa = s[1] / p.cSys, Psv = s[2] / p.cSv;
-  const Ppa = s[4] / p.cPa, Ppv = s[5] / p.cPv;
+  const Ppa = s[4] / p.cPa + ppl, Ppv = s[5] / p.cPv + ppl;
+  // alveolar pressure (opt-in): the mean offset p.palv plus the breath ctx.palvT; it compresses the pulmonary capillaries
+  const Palv = (p.palv || 0) + (ctx.palvT || 0);
   const Era = p.raEmin + ea * (p.raEmax - p.raEmin), Ela = p.laEmin + ea * (p.laEmax - p.laEmin);
   let VraE = s[6], VlaE = s[7];
   if (p.baseDescent) {
     // descent of the AV plane enlarges the atrium as the ventricle empties;
     // the closed leaflets bulge back into the atrium while ventricular pressure exceeds atrial
-    // (the gain follows ventricular activation, so the AV plane returns as the ventricle relaxes)
-    VraE -= p.baseAlpha * e * (ctx.vR0 - s[3]);
-    VlaE -= p.baseAlpha * e * (ctx.vL0 - s[0]);
-    const gR = Prv - (Era * (VraE - p.raV0) + Ppcd), gL = Plv - (Ela * (VlaE - p.laV0) + Ppcd);
-    if (gR > 0) VraE += p.cBulge * gR / (gR + p.cP);
-    if (gL > 0) VlaE += p.cBulge * gL / (gL + p.cP);
+    // (the gain follows ventricular activation, so the AV plane returns as the ventricle relaxes).
+    // The descent (and the fade of the bulge below) is measured from the ventricular volume at the QRS;
+    // the tail share w of e keeps the previous beat's volume, so neither restarts at the QRS.
+    const eB = Math.pow(e, p.baseExp);
+    const refR = ctx.vR0 + w * (ctx.vR0p - ctx.vR0), refL = ctx.vL0 + w * (ctx.vL0p - ctx.vL0);
+    VraE -= p.baseAlpha * eB * (refR - s[3]);
+    VlaE -= p.baseAlpha * eB * (refL - s[0]);
+    const gR = Prv - (Era * (VraE - p.raV0) + Pth), gL = Plv - (Ela * (VlaE - p.laV0) + Pth);
+    // the bulge starts with ventricular contraction and gives way to the AV-plane descent once the
+    // ventricle has ejected cFade mL, so the c wave is followed by the x descent
+    const fE = Math.min(1, e / 0.05);
+    const fR = fE * Math.max(0, 1 - (refR - s[3]) / p.cFade), fL = fE * Math.max(0, 1 - (refL - s[0]) / p.cFade);
+    if (gR > 0) VraE += fR * p.cBulge * gR / (gR + p.cP);
+    if (gL > 0) VlaE += fL * p.cBulge * gL / (gL + p.cP);
   }
-  const Pra = Era * (VraE - p.raV0) + Ppcd;
-  const Pla = Ela * (VlaE - p.laV0) + Ppcd;
+  const Pra = Era * (VraE - p.raV0) + Pth;
+  let Pla, Rint = 0;
+  if (p.laPiso > 0 || p.laKej > 0) {
+    const st = VlaE - p.laV0, x = (p.laEmax - p.laEmin) * st;
+    const act = ea * (p.laPiso > 0 && x > 0 ? p.laPiso * Math.tanh(x / p.laPiso) : x);
+    Pla = p.laEmin * st + act + Pth;
+    if (p.laKej > 0 && act > 0) Rint = p.laKej * act;
+  } else Pla = Ela * (VlaE - p.laV0) + Pth;
   const Qao = valveFlow(Plv - Psa, p.zcAo, seriesArea(p.avArea, lvotArea(s[0], e, p)));   // aortic valve + Zc (+ stenotic or dynamic LVOT orifice)
   const Qar = leak(Psa - Plv, p.arEroa);                 // aortic regurgitation
-  const Qmv = valveFlow(Pla - Plv, p.rMv, 0);            // mitral inflow
+  const Qmv = valveFlow(Pla - Plv, p.rMv + Rint, p.mvArea);   // mitral inflow (+ Bernoulli orifice when mvArea > 0)
+  if (Rint > 0) Pla -= Rint * Qmv;                       // LA chamber pressure while the atrium empties
   const Qmr = leak(Plv - Pla, p.mrEroa);                 // mitral regurgitation
   const Qpv = valveFlow(Prv - Ppa, p.zcPa, 0);           // pulmonic valve + Zc
   const Qtv = valveFlow(Pra - Prv, p.rTv, 0);            // tricuspid inflow
   const Qtr = leak(Prv - Pra, p.trEroa);                 // tricuspid regurgitation
   const Qsys = (Psa - Psv) / p.svr;
-  const Qpul = (Ppa - Ppv) / p.pvr;
+  // pulmonary flow: where the alveolar pressure exceeds the pulmonary venous pressure the capillaries collapse at the
+  // downstream end and the flow depends on Ppa − Palv (a vascular waterfall, West zone 2); flow stops below Palv (zone 1)
+  const Qpul = Palv > Ppv ? Math.max(0, Ppa - Palv) / p.pvr : (Ppa - Ppv) / p.pvr;
   const Qra = (Psv - Pra) / p.rSvRa;                     // venae cavae → RA (can reverse during atrial systole)
-  const Qla = (Ppv - Pla) / p.rPvLa;                     // pulmonary veins → LA
-  return { Plv, Prv, Psa, Psv, Ppa, Ppv, Pra, Pla, Ppcd, Vspt, Qao, Qar, Qmv, Qmr, Qpv, Qtv, Qtr, Qsys, Qpul, Qra, Qla };
+  const rPv = p.rPvLa * (1 + (p.pvSleeve || 0) * ea);   // venoatrial junction, narrowed by atrial contraction
+  const Qla = (Ppv - Pla) / rPv;                         // pulmonary veins → LA
+  return { Plv, Prv, Psa, Psv, Ppa, Ppv, Pra, Pla, Ppcd, Ppl: ppl, Palv, Vspt, Qao, Qar, Qmv, Qmr, Qpv, Qtv, Qtr, Qsys, Qpul, Qra, Qla };
 }
 
 function deriv(s, e, ea, p, ctx, out) {
@@ -253,7 +322,7 @@ function initialState(p) {
 }
 
 const REC_KEYS = ['t', 'Vlv', 'Plv', 'Pao', 'Vrv', 'Prv', 'Ppa', 'Psv', 'Ppv', 'Pra', 'Pla', 'Vla', 'Vra',
-  'Qao', 'Qar', 'Qpv', 'Qmv', 'Qmr', 'Qtv', 'Qtr', 'aAct', 'eAct', 'Ppcd', 'Vspt'];
+  'Qao', 'Qar', 'Qpv', 'Qmv', 'Qmr', 'Qtv', 'Qtr', 'aAct', 'eAct', 'Ppcd', 'Vspt', 'Qla', 'Ppl', 'Palv'];
 
 // One beat. Always accumulates the per-beat quantities the slow controllers need;
 // records every sample when `record` is set.
@@ -266,11 +335,19 @@ function simulateBeat(s0, p, act, T, dt, record, ctx) {
   const acc = { map: 0, corL: 0, corR: 0, lvEDV: -Infinity, lvESV: Infinity, rvEDV: -Infinity, rvESV: Infinity,
     swL: 0, swR: 0, pesL: 0, pesR: 0 };
   const iEs = Math.round(act.tPeak / dt);
-  ctx.vL0 = s[0]; ctx.vR0 = s[3];                              // ventricular volumes at the QRS
+  // ventricular volumes at this QRS and Ees of this beat, with those of the beat before for its tail
+  ctx.vL0p = ctx.vL0 ?? s[0]; ctx.vR0p = ctx.vR0 ?? s[3];
+  ctx.lvEesP = ctx.lvEes ?? p.lvEes; ctx.rvEesP = ctx.rvEes ?? p.rvEes;
+  ctx.vL0 = s[0]; ctx.vR0 = s[3]; ctx.lvEes = p.lvEes; ctx.rvEes = p.rvEes;
   let prev = null;
+  // ctx.pplFn(t) is the pleural pressure from the breath at absolute time t (s); ctx.t0 is the time of this
+  // beat's QRS. It is set before every evaluation, so the breath varies within the beat as well as between beats.
+  const breath = (tt) => { if (ctx.pplFn) ctx.pplT = ctx.pplFn(ctx.t0 + tt); if (ctx.palvFn) ctx.palvT = ctx.palvFn(ctx.t0 + tt); };
   for (let i = 0; i < n; i++) {
     const t = i * dt;
     const e0 = act.e(t), a0 = act.a(t);
+    ctx.w = act.w(t);
+    breath(t);
     const q = pressures(s, e0, a0, p, ctx);
     const Pao = q.Psa + q.Qao * p.zcAo;
     acc.map += Pao;
@@ -288,13 +365,16 @@ function simulateBeat(s0, p, act, T, dt, record, ctx) {
       rec.Pra.push(q.Pra); rec.Pla.push(q.Pla); rec.Vra.push(s[6]); rec.Vla.push(s[7]);
       rec.Qao.push(q.Qao); rec.Qar.push(q.Qar); rec.Qpv.push(q.Qpv);
       rec.Qmv.push(q.Qmv); rec.Qmr.push(q.Qmr); rec.Qtv.push(q.Qtv); rec.Qtr.push(q.Qtr);
-      rec.aAct.push(a0); rec.eAct.push(e0); rec.Ppcd.push(q.Ppcd); rec.Vspt.push(q.Vspt);
+      rec.aAct.push(a0); rec.eAct.push(e0); rec.Ppcd.push(q.Ppcd); rec.Vspt.push(q.Vspt); rec.Qla.push(q.Qla); rec.Ppl.push(q.Ppl); rec.Palv.push(q.Palv);
     }
     const e2 = act.e(t + dt / 2), e3 = act.e(t + dt);
     const a2 = act.a(t + dt / 2), a3 = act.a(t + dt);
+    const w2 = act.w(t + dt / 2), w3 = act.w(t + dt);
     deriv(s, e0, a0, p, ctx, k1);
+    ctx.w = w2; breath(t + dt / 2);
     deriv(add(s, k1, dt / 2), e2, a2, p, ctx, k2);
     deriv(add(s, k2, dt / 2), e2, a2, p, ctx, k3);
+    ctx.w = w3; breath(t + dt);
     deriv(add(s, k3, dt), e3, a3, p, ctx, k4);
     for (let j = 0; j < 8; j++) s[j] += (dt / 6) * (k1[j] + 2 * k2[j] + 2 * k3[j] + k4[j]);
   }
@@ -311,7 +391,8 @@ function initialSlow() { return { map: null, sym: 0.5, ischL: 1, ischR: 1 }; }
 function effective(p, sl) {
   const q = { ...p };
   const u = p.baro ? 2 * sl.sym - 1 : 0;         // −1 … 1, 0 at the set point
-  q.hr = p.hr * (1 + p.gHR * u);
+  // bounded, or a fast intrinsic rate plus hypotension spirals: less filling, lower MAP, faster still
+  q.hr = Math.min(p.hr * (1 + p.gHR * u), Math.max(p.hr, p.hrMax));
   q.svr = p.svr * (1 + p.gSVR * u);
   q.vStressed = p.vStressed + p.gVol * u;
   const ff = p.ffr ? Math.min(1.4, Math.max(0.7, 1 + p.kFFR * (q.hr - 70) / 70)) : 1;
@@ -375,6 +456,7 @@ function relaxationTau(P, t, iEs, pEnd) {
 
 function ventricleMetrics(V, P, Part, tIdxEs, Ees, V0, hr, flows, dt) {
   const EDV = Math.max(...V), ESV = Math.min(...V);
+  const Ves = V[tIdxEs];                       // volume at end-systole (with MR or AS it exceeds ESV)
   const SV = EDV - ESV;
   const Pes = P[tIdxEs];                       // pressure at peak elastance (end-systole)
   const Ea = Pes / SV;
@@ -388,7 +470,7 @@ function ventricleMetrics(V, P, Part, tIdxEs, Ees, V0, hr, flows, dt) {
   return {
     EDV, ESV, SV, EF: SV / EDV, fwdSV, SVout: ejected, CO: fwdSV * hr / 1000,
     RVol: backIn + backOut, RF: (backIn + backOut) / Math.max(SV, 1e-6),
-    Pes, Ees, Ea, EaEes: Ea / Ees, EesEa: Ees / Ea,
+    Pes, Ves, Ees, Ea, EaEes: Ea / Ees, EesEa: Ees / Ea,
     EDP: P[0],                                 // at the QRS (start of activation)
     Pmax: Math.max(...P),
     SW, PVA, eff: SW / PVA,
@@ -413,7 +495,7 @@ export function filling(q) {
     if (q.pericardium) {
       for (let i = 0; i < 50; i++) {
         const m = (lo + hi) / 2;
-        const f = q.pcdP0 * (Math.exp(q.pcdLambda * (heart(m) + q.pcdFluid - q.pcdV0)) - 1);
+        const f = pericardialP(heart(m) + q.pcdFluid, q);
         if (f > m) lo = m; else hi = m;
       }
       ppcd = (lo + hi) / 2;
@@ -432,18 +514,30 @@ function dist(a, b) { return Math.max(...a.map((x, i) => Math.abs(x - b[i]))); }
 /**
  * Run the model to beat-to-beat steady state and return the last beat.
  * @param {object} params  parameter set (see NORMAL); missing keys fall back to NORMAL
- * @param {object} [opt]   { dt, maxBeats, tol, state, slow }
+ * @param {object} [opt]   { dt, maxBeats, tol, state, slow, holdSlow, prev, prevT, pplFn, palvFn, t0 }
+ *   pplFn(t), palvFn(t): pleural and alveolar pressure from the breath (mmHg) at absolute time t (s); t0: the time of this beat's QRS.
+ *   It acts on the recorded beat only, never during the run to steady state, so use it with a converged
+ *   state (maxBeats 0) and chain beats with t0 (see beats.js).
  */
 export function simulate(params, opt = {}) {
   const p = { ...NORMAL, ...params };
-  const dt = opt.dt ?? 0.0005, maxBeats = opt.maxBeats ?? 300, tol = opt.tol ?? 0.05;
+  let dt = opt.dt ?? 0.0005;
+  const maxBeats = opt.maxBeats ?? 400, tol = opt.tol ?? 0.05;
   // a warm start carries the reflex state; ischemia is always recomputed from an unischemic heart,
-  // so the result depends only on the parameters
-  const sl = opt.slow ? { ...opt.slow, ischL: 1, ischR: 1 } : initialSlow();
+  // so the result depends only on the parameters. holdSlow keeps the slow state as given (ischemia
+  // included), for beat-by-beat sequences run with maxBeats 0 from a converged state.
+  const sl = opt.slow ? (opt.holdSlow ? { ...opt.slow } : { ...opt.slow, ischL: 1, ischR: 1 }) : initialSlow();
   let q = effective(p, sl);
   let s = opt.state && opt.state.length === 8 ? opt.state.slice() : initialState(q);
-  const ctx = { spt: p.sptV0, vL0: 0, vR0: 0 };
-  let beats = 0, converged = false;
+  // opt.prev: the result for the beat before, in irregular sequences run beat by beat. Its length sets how
+  // far its relaxation tail has decayed (opt.prevT gives the length alone), and its ventricular volumes
+  // at the QRS and its Ees stay with that tail in the first beat; see pressures(). The length is the one
+  // integrated (a whole number of steps), so the tail picks up exactly where that beat left it.
+  const pv = opt.prev, prevT = opt.prevT ?? (pv ? pv.rec.t.length * pv.dt : undefined);
+  const ctx = { spt: p.sptV0, w: 0, pplFn: null, pplT: 0, palvFn: null, palvT: 0, t0: opt.t0 ?? 0, vL0: pv?.state[0] ?? null, vR0: pv?.state[3] ?? null,
+    lvEes: pv?.eff.lvEes ?? null, rvEes: pv?.eff.rvEes ?? null };
+  let beats = 0, converged = false, dtc = Math.max(dt, 0.001), retries = 0;
+  if (!s.every(Number.isFinite)) s = initialState(q);
   for (; beats < maxBeats; beats++) {
     // carry the reflex change in venous tone as a change of stressed volume
     const dV = q.vStressed - stressed(s, q);
@@ -451,7 +545,17 @@ export function simulate(params, opt = {}) {
     const T = 60 / q.hr;
     const act = makeActivation(T, q);
     act.a = makeAtrialActivation(T, q);
-    const { s: s1, acc } = simulateBeat(s, q, act, T, Math.max(dt, 0.001), false, ctx);
+    const { s: s1, acc } = simulateBeat(s, q, act, T, dtc, false, ctx);
+    if (!s1.every(Number.isFinite)) {
+      // the step is too long for this circulation (a very small resistance or a very stiff chamber):
+      // start again from a relaxed distribution with half the step
+      if (++retries > 4) break;
+      dtc /= 2;
+      Object.assign(sl, initialSlow());
+      q = effective(p, sl); s = initialState(q);
+      Object.assign(ctx, { spt: p.sptV0, vL0: null, vR0: null, lvEes: null, rvEes: null });
+      continue;
+    }
     const dS = dist(s1, s);
     // hold the controllers until the circulation itself has nearly settled
     const dSlow = dS < 2 || beats > 20 ? updateSlow(sl, acc, p, q) : 1;
@@ -464,17 +568,21 @@ export function simulate(params, opt = {}) {
   const dV = q.vStressed - stressed(s, q);
   s[2] += dV * 0.8; s[5] += dV * 0.2;
   const T = 60 / q.hr;
-  const act = makeActivation(T, q);
+  const act = makeActivation(T, q, beats === 0 && prevT ? prevT : T);
   act.a = makeAtrialActivation(T, q);
   const startState = s.slice();
-  const { rec, acc } = simulateBeat(s, q, act, T, dt, true, ctx);
+  dt = Math.min(dt, dtc);
+  ctx.pplFn = opt.pplFn ?? null; ctx.palvFn = opt.palvFn ?? null;
+  const { s: endState, rec, acc } = simulateBeat(s, q, act, T, dt, true, ctx);
   const iEs = Math.round(act.tPeak / dt);
   const lv = ventricleMetrics(rec.Vlv, rec.Plv, rec.Pao, iEs, q.lvEes, q.lvV0, q.hr,
     { out: rec.Qao, outBack: rec.Qar, inBack: rec.Qmr }, dt);
   const rv = ventricleMetrics(rec.Vrv, rec.Prv, rec.Ppa, iEs, q.rvEes, q.rvV0, q.hr,
     { out: rec.Qpv, inBack: rec.Qtr }, dt);
   const RAP = mean(rec.Pra), LAP = mean(rec.Pla);
-  lv.tau = relaxationTau(rec.Plv, rec.t, iEs, lv.EDP);
+  // τ is fitted to transmural LV pressure, so a pleural pressure does not bias the zero-asymptote fit
+  const ppl = q.ppl || 0;
+  lv.tau = relaxationTau(ppl ? rec.Plv.map((x) => x - ppl) : rec.Plv, rec.t, iEs, lv.EDP - ppl);
   // LV filling during atrial systole (mitral flow while the atrium is active), as a share of SV
   let aFill = 0;
   for (let i = 0; i < rec.t.length; i++) if (rec.aAct[i] > 0.02) aFill += rec.Qmv[i] * dt;
@@ -513,15 +621,54 @@ export function simulate(params, opt = {}) {
   rv.EaClin = hemo.mPAP / rv.SVout;
   rv.pmaxRatio = rv.pIso / rv.Pes - 1;          // single-beat Pmax/Pes − 1 (Brimioulle 2003)
   const eff = { hr: q.hr, svr: q.svr, vStressed: q.vStressed, lvEes: q.lvEes, rvEes: q.rvEes, reflex: q.reflex, ffr: q.ffrFactor };
-  return { params: p, eff, T, dt, tEs: act.tPeak, beats, converged, rec, lv, rv, hemo, state: startState, slow: { ...sl }, acc };
+  // failed: the circulation has no finite solution with these parameters (the UI keeps the last good one)
+  const failed = ![lv.EDV, lv.ESV, lv.Pes, rv.EDV, rv.ESV, hemo.MAP, hemo.LAP, hemo.RAP].every(Number.isFinite) || lv.SV < 1 || rv.SV < 1;
+  return { params: p, eff, T, dt, tEs: act.tPeak, beats, converged, failed, rec, lv, rv, hemo, state: startState, endState, slow: { ...sl }, acc };
 }
 
-// ESPVR / Ea line endpoints for plotting.
-export function couplingLines(m, V0) {
-  return {
-    espvr: [[V0, 0], [m.ESV + (m.EDV - m.ESV) * 0.6, m.Ees * (m.ESV + (m.EDV - m.ESV) * 0.6 - V0)]],
-    ea: [[m.ESV, m.Pes], [m.EDV, 0]],
+// ESPVR, EDPVR and Ea line of one ventricle as the model's chamber sees them, for plotting.
+// The free-wall equations (Ees·(V − V0) and A·(exp(β(V − V0)) − 1)) are not what the loop follows:
+// the septum moves with the transseptal gradient and the pericardium adds its pressure to every chamber,
+// so a stiff or dilated heart, a pressure-loaded RV or an effusion would leave the loop's corners off
+// the free-wall lines. Here the chamber pressure is computed with the model's own equations while the
+// ventricle's volume is swept and the other chambers are held where they were: fully activated (e = 1)
+// with the volumes at end-systole for the ESPVR, fully relaxed (e = 0) with the volumes at end-diastole
+// (the QRS) for the EDPVR. The ESPVR therefore passes through the end-systolic point, and the end-diastolic
+// point lies on the EDPVR unless relaxation is still incomplete at the QRS, when it sits above it.
+export function pvRelations(r, side, xmax, n = 60) {
+  const q = effective(r.params, r.slow), rec = r.rec, m = r[side], lv = side === 'lv';
+  const iEs = Math.round(r.tEs / r.dt), V0 = lv ? q.lvV0 : q.rvV0;
+  const curve = (i, e) => {
+    const s = [rec.Vlv[i], 0, 0, rec.Vrv[i], 0, 0, rec.Vra[i], rec.Vla[i]];
+    const ctx = { spt: rec.Vspt[i], w: 0, lvEesP: q.lvEes, rvEesP: q.rvEes, vL0: s[0], vL0p: s[0], vR0: s[3], vR0p: s[3] };
+    const P = (v) => { s[lv ? 0 : 3] = v; const pr = pressures(s, e, 0, q, ctx); return lv ? pr.Plv : pr.Prv; };
+    // start where the chamber pressure crosses zero, so the line leaves the volume axis; always n + 1
+    // points, so two relations can be interpolated point by point
+    let a = 0, b = xmax;
+    if (P(a) < 0 && P(b) > 0) for (let k = 0; k < 40; k++) { const c = (a + b) / 2; if (P(c) < 0) a = c; else b = c; }
+    else b = 0;
+    const pts = [];
+    for (let k = 0; k <= n; k++) { const v = b + (xmax - b) * k / n; pts.push([v, P(v)]); }
+    return pts;
   };
+  const espvr = curve(iEs, 1), edpvr = curve(0, 0);
+  return { V0, Ees: m.Ees, espvr, edpvr, ea: [[m.Ves, m.Pes], [m.EDV, 0]], es: [m.Ves, m.Pes], ed: [lv ? rec.Vlv[0] : rec.Vrv[0], m.EDP] };
+}
+
+// Chamber pressure on a relation at volume V (linear interpolation), for drag handles and labels.
+export function relationAt(pts, V) {
+  if (V <= pts[0][0]) return pts[0][1];
+  for (let i = 1; i < pts.length; i++) if (V <= pts[i][0]) {
+    const [v1, p1] = pts[i - 1], [v2, p2] = pts[i];
+    return p1 + (p2 - p1) * (V - v1) / (v2 - v1);
+  }
+  return pts[pts.length - 1][1];
+}
+
+// ESPVR / Ea line for plotting (see pvRelations), the ESPVR cut short above the end-systolic point.
+export function couplingLines(r, side) {
+  const R = pvRelations(r, side, r[side].Ves + (r[side].EDV - r[side].Ves) * 0.6, 30);
+  return { espvr: R.espvr, ea: R.ea };
 }
 
 // Cardiac phases and valve events for one recorded beat.

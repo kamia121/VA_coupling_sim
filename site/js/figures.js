@@ -1,5 +1,5 @@
 // Static teaching figures generated from the same engine as the simulator.
-import { simulate, cardiacPhases } from './engine.js';
+import { simulate, cardiacPhases, pvRelations } from './engine.js';
 import { addExport, svgCapture, header, even } from './export.js';
 import { drawPlot, niceMax, svgEl } from './plot.js';
 import { PRESETS, presetById } from './presets.js';
@@ -15,14 +15,11 @@ function loop(r, side) {
 }
 
 function rels(r, side, xmax, color) {
-  const m = r[side], p = r.params;
-  const V0 = side === 'lv' ? p.lvV0 : p.rvV0, A = side === 'lv' ? p.lvA : p.rvA, b = side === 'lv' ? p.lvBeta : p.rvBeta;
-  const ed = [];
-  for (let v = V0; v <= xmax; v += (xmax - V0) / 50) ed.push([v, A * (Math.exp(b * (v - V0)) - 1)]);
+  const R = pvRelations(r, side, xmax, 50);
   return [
-    { points: ed, color, width: 1.1, dash: '2 3' },
-    { points: [[V0, 0], [xmax, m.Ees * (xmax - V0)]], color, width: 1.3 },
-    { points: [[m.ESV, m.Pes], [m.EDV, 0]], color, width: 1.3, dash: '6 4' },
+    { points: R.edpvr, color, width: 1.1, dash: '2 3' },
+    { points: R.espvr, color, width: 1.3 },
+    { points: R.ea, color, width: 1.3, dash: '6 4' },
   ];
 }
 
@@ -35,10 +32,10 @@ function drawLoopFig() {
   loopFig = { r, map: drawPlot(svg, {
     width: W, height: Math.round(W * 0.62), title: 'Annotated left ventricular pressure–volume loop',
     x: { min: 0, max: 200, label: 'LV volume (mL)' }, y: { min: 0, max: 150, label: 'LV pressure (mmHg)' },
-    series: [...rels(r, 'lv', 200, C.ref), { points: loop(r, 'lv'), color: C.cur, width: 2.6 }, { points: [[m.ESV, m.Pes]], color: C.cur, marker: 4 }],
+    series: [...rels(r, 'lv', 200, C.ref), { points: loop(r, 'lv'), color: C.cur, width: 2.6 }, { points: [[m.Ves, m.Pes]], color: C.cur, marker: 4 }],
     annotations: [
       { x: m.EDV, y: m.EDP, text: 'End-diastole', dx: 6, dy: -6 },
-      { x: m.ESV, y: m.Pes, text: 'End-systole (Pes)', dx: -8, dy: -8, anchor: 'end' },
+      { x: m.Ves, y: m.Pes, text: 'End-systole (Pes)', dx: -8, dy: -8, anchor: 'end' },
       { x: (m.ESV + m.EDV) / 2, y: 4, text: 'Filling', anchor: 'middle', dy: -8 },
       { x: (m.ESV + m.EDV) / 2, y: m.Pes + 6, text: 'Ejection', anchor: 'middle', dy: -4 },
       { x: m.EDV, y: 55, text: 'Isovolumic contraction', dx: 6 },
@@ -98,7 +95,7 @@ function drawEesFig() {
     series: [
       { points: [[p.lvV0, 0], [p.lvV0 + 160 / m.Ees, 160]], color: C.cur, width: 1.6 },
       ...rs.map((r, k) => ({ points: loop(r, 'lv'), color: shades[k], width: k === 1 ? 2.6 : 1.8 })),
-      ...rs.map((r) => ({ points: [[r.lv.ESV, r.lv.Pes]], color: 'var(--flag)', marker: 5 })),
+      ...rs.map((r) => ({ points: [[r.lv.Ves, r.lv.Pes]], color: 'var(--flag)', marker: 5 })),
     ],
     annotations: [
       { x: p.lvV0 + 150 / m.Ees, y: 150, text: `ESPVR: slope Ees = ${m.Ees.toFixed(1)} mmHg/mL`, dx: 8 },
@@ -121,10 +118,10 @@ function drawEaFig() {
     series: [
       { points: [[p.lvV0, 0], [p.lvV0 + 160 / p.lvEes, 160]], color: C.cur, width: 1.4 },
       ...rs.map((r, k) => ({ points: loop(r, 'lv'), color: shades[k], width: k === 1 ? 2.6 : 1.8 })),
-      ...rs.map((r, k) => ({ points: [[r.lv.ESV, r.lv.Pes], [r.lv.EDV, 0]], color: shades[k], width: 1.6, dash: '6 4' })),
-      ...rs.map((r) => ({ points: [[r.lv.ESV, r.lv.Pes]], color: 'var(--flag)', marker: 5 })),
+      ...rs.map((r, k) => ({ points: [[r.lv.Ves, r.lv.Pes], [r.lv.EDV, 0]], color: shades[k], width: 1.6, dash: '6 4' })),
+      ...rs.map((r) => ({ points: [[r.lv.Ves, r.lv.Pes]], color: 'var(--flag)', marker: 5 })),
     ],
-    annotations: rs.map((r, k) => ({ x: r.lv.ESV, y: r.lv.Pes, text: `Ea ${r.lv.Ea.toFixed(2)} · SV ${r.lv.SV.toFixed(0)} mL`, dx: -10, dy: k === 2 ? -8 : 4, anchor: 'end' })),
+    annotations: rs.map((r, k) => ({ x: r.lv.Ves, y: r.lv.Pes, text: `Ea ${r.lv.Ea.toFixed(2)} · SV ${r.lv.SV.toFixed(0)} mL`, dx: -10, dy: k === 2 ? -8 : 4, anchor: 'end' })),
   });
 }
 
