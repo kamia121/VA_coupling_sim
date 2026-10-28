@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script>try{var t=localStorage.getItem('vac-theme');if(t==='light'||t==='dark')document.documentElement.setAttribute('data-theme',t)}catch(e){}</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Code+Pro:wght@400;500&family=Source+Sans+3:ital,wght@0,400;0,600;1,400&family=Source+Serif+4:wght@600&display=swap">
+<link rel="stylesheet" href="css/tokens.css">
+<link rel="stylesheet" href="css/site.css">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='5' fill='%232F6E66'/%3E%3Cpath d='M8 24 V10 L24 8 V22 Z' fill='none' stroke='white' stroke-width='2.5' stroke-linejoin='round'/%3E%3C/svg%3E">
+<title>ICU Diastology</title>
+<meta name="description" content="Color M-mode flow propagation velocity and E/Vp as estimates of LV filling pressure in critically ill patients, compared with E/e′ on the same model patients.">
+</head>
+<body>
+<main>
+<article class="prose">
+  <h1>ICU diastology</h1>
+  <p class="lede">Mean left atrial (LA) pressure in a critically ill patient is estimated at the bedside from mitral inflow indexed to a surrogate of myocardial relaxation. Mitral annular e′, the early diastolic velocity of the annulus, is the surrogate used in the ASE/EACVI algorithm <cite data-ref="nagueh2016"></cite>. Color M-mode flow propagation velocity (Vp) is an alternative recorded within the LV cavity, and in the ICU it depends on systolic function and catecholamines as well as on relaxation.</p>
+
+  <section class="panel" id="vp">
+    <h2>Flow propagation velocity</h2>
+    <p>Early diastolic inflow enters the LV as a jet whose leading edge travels from the mitral tips toward the apex. In an axisymmetric Navier–Stokes model of LV filling, the vortex formed during the acceleration of early filling determined the propagation of the maximal velocity on the simulated color M-mode <cite data-ref="vierendeels2002"></cite>. The front advances faster than the blood within it when relaxation and elastic recoil lower apical pressure below basal pressure. In dogs, propagation from the mitral tips to the apex far exceeded the velocity of the individual blood cells before ischemia and approximated it after coronary microembolization, which lengthened τ from 31 to 49 ms and lowered the mitral-to-apical pressure gradient from 1.9 to 0.7 mmHg <cite data-ref="steine1999"></cite>.</p>
+    <p>Vp is the slope of the leading edge of the first aliasing contour, measured from the mitral valve plane to 4 cm into the cavity with the Nyquist limit lowered until the central jet aliases. It falls as relaxation slows: across inotropic states in dogs and in patients on partial cardiopulmonary bypass, Vp correlated with τ (r = 0.78 and 0.86) <cite data-ref="garcia2000"></cite>. In a heterogeneous population, systolic performance carries more weight. Among 150 patients undergoing coronary angiography, LV end-systolic volume index accounted for 46% of the variance of Vp and τ for 3% <cite data-ref="ohte2001"></cite>, so a small ventricle that empties well can sustain Vp while relaxation is impaired.</p>
+    <p>Vp is less reproducible than tissue Doppler. Interobserver variability was 14% for Vp and 7% for e′ <cite data-ref="kidawa2005"></cite>, and in 40 critically ill patients E/Vp could be obtained in 72% against 92% for E/e′ <cite data-ref="pieri2004"></cite>. Applied to the same images, the three published definitions of Vp gave values that differed by as much as 250% <cite data-ref="sessoms2002"></cite>.</p>
+  </section>
+
+  <section class="panel" id="evp">
+    <h2>E/Vp and mean LA pressure</h2>
+    <p>E rises with mean LA pressure and falls as relaxation slows, so dividing E by a surrogate of relaxation leaves a ratio that varies with LA pressure. In 45 ICU patients with invasive monitoring, E/Vp estimated pulmonary capillary wedge pressure (PCWP) as 5.27 × E/Vp + 4.6, with r = 0.80 and a standard error of the estimate of 3.1 mmHg. E alone correlated with PCWP at r = 0.62 and Vp at r = −0.34 <cite data-ref="garcia1997"></cite>.</p>
+    <div class="pl-grid">
+      <div class="pl-controls">
+        <label for="icu-patient" class="k">Patient</label>
+        <select id="icu-patient"></select>
+        <p class="k">Intravascular volume change</p>
+        <div class="seg" id="icu-vol" role="group" aria-label="Intravascular volume change"></div>
+        <p class="k">Inotrope, standard dose (Ees × 1.35, heart rate +10/min, SVR × 0.9; τ unchanged)</p>
+        <div class="seg" id="icu-ino" role="group" aria-label="Inotrope"></div>
+        <p class="k">Rhythm</p>
+        <div class="seg" id="icu-rhythm" role="group" aria-label="Rhythm"></div>
+        <p class="k">Mitral annular velocities (not recordable with annular calcification, an annuloplasty ring or prosthesis, or abnormal septal motion)</p>
+        <div class="seg" id="icu-annulus" role="group" aria-label="Mitral annular velocities"></div>
+        <div id="icu-ep-wrap">
+          <p class="k">Lateral e′ (a manual value sets the e′ reading and E/e′ and leaves LA pressure, E and Vp unchanged)</p>
+          <div class="seg" id="icu-ep-mode" role="group" aria-label="Source of lateral e′"></div>
+          <div id="icu-ep-manual" hidden>
+            <label for="icu-ep" class="k">Manual lateral e′: <b id="icu-ep-v"></b></label>
+            <input type="range" id="icu-ep" min="3" max="16" step="0.1" value="8">
+          </div>
+        </div>
+        <p class="status" id="icu-status" aria-live="polite"></p>
+      </div>
+      <div class="pl-out">
+        <div class="tiles" id="icu-tiles" aria-live="polite"></div>
+      </div>
+    </div>
+    <figure class="monitor fig" id="mm-fig">
+      <div style="position:relative">
+        <canvas id="mm-canvas" width="720" height="320" style="width:100%;height:auto;display:block" role="img" aria-label="Color M-mode of LV inflow from the mitral tips to the apex"></canvas>
+        <svg id="mm-overlay" viewBox="0 0 720 320" style="position:absolute;inset:0;width:100%;height:100%;cursor:crosshair;touch-action:none" aria-hidden="true"></svg>
+      </div>
+      <div class="pl-controls" style="margin-top:6px">
+        <label for="mm-nyq" class="k">Nyquist limit: <b id="mm-nyq-v"></b></label>
+        <input type="range" id="mm-nyq" min="30" max="70" step="5" value="50" aria-label="Nyquist limit as a percentage of E">
+        <label class="k"><input type="checkbox" id="mm-show" checked> Slope fitted to the leading edge of the first aliasing contour (dashed)</label>
+      </div>
+      <p class="hint-line" id="mm-out" aria-live="polite"></p>
+      <figcaption>Color M-mode along LV inflow, constructed from the model's mitral velocity and its Vp. Flow toward the apex is red, and velocity above the Nyquist limit aliases to blue. Dragging along the leading edge of the first aliasing contour draws a line whose slope is reported in cm/s.</figcaption>
+    </figure>
+    <figure class="monitor fig">
+      <div class="legend" id="icu-est-legend"></div>
+      <svg id="icu-est"></svg>
+      <figcaption>LA pressure estimated from E/Vp and from lateral E/e′ against the model value at each volume step of the selected patient.</figcaption>
+    </figure>
+    <p class="status">Volume steps for the selected patient, inotrope and rhythm. LA pressure is estimated from E/Vp with the regression of Garcia and colleagues <cite data-ref="garcia1997"></cite> and from E/e′ with that of Nagueh and colleagues <cite data-ref="nagueh1997"></cite>.</p>
+    <div class="table-wrap">
+      <table class="data" id="icu-sweep" aria-label="Volume steps for the selected patient">
+        <thead><tr><th>Volume</th><th class="num">Mean LA pressure, mmHg</th><th class="num">E, cm/s</th><th class="num">Vp, cm/s</th><th class="num">E/Vp</th><th class="num">Estimate from E/Vp, mmHg</th><th class="num">Lateral E/e′</th><th class="num">Estimate from E/e′, mmHg</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+    <p class="status" id="icu-sweep-note"></p>
+
+    <h3>Reduced ejection fraction</h3>
+    <p>The dilated ventricle with an EF of 22% has a low Vp that changes little with volume, falling from 40 to 35 cm/s between 1 L removed and 1 L added, while E rises with LA pressure. E/Vp rises from 1.36 to 2.37 as mean LA pressure rises from 7 to 21 mmHg. Patients showed the same insensitivity of Vp to preload: during partial cardiopulmonary bypass, E fell from 69 to 53 cm/s while Vp went from 37 to 34 cm/s, a change that was not significant <cite data-ref="garcia2000"></cite>. With an EF below 50%, E/Vp correlated with LV end-diastolic pressure at r = 0.77 <cite data-ref="kidawa2005"></cite>. Septic myocardial depression with an EF of 41% follows the same course. A liter of fluid raises mean LA pressure from 7 to 14 mmHg and E/Vp from 1.48 to 2.04, while Vp changes by 3 cm/s.</p>
+    <p>Lateral e′ falls with systolic dysfunction as well as with slow relaxation. After a first myocardial infarction, annular early diastolic velocity correlated with EF at r = 0.66 <cite data-ref="alam2000"></cite>. In patients hospitalized with heart failure and a mean EF of 24.7%, e′ averaged over four annular sites was 6.2 ± 1.9 cm/s <cite data-ref="olson2008"></cite>. The dilated ventricle has a lateral e′ of 7.3 cm/s. Across the volume steps, its estimate from E/e′ rises from 11 to 17 mmHg while mean LA pressure rises from 7 to 21 mmHg. The estimate from E/Vp covers nearly the same span, from 12 to 17 mmHg. In 106 patients with advanced decompensated heart failure and an EF of 30% or less, E/e′ did not correlate with PCWP, particularly in those with larger LV volumes, a lower cardiac index or cardiac resynchronization therapy <cite data-ref="mullens2009"></cite>. The model's e′ depends on τ and EF only and carries none of these sources of scatter, so its E/e′ rises with every rise in LA pressure.</p>
+    <h3>Restrictive filling with a preserved ejection fraction</h3>
+    <p>Both ratios underestimate a high filling pressure. In the restrictive ventricle with an EF of 55%, E/Vp gives 16.7 mmHg and E/e′ 18.0 mmHg for a mean LA pressure of 20.8 mmHg, in part because the restrictive E velocity of the model is lower than the velocities commonly recorded at the bedside. In patients, the underestimation arose from Vp. Six patients in a cardiac ICU with restrictive filling and preserved systolic function had a Vp of 71 ± 15 cm/s, against 37 ± 10 cm/s in the remainder, and their wedge pressure was largely underestimated <cite data-ref="alegret2002"></cite>.</p>
+  </section>
+
+  <section class="panel" id="confounders">
+    <h2>Confounding of Vp in the ICU</h2>
+    <p>A small, hyperdynamic ventricle maintains Vp while relaxation slows. With relaxation slowed to a fitted τ of 61 ms in septic vasoplegia, Vp remains at 50 cm/s and lateral e′ falls to 7.1 cm/s, below the ASE/EACVI cutoff of 10 cm/s.</p>
+    <p>Inotropic stimulation raises Vp independently of filling pressure. In patients without regional wall motion abnormalities, low-dose dobutamine raised Vp from 45 to 59 cm/s while E and E/Em did not change <cite data-ref="gorgulu2004"></cite>. With the standard inotrope dose, Vp in septic cardiomyopathy rises from 52 to 62 cm/s and mean LA pressure falls by less than 1 mmHg, so E/Vp falls for an almost unchanged LA pressure.</p>
+    <p>When EF is preserved, Vp changes with preload. In patients on hemodialysis, Vp fell after dialysis when EF was above 50% and did not change consistently when EF was lower <cite data-ref="lin2005"></cite>, and ultrafiltration lowered Vp from 45 to 41 cm/s <cite data-ref="vignon2007"></cite>. Neither ratio follows change reliably within one patient. When PCWP was varied from 0.8 to 28.8 mmHg by lower-body negative pressure and saline in healthy subjects and patients with heart failure with preserved ejection fraction, the individual slopes of PCWP on E/Vp ranged from −16.4 to 25.4 <cite data-ref="bhella2011"></cite>.</p>
+    <p class="status">E/Vp and Vp in critically ill and perioperative patients. Ea, Em and E′ are the authors' names for e′, and PAOP is pulmonary artery occlusion pressure.</p>
+    <div class="table-wrap">
+      <table class="data" aria-label="E/Vp and Vp in critically ill and perioperative patients">
+        <thead><tr><th>Study</th><th>Patients</th><th>Finding</th></tr></thead>
+        <tbody>
+          <tr><td>Bouhemad 2003 <cite data-ref="bouhemad2003"></cite></td><td>60 ventilated patients with septic shock and acute lung injury, transesophageal</td><td>Mean bias against PCWP 0.1 ± 2.9 mmHg for E/Vp and 0.4 ± 2.2 mmHg for E/Ea. Changes in PCWP correlated with changes in E/Ea (ρ = 0.84).</td></tr>
+          <tr><td>D'Souza 2005 <cite data-ref="dsouza2005"></cite></td><td>50 ICU patients with a pulmonary artery catheter</td><td>E/Vp against PCWP: r = 0.05 with normal and 0.17 with abnormal septal motion. Lateral E/Ea: r = 0.86 and 0.36.</td></tr>
+          <tr><td>Vignon 2008 <cite data-ref="vignon2008"></cite></td><td>88 ventilated patients, transesophageal (32 in the validation set)</td><td>In the validation set, for PAOP ≤ 18 mmHg, E/Vp ≤ 1.7 had a sensitivity of 80% and a specificity of 100%, and lateral E/E′ ≤ 8.0 had 83% and 88%. Areas under the curve 0.92 and 0.91.</td></tr>
+          <tr><td>Papanikolaou 2011 <cite data-ref="papanikolaou2011"></cite></td><td>50 patients at a spontaneous breathing trial</td><td>For weaning failure, E/Vp &gt; 1.51 had an area under the curve of 0.74 and lateral E/Em &gt; 7.8 one of 0.86. Only E/Em was independently associated.</td></tr>
+          <tr><td>Licker 2010 <cite data-ref="licker2010"></cite></td><td>94 high-risk patients before aortic valve replacement</td><td>Vp ≤ 40 cm/s predicted LV dysfunction on weaning from cardiopulmonary bypass, with a sensitivity of 72% and a specificity of 94%.</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>In these studies, E/Vp did not estimate filling pressure better than lateral E/e′ and was obtained in fewer patients. Its errors were largest where preserved systolic function or catecholamines raised Vp independently of LA pressure, a combination common in septic shock. Where Vp is least dependent on load, in the dilated, poorly emptying ventricle, E/Vp rose with filling pressure.</p>
+  </section>
+
+  <section class="panel" id="annulus">
+    <h2>When mitral annular velocities cannot be recorded</h2>
+    <p>Annular calcification, an annuloplasty ring or prosthesis, regional dysfunction at the annulus, and abnormal septal motion after cardiac surgery or with left bundle branch block uncouple annular motion from LV relaxation. Vp is recorded within the cavity and does not depend on annular motion, which makes it a candidate substitute in these patients. The evidence for that use is indirect. A PubMed search found no study of Vp in annular calcification or after annuloplasty. In 50 ICU patients, abnormal septal motion lowered the correlation of lateral E/Ea with PCWP from 0.86 to 0.36, and E/Vp correlated poorly with PCWP whether septal motion was normal or abnormal <cite data-ref="dsouza2005"></cite>.</p>
+  </section>
+
+  <section class="panel" id="limits">
+    <h2>Limitations of the model</h2>
+    <p>Vp is not simulated. The model has one LV compartment and no long axis, so the speed of the filling front cannot emerge from it. Vp is scaled from the fitted relaxation time constant and the ejection fraction, Vp = (36/τ) × [45 + 0.93 × (EF − 30)] cm/s, with τ in milliseconds, EF in percent and the term EF − 30 set to zero below an EF of 30%. These constants give the dilated ventricle a Vp of 38 cm/s and the normal ventricle 69 cm/s. In patients, the propagation rate measured by a related method was 34 ± 14 cm/s with an EF below 60% and an E/A below 1, and 74 ± 17 cm/s in controls <cite data-ref="takatsuji1996"></cite>.</p>
+    <p>At a fixed τ and EF, the scaled Vp does not change with volume, which overstates its preload independence when EF is preserved <cite data-ref="lin2005"></cite>. The ejection fraction stands in for restoring forces as a whole and does not reproduce the high Vp of restrictive filling with preserved systolic function <cite data-ref="alegret2002"></cite>. The inotrope raises Ees and leaves τ unchanged, so the lusitropic effect of dobutamine is absent. In the dilated ventricle it raises E from 74 to 89 cm/s while mean LA pressure falls from 14 to 12 mmHg, and E/Vp rises.</p>
+    <p>Lateral e′ is scaled from τ, as in the Diastolic lab, and is reduced by 1% for each percentage point of EF below 50%. The EF term represents the loss of restoring forces, an independent determinant of e′ in dogs <cite data-ref="opdahl2009"></cite>. Its slope was set so that the dilated ventricle, whose relaxation parameter is normal, has an e′ within the clinical range <cite data-ref="olson2008"></cite>, and in that ventricle the EF term carries the whole fall in e′. Slow relaxation also lowers e′ in heart failure. During pacing-induced heart failure in dogs, τ accounted for 85% of the variance of e′ <cite data-ref="hasegawa2003"></cite>. Where a low EF and a long τ are combined, the two reductions multiply.</p>
+    <p>The color M-mode is drawn from the model's mitral velocity and the scaled Vp. The early front travels at a speed chosen so that the slope of the first aliasing contour, with the Nyquist limit at half of E, equals Vp, and the jet core slows toward the apex. The dependence of the measured slope on the Nyquist limit is a property of that construction. In patients, the value of Vp depends on the method by which it is measured <cite data-ref="sessoms2002"></cite>. All patients are synthetic, and none of the values is a treatment threshold.</p>
+  </section>
+
+  <div id="page-refs"></div>
+</article>
+</main>
+<script type="module">
+  import { initLayout } from './js/layout.js';
+  import { initIcu } from './js/icusim.js';
+  initLayout();
+  initIcu();
+</script>
+</body>
+</html>

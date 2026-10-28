@@ -9,6 +9,7 @@ const PAGES = [
   ['simulator.html', 'Simulator'],
   ['shock.html', 'Shock lab'],
   ['diastolic.html', 'Diastolic lab'],
+  ['icu.html', 'ICU diastology'],
   ['scenarios.html', 'Scenarios'],
   ['echo.html', 'Echo lab'],
   ['pac.html', 'PA catheter'],
